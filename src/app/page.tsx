@@ -210,7 +210,7 @@ export default function Home() {
           </div>
 
           <div className={styles.canvasContainer}>
-            <Canvas shadows camera={{ position: [1000, 1000, 1000], fov: 50 }}>
+            <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 50, near: 10, far: 20000 }}>
               <color attach="background" args={['#f0f2f5']} />
               <Stage environment="city" intensity={0.5} adjustCamera={false}>
                 <CabinetFrame
@@ -248,7 +248,7 @@ export default function Home() {
                 )}
 
               </Stage>
-              <OrbitControls makeDefault />
+              <OrbitControls makeDefault maxDistance={10000} />
               <gridHelper args={[2000, 40]} />
               <axesHelper args={[100]} />
             </Canvas>
