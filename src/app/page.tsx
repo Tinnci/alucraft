@@ -11,8 +11,8 @@ import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
 import { BOMPanel } from '@/components/BOMPanel';
 import { Toolbar } from '@/components/Toolbar';
+import { Sidebar } from '@/components/Sidebar';
 import DimensionLines from '@/components/DimensionLines';
-import { useControls, button, folder } from 'leva';
 
 export default function Home() {
   // Extract global design state and setters from the store
@@ -27,108 +27,21 @@ export default function Home() {
   const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
   const doorCount = useDesignStore((state: DesignState) => state.doorCount);
   const connectorType = useDesignStore((state: DesignState) => state.connectorType);
+  const shelves = useDesignStore((state: DesignState) => state.shelves);
 
   const frameRef = useRef<THREE.Group | null>(null);
   // setters
-  const setProfileType = useDesignStore((state: DesignState) => state.setProfileType);
-  const setOverlay = useDesignStore((state: DesignState) => state.setOverlay);
-  const setResult = useDesignStore((state: DesignState) => state.setResult);
   const setWidth = useDesignStore((state: DesignState) => state.setWidth);
   const setHeight = useDesignStore((state: DesignState) => state.setHeight);
   const setDepth = useDesignStore((state: DesignState) => state.setDepth);
+  const setProfileType = useDesignStore((state: DesignState) => state.setProfileType);
+  const setOverlay = useDesignStore((state: DesignState) => state.setOverlay);
+  const setResult = useDesignStore((state: DesignState) => state.setResult);
   const setHasLeftWall = useDesignStore((state: DesignState) => state.setHasLeftWall);
   const setHasRightWall = useDesignStore((state: DesignState) => state.setHasRightWall);
   const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
   const setDoorCount = useDesignStore((state: DesignState) => state.setDoorCount);
   const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
-
-  const handleCalculate = () => {
-    let currentOverlay = overlay;
-    let autoAdjusted = false;
-    const warningMessages: string[] = [];
-
-    if (hasLeftWall) {
-      if (currentOverlay > 3) {
-        currentOverlay = 2;
-        autoAdjusted = true;
-        warningMessages.push("Left wall detected: Overlay adjusted to 2mm.");
-      }
-    }
-
-    const res = calculateHinge(profileType, currentOverlay);
-
-    if (autoAdjusted) {
-      setOverlay(currentOverlay);
-      res.message = `[Auto-Adjusted] ${res.message}`;
-      res.details = (res.details || "") + ` | ⚠️ ${warningMessages.join(' ')}`;
-    } else if (res.success && hasLeftWall && currentOverlay > 2) {
-      res.message += " (Warning: Tight clearance)";
-    }
-
-    setResult(res);
-  };
-
-  // Leva Controls
-  useControls({
-    Dimensions: folder({
-      width: { value: width, min: 200, max: 2000, step: 10, onChange: setWidth },
-      height: { value: height, min: 200, max: 3000, step: 10, onChange: setHeight },
-      depth: { value: depth, min: 200, max: 1000, step: 10, onChange: setDepth },
-    }),
-    Configuration: folder({
-      profile: { options: ['2020', '3030', '4040'], value: profileType, onChange: (v: string) => setProfileType(v as ProfileType) },
-      doors: { options: { 'Single': 1, 'Double': 2 }, value: doorCount, onChange: setDoorCount },
-      connector: { options: ['angle', 'internal'], value: connectorType, onChange: (v: string) => setConnectorType(v as 'angle' | 'internal') },
-    }),
-    HingeLogic: folder({
-      overlay: { value: overlay, min: -5, max: 30, step: 0.5, onChange: setOverlay, label: 'Overlay (mm)' },
-      leftWall: { value: hasLeftWall, onChange: setHasLeftWall, label: 'Left Wall' },
-      rightWall: { value: hasRightWall, onChange: setHasRightWall, label: 'Right Wall' },
-      'Calculate Hinge': button(() => handleCalculate()),
-    }),
-    Actions: folder({
-      'Download JSON': button(() => {
-        const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result };
-        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'alucraft-design.json';
-        a.click();
-        URL.revokeObjectURL(url);
-      }),
-      'Load JSON': button(() => {
-         // Simple file input trigger could be added here, but for now we use localStorage logic or alert
-         const input = document.createElement('input');
-         input.type = 'file';
-         input.accept = 'application/json';
-         input.onchange = (e: Event) => {
-            const target = e.target as HTMLInputElement;
-            const file = target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    const parsed = JSON.parse(ev.target?.result as string);
-                    if (parsed.width) setWidth(parsed.width);
-                    if (parsed.height) setHeight(parsed.height);
-                    if (parsed.depth) setDepth(parsed.depth);
-                    if (parsed.profileType) setProfileType(parsed.profileType);
-                    if (parsed.overlay !== undefined) setOverlay(parsed.overlay);
-                    if (parsed.hasLeftWall !== undefined) setHasLeftWall(parsed.hasLeftWall);
-                    if (parsed.hasRightWall !== undefined) setHasRightWall(parsed.hasRightWall);
-                    if (parsed.isDoorOpen !== undefined) setIsDoorOpen(parsed.isDoorOpen);
-                    if (parsed.result) setResult(parsed.result);
-                } catch (err) {
-                    alert('Invalid file');
-                }
-            };
-            reader.readAsText(file);
-         };
-         input.click();
-      })
-    })
-  });
 
   // Calculate door dimensions
   const profile = PROFILES[profileType as ProfileType];
@@ -254,25 +167,28 @@ export default function Home() {
   }, [width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result]);
 
   return (
-    <main className="w-screen h-screen bg-slate-900 relative overflow-hidden">
-      <Toolbar />
-      <BOMPanel />
+    <main className="w-screen h-screen bg-slate-900 relative overflow-hidden flex">
+      <Sidebar />
       
-      {/* Result Notification Overlay */}
-      {result && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl backdrop-blur-md border shadow-lg z-50 transition-all ${result.success ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border-red-500/30 text-red-100'}`}>
-          <div className="font-semibold text-sm">{result.success ? '✅ Configuration Valid' : '❌ Configuration Issue'}</div>
-          <div className="text-xs opacity-80 mt-1">{result.message}</div>
-          {result.success && result.recommendedHinge && (
-             <div className="text-xs mt-1 font-mono bg-black/20 px-2 py-1 rounded">
-               Hinge: {result.recommendedHinge.name} | K={result.kValue}
-             </div>
-          )}
-        </div>
-      )}
+      <div className="flex-1 relative h-full ml-80">
+        <Toolbar />
+        <BOMPanel />
+        
+        {/* Result Notification Overlay */}
+        {result && (
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl backdrop-blur-md border shadow-lg z-50 transition-all ${result.success ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border-red-500/30 text-red-100'}`}>
+            <div className="font-semibold text-sm">{result.success ? '✅ Configuration Valid' : '❌ Configuration Issue'}</div>
+            <div className="text-xs opacity-80 mt-1">{result.message}</div>
+            {result.success && result.recommendedHinge && (
+               <div className="text-xs mt-1 font-mono bg-black/20 px-2 py-1 rounded">
+                 Hinge: {result.recommendedHinge.name} | K={result.kValue}
+               </div>
+            )}
+          </div>
+        )}
 
-      <div className="w-full h-full">
-        <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
+        <div className="w-full h-full">
+          <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
           <color attach="background" args={['#0f172a']} />
           <fog attach="fog" args={['#0f172a', 2000, 5000]} />
           
@@ -299,6 +215,7 @@ export default function Home() {
                   height={height}
                   depth={depth}
                   profileType={profileType}
+                  shelves={shelves}
                 />
               </group>
             </TransformControls>
@@ -322,6 +239,7 @@ export default function Home() {
           <OrbitControls makeDefault maxDistance={10000} />
           <gridHelper args={[3000, 60, '#1e293b', '#1e293b']} />
         </Canvas>
+      </div>
       </div>
     </main>
   );
