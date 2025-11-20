@@ -5,13 +5,12 @@ import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import { OrbitControls, Stage, Box, TransformControls } from '@react-three/drei';
-import { calculateHinge } from '@/core/hinge-rules';
 import { ProfileType, PROFILES } from '@/core/types';
 import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
 import { BOMPanel } from '@/components/BOMPanel';
 import { Toolbar } from '@/components/Toolbar';
-import { Sidebar } from '@/components/Sidebar';
+import { FloatingControls } from '@/components/FloatingControls';
 import DimensionLines from '@/components/DimensionLines';
 
 export default function Home() {
@@ -26,7 +25,6 @@ export default function Home() {
   const hasRightWall = useDesignStore((state: DesignState) => state.hasRightWall);
   const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
   const doorCount = useDesignStore((state: DesignState) => state.doorCount);
-  const connectorType = useDesignStore((state: DesignState) => state.connectorType);
   const shelves = useDesignStore((state: DesignState) => state.shelves);
 
   const frameRef = useRef<THREE.Group | null>(null);
@@ -40,8 +38,6 @@ export default function Home() {
   const setHasLeftWall = useDesignStore((state: DesignState) => state.setHasLeftWall);
   const setHasRightWall = useDesignStore((state: DesignState) => state.setHasRightWall);
   const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
-  const setDoorCount = useDesignStore((state: DesignState) => state.setDoorCount);
-  const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
 
   // Calculate door dimensions
   const profile = PROFILES[profileType as ProfileType];
@@ -167,80 +163,77 @@ export default function Home() {
   }, [width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result]);
 
   return (
-    <main className="w-screen h-screen bg-slate-900 relative overflow-hidden flex">
-      <Sidebar />
+    <main className="w-screen h-screen bg-slate-900 relative overflow-hidden">
+      <FloatingControls />
+      <Toolbar />
+      <BOMPanel />
       
-      <div className="flex-1 relative h-full ml-80">
-        <Toolbar />
-        <BOMPanel />
+      {/* Result Notification Overlay */}
+      {result && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl backdrop-blur-md border shadow-lg z-50 transition-all ${result.success ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border-red-500/30 text-red-100'}`}>
+          <div className="font-semibold text-sm">{result.success ? '✅ Configuration Valid' : '❌ Configuration Issue'}</div>
+          <div className="text-xs opacity-80 mt-1">{result.message}</div>
+          {result.success && result.recommendedHinge && (
+              <div className="text-xs mt-1 font-mono bg-black/20 px-2 py-1 rounded">
+                Hinge: {result.recommendedHinge.name} | K={result.kValue}
+              </div>
+          )}
+        </div>
+      )}
+
+      <div className="w-full h-full">
+        <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
+        <color attach="background" args={['#0f172a']} />
+        <fog attach="fog" args={['#0f172a', 2000, 5000]} />
         
-        {/* Result Notification Overlay */}
-        {result && (
-          <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl backdrop-blur-md border shadow-lg z-50 transition-all ${result.success ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border-red-500/30 text-red-100'}`}>
-            <div className="font-semibold text-sm">{result.success ? '✅ Configuration Valid' : '❌ Configuration Issue'}</div>
-            <div className="text-xs opacity-80 mt-1">{result.message}</div>
-            {result.success && result.recommendedHinge && (
-               <div className="text-xs mt-1 font-mono bg-black/20 px-2 py-1 rounded">
-                 Hinge: {result.recommendedHinge.name} | K={result.kValue}
-               </div>
-            )}
-          </div>
-        )}
+        <Stage environment="city" intensity={0.6} adjustCamera={false}>
+          <TransformControls
+            mode="scale"
+            onChange={() => {
+              const group = frameRef.current;
+              if (!group) return;
+              const sx = group.scale.x;
+              const sy = group.scale.y;
+              const sz = group.scale.z;
+              if (sx !== 1 || sy !== 1 || sz !== 1) {
+                setWidth(Math.max(200, Math.round(width * sx)));
+                setHeight(Math.max(200, Math.round(height * sy)));
+                setDepth(Math.max(200, Math.round(depth * sz)));
+                group.scale.set(1, 1, 1);
+              }
+            }}
+          >
+            <group ref={frameRef}>
+              <CabinetFrame
+                width={width}
+                height={height}
+                depth={depth}
+                profileType={profileType}
+                shelves={shelves}
+              />
+            </group>
+          </TransformControls>
 
-        <div className="w-full h-full">
-          <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
-          <color attach="background" args={['#0f172a']} />
-          <fog attach="fog" args={['#0f172a', 2000, 5000]} />
-          
-          <Stage environment="city" intensity={0.6} adjustCamera={false}>
-            <TransformControls
-              mode="scale"
-              onChange={() => {
-                const group = frameRef.current;
-                if (!group) return;
-                const sx = group.scale.x;
-                const sy = group.scale.y;
-                const sz = group.scale.z;
-                if (sx !== 1 || sy !== 1 || sz !== 1) {
-                  setWidth(Math.max(200, Math.round(width * sx)));
-                  setHeight(Math.max(200, Math.round(height * sy)));
-                  setDepth(Math.max(200, Math.round(depth * sz)));
-                  group.scale.set(1, 1, 1);
-                }
-              }}
-            >
-              <group ref={frameRef}>
-                <CabinetFrame
-                  width={width}
-                  height={height}
-                  depth={depth}
-                  profileType={profileType}
-                  shelves={shelves}
-                />
-              </group>
-            </TransformControls>
+          {doorElements}
 
-            {doorElements}
+          <DimensionLines width={width} height={height} depth={depth} offset={80} />
 
-            <DimensionLines width={width} height={height} depth={depth} offset={80} />
+          {hasLeftWall && (
+            <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
+              <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#94a3b8'} opacity={0.3} transparent />
+            </Box>
+          )}
+          {hasRightWall && (
+            <Box args={[10, height, depth]} position={[width / 2 + 5 + 2, 0, 0]}>
+              <meshStandardMaterial color={collisionRight ? '#ff4d4d' : '#94a3b8'} opacity={0.3} transparent />
+            </Box>
+          )}
 
-            {hasLeftWall && (
-              <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
-                <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#94a3b8'} opacity={0.3} transparent />
-              </Box>
-            )}
-            {hasRightWall && (
-              <Box args={[10, height, depth]} position={[width / 2 + 5 + 2, 0, 0]}>
-                <meshStandardMaterial color={collisionRight ? '#ff4d4d' : '#94a3b8'} opacity={0.3} transparent />
-              </Box>
-            )}
-
-          </Stage>
-          <OrbitControls makeDefault maxDistance={10000} />
-          <gridHelper args={[3000, 60, '#1e293b', '#1e293b']} />
-        </Canvas>
-      </div>
-      </div>
+        </Stage>
+        <OrbitControls makeDefault maxDistance={10000} />
+        <gridHelper args={[3000, 60, '#1e293b', '#1e293b']} />
+      </Canvas>
+    </div>
     </main>
   );
 }

@@ -44,7 +44,7 @@ export function Sidebar() {
   const addShelf = useDesignStore((state: DesignState) => state.addShelf);
   const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
   const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
-  const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
+  // setIsDoorOpen is intentionally not used in Sidebar's controls; door control lives in DoorPanel
 
   const handleCalculate = () => {
     let currentOverlay = overlay;
@@ -100,7 +100,7 @@ export function Sidebar() {
         if (parsed.doorCount !== undefined) setDoorCount(parsed.doorCount);
         if (parsed.connectorType !== undefined) setConnectorType(parsed.connectorType);
         if (parsed.result) setResult(parsed.result);
-      } catch (err) {
+      } catch {
         alert('Invalid file');
       }
     };
