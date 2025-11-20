@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import * as THREE from 'three';
-import { Extrude } from '@react-three/drei';
+import { Extrude, Edges } from '@react-three/drei';
 
 interface AluProfileProps {
     type: '2020' | '3030' | '4040';
@@ -97,13 +97,8 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
                     emissive={selected ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000')}
                     emissiveIntensity={selected ? 0.3 : (hovered ? 0.1 : 0)}
                 />
+                <Edges color="#333" threshold={15} />
             </Extrude>
-
-            {/* 黑色线条勾勒轮廓，增加CAD图纸感 (可选) */}
-            <lineSegments>
-                <edgesGeometry args={[new THREE.ExtrudeGeometry(shape, extrudeSettings)]} />
-                <lineBasicMaterial color="#333" opacity={0.2} transparent />
-            </lineSegments>
         </group>
     );
 }

@@ -185,6 +185,10 @@ export default function Home() {
         <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
         <color attach="background" args={['#0f172a']} />
         <fog attach="fog" args={['#0f172a', 2000, 5000]} />
+
+        {/* 添加基础环境光和直射光，防止材质全黑 */}
+        <ambientLight intensity={1.5} />
+        <directionalLight position={[1000, 1000, 500]} intensity={1} castShadow />
         
         <Stage environment="city" intensity={0.6} adjustCamera={false}>
           <TransformControls
