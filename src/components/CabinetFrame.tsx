@@ -19,6 +19,7 @@ interface CabinetFrameProps {
 }
 
 export function CabinetFrame({ width, height, depth, profileType, shelves = [], drawers = [] }: CabinetFrameProps) {
+    console.log('CabinetFrame rendering:', { width, height, depth, profileType });
     const profile = PROFILES[profileType];
     const s = profile.size;
     const slotDepth = profile.slotDepth || 6;
@@ -52,14 +53,14 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
         // Drawer Y range (relative to bottom 0)
         const drawerBottom = drawer.y;
         const drawerTop = drawer.y + drawer.height;
-        
+
         // Check shelves
         for (const shelf of shelves) {
             // Shelf Y is center position. Shelf thickness approx 20mm?
             const shelfY = shelf.y;
             if (shelfY > drawerBottom && shelfY < drawerTop) return true;
         }
-        
+
         return false;
     };
 
@@ -88,26 +89,26 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
             {connectorType === 'angle' && (
                 <group>
                     {/* Width Beam Connectors (8) */}
-                    <Connector size={s} position={[-width/2 + s, -height/2 + s, depth/2 - s/2]} rotation={[0, 0, 0]} />
-                    <Connector size={s} position={[width/2 - s, -height/2 + s, depth/2 - s/2]} rotation={[0, 0, Math.PI/2]} />
-                    <Connector size={s} position={[-width/2 + s, height/2 - s, depth/2 - s/2]} rotation={[0, 0, -Math.PI/2]} />
-                    <Connector size={s} position={[width/2 - s, height/2 - s, depth/2 - s/2]} rotation={[0, 0, Math.PI]} />
-                    
-                    <Connector size={s} position={[-width/2 + s, -height/2 + s, -depth/2 + s/2]} rotation={[0, 0, 0]} />
-                    <Connector size={s} position={[width/2 - s, -height/2 + s, -depth/2 + s/2]} rotation={[0, 0, Math.PI/2]} />
-                    <Connector size={s} position={[-width/2 + s, height/2 - s, -depth/2 + s/2]} rotation={[0, 0, -Math.PI/2]} />
-                    <Connector size={s} position={[width/2 - s, height/2 - s, -depth/2 + s/2]} rotation={[0, 0, Math.PI]} />
+                    <Connector size={s} position={[-width / 2 + s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, 0]} />
+                    <Connector size={s} position={[width / 2 - s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI / 2]} />
+                    <Connector size={s} position={[-width / 2 + s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, -Math.PI / 2]} />
+                    <Connector size={s} position={[width / 2 - s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
+
+                    <Connector size={s} position={[-width / 2 + s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, 0]} />
+                    <Connector size={s} position={[width / 2 - s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI / 2]} />
+                    <Connector size={s} position={[-width / 2 + s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, -Math.PI / 2]} />
+                    <Connector size={s} position={[width / 2 - s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
 
                     {/* Depth Beam Connectors (8) */}
-                    <Connector size={s} position={[-width/2 + s/2, -height/2 + s, depth/2 - s]} rotation={[0, Math.PI/2, 0]} />
-                    <Connector size={s} position={[-width/2 + s/2, -height/2 + s, -depth/2 + s]} rotation={[0, -Math.PI/2, 0]} />
-                    <Connector size={s} position={[-width/2 + s/2, height/2 - s, depth/2 - s]} rotation={[Math.PI, Math.PI/2, 0]} />
-                    <Connector size={s} position={[-width/2 + s/2, height/2 - s, -depth/2 + s]} rotation={[Math.PI, -Math.PI/2, 0]} />
+                    <Connector size={s} position={[-width / 2 + s / 2, -height / 2 + s, depth / 2 - s]} rotation={[0, Math.PI / 2, 0]} />
+                    <Connector size={s} position={[-width / 2 + s / 2, -height / 2 + s, -depth / 2 + s]} rotation={[0, -Math.PI / 2, 0]} />
+                    <Connector size={s} position={[-width / 2 + s / 2, height / 2 - s, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
+                    <Connector size={s} position={[-width / 2 + s / 2, height / 2 - s, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
 
-                    <Connector size={s} position={[width/2 - s/2, -height/2 + s, depth/2 - s]} rotation={[0, Math.PI/2, 0]} />
-                    <Connector size={s} position={[width/2 - s/2, -height/2 + s, -depth/2 + s]} rotation={[0, -Math.PI/2, 0]} />
-                    <Connector size={s} position={[width/2 - s/2, height/2 - s, depth/2 - s]} rotation={[Math.PI, Math.PI/2, 0]} />
-                    <Connector size={s} position={[width/2 - s/2, height/2 - s, -depth/2 + s]} rotation={[Math.PI, -Math.PI/2, 0]} />
+                    <Connector size={s} position={[width / 2 - s / 2, -height / 2 + s, depth / 2 - s]} rotation={[0, Math.PI / 2, 0]} />
+                    <Connector size={s} position={[width / 2 - s / 2, -height / 2 + s, -depth / 2 + s]} rotation={[0, -Math.PI / 2, 0]} />
+                    <Connector size={s} position={[width / 2 - s / 2, height / 2 - s, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
+                    <Connector size={s} position={[width / 2 - s / 2, height / 2 - s, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
                 </group>
             )}
 
@@ -155,12 +156,12 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
 
             {/* --- Shelves --- */}
             {shelves.map((shelf) => (
-                <DraggableShelf 
-                    key={shelf.id} 
-                    shelf={shelf} 
-                    width={width} 
-                    height={height} 
-                    depth={depth} 
+                <DraggableShelf
+                    key={shelf.id}
+                    shelf={shelf}
+                    width={width}
+                    height={height}
+                    depth={depth}
                     profileType={profileType}
                     wLength={wLength}
                     dLength={dLength}
@@ -200,14 +201,14 @@ function DraggableShelf({ shelf, width, height, depth, profileType, wLength, dLe
         e.stopPropagation();
         setIsDragging(true);
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
-        
+
         // Initialize drag plane
         const normal = new THREE.Vector3();
         camera.getWorldDirection(normal);
         normal.y = 0; // Keep it vertical
         normal.normalize();
         if (normal.lengthSq() < 0.1) normal.set(0, 0, 1);
-        
+
         planeRef.current.setFromNormalAndCoplanarPoint(normal, e.point);
     };
 
@@ -223,25 +224,25 @@ function DraggableShelf({ shelf, width, height, depth, profileType, wLength, dLe
 
         // Raycast against our virtual plane
         raycaster.ray.intersectPlane(planeRef.current, intersectPoint.current);
-        
+
         const newWorldY = intersectPoint.current.y;
         let newShelfY = newWorldY + height / 2;
-        
+
         // Clamp
-        const limit = 40; 
+        const limit = 40;
         newShelfY = Math.max(limit, Math.min(height - limit, newShelfY));
-        
+
         // Snap
         const snap = 50;
         if (Math.abs(newShelfY % snap) < 15) {
             newShelfY = Math.round(newShelfY / snap) * snap;
         }
-        
+
         updateShelf(shelf.id, newShelfY);
     };
 
     return (
-        <group 
+        <group
             position={[0, y, 0]}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
@@ -271,16 +272,16 @@ function DraggableShelf({ shelf, width, height, depth, profileType, wLength, dLe
             {/* Connectors (Below the shelf beams) */}
             <group>
                 {/* Width Beam Connectors (4) */}
-                <Connector size={s} position={[-width/2 + s, -s/2, depth/2 - s/2]} rotation={[0, 0, -Math.PI/2]} />
-                <Connector size={s} position={[width/2 - s, -s/2, depth/2 - s/2]} rotation={[0, 0, Math.PI]} />
-                <Connector size={s} position={[-width/2 + s, -s/2, -depth/2 + s/2]} rotation={[0, 0, -Math.PI/2]} />
-                <Connector size={s} position={[width/2 - s, -s/2, -depth/2 + s/2]} rotation={[0, 0, Math.PI]} />
+                <Connector size={s} position={[-width / 2 + s, -s / 2, depth / 2 - s / 2]} rotation={[0, 0, -Math.PI / 2]} />
+                <Connector size={s} position={[width / 2 - s, -s / 2, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
+                <Connector size={s} position={[-width / 2 + s, -s / 2, -depth / 2 + s / 2]} rotation={[0, 0, -Math.PI / 2]} />
+                <Connector size={s} position={[width / 2 - s, -s / 2, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
 
                 {/* Depth Beam Connectors (4) */}
-                <Connector size={s} position={[-width/2 + s/2, -s/2, depth/2 - s]} rotation={[Math.PI, Math.PI/2, 0]} />
-                <Connector size={s} position={[-width/2 + s/2, -s/2, -depth/2 + s]} rotation={[Math.PI, -Math.PI/2, 0]} />
-                <Connector size={s} position={[width/2 - s/2, -s/2, depth/2 - s]} rotation={[Math.PI, Math.PI/2, 0]} />
-                <Connector size={s} position={[width/2 - s/2, -s/2, -depth/2 + s]} rotation={[Math.PI, -Math.PI/2, 0]} />
+                <Connector size={s} position={[-width / 2 + s / 2, -s / 2, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
+                <Connector size={s} position={[-width / 2 + s / 2, -s / 2, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
+                <Connector size={s} position={[width / 2 - s / 2, -s / 2, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
+                <Connector size={s} position={[width / 2 - s / 2, -s / 2, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
             </group>
         </group>
     );

@@ -184,47 +184,31 @@ export default function Home() {
       <FloatingControls />
       <Toolbar />
       <BOMPanel />
-      
+
       {/* Result Notification Overlay */}
       {result && (
         <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl backdrop-blur-md border shadow-lg z-50 transition-all ${result.success ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border-red-500/30 text-red-100'}`}>
           <div className="font-semibold text-sm">{result.success ? '✅ Configuration Valid' : '❌ Configuration Issue'}</div>
           <div className="text-xs opacity-80 mt-1">{result.message}</div>
           {result.success && result.recommendedHinge && (
-              <div className="text-xs mt-1 font-mono bg-black/20 px-2 py-1 rounded">
-                Hinge: {result.recommendedHinge.name} | K={result.kValue}
-              </div>
+            <div className="text-xs mt-1 font-mono bg-black/20 px-2 py-1 rounded">
+              Hinge: {result.recommendedHinge.name} | K={result.kValue}
+            </div>
           )}
         </div>
       )}
 
       <div className="w-full h-full">
         <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
-        <CameraHandler />
-        <color attach="background" args={['#0f172a']} />
-        <fog attach="fog" args={['#0f172a', 2000, 5000]} />
+          <CameraHandler />
+          <color attach="background" args={['#0f172a']} />
+          <fog attach="fog" args={['#0f172a', 2000, 5000]} />
 
-        {/* 添加基础环境光和直射光，防止材质全黑 */}
-        <ambientLight intensity={1.5} />
-        <directionalLight position={[1000, 1000, 500]} intensity={1} castShadow />
-        
-        <Stage environment="city" intensity={0.6} adjustCamera={false}>
-          <TransformControls
-            mode="scale"
-            onChange={() => {
-              const group = frameRef.current;
-              if (!group) return;
-              const sx = group.scale.x;
-              const sy = group.scale.y;
-              const sz = group.scale.z;
-              if (sx !== 1 || sy !== 1 || sz !== 1) {
-                setWidth(Math.max(200, Math.round(width * sx)));
-                setHeight(Math.max(200, Math.round(height * sy)));
-                setDepth(Math.max(200, Math.round(depth * sz)));
-                group.scale.set(1, 1, 1);
-              }
-            }}
-          >
+          {/* 添加基础环境光和直射光，防止材质全黑 */}
+          <ambientLight intensity={1.5} />
+          <directionalLight position={[1000, 1000, 500]} intensity={1} castShadow />
+
+          <Stage environment="city" intensity={0.6} adjustCamera={false}>
             <group ref={frameRef}>
               <CabinetFrame
                 width={width}
@@ -235,29 +219,28 @@ export default function Home() {
                 drawers={drawers}
               />
             </group>
-          </TransformControls>
 
-          {doorElements}
+            {doorElements}
 
-          <DimensionLines width={width} height={height} depth={depth} offset={80} />
+            <DimensionLines width={width} height={height} depth={depth} offset={80} />
 
-          {hasLeftWall && (
-            <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
-              <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#94a3b8'} opacity={0.3} transparent />
-            </Box>
-          )}
-          {hasRightWall && (
-            <Box args={[10, height, depth]} position={[width / 2 + 5 + 2, 0, 0]}>
-              <meshStandardMaterial color={collisionRight ? '#ff4d4d' : '#94a3b8'} opacity={0.3} transparent />
-            </Box>
-          )}
+            {hasLeftWall && (
+              <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
+                <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#94a3b8'} opacity={0.3} transparent />
+              </Box>
+            )}
+            {hasRightWall && (
+              <Box args={[10, height, depth]} position={[width / 2 + 5 + 2, 0, 0]}>
+                <meshStandardMaterial color={collisionRight ? '#ff4d4d' : '#94a3b8'} opacity={0.3} transparent />
+              </Box>
+            )}
 
-        </Stage>
-        <OrbitControls makeDefault maxDistance={10000} />
-        <gridHelper args={[3000, 60, '#1e293b', '#1e293b']} />
-        <Environment preset="warehouse" />
-      </Canvas>
-    </div>
+          </Stage>
+          <OrbitControls makeDefault maxDistance={10000} />
+          <gridHelper args={[3000, 60, '#1e293b', '#1e293b']} />
+          <Environment preset="warehouse" />
+        </Canvas>
+      </div>
     </main>
   );
 }

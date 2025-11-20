@@ -17,11 +17,11 @@ interface AluProfileProps {
 
 function createProfileShape(profileType: '2020' | '3030' | '4040'): THREE.Shape {
     const shape = new THREE.Shape();
-    
+
     let s: number; // 半宽 (mm)
     let c: number; // 槽口宽的一半 (mm)
     let d: number; // 槽深 (mm)
-    
+
     if (profileType === '2020') {
         s = 10;  // 20mm / 2
         c = 3;   // 6mm槽 / 2
@@ -36,7 +36,7 @@ function createProfileShape(profileType: '2020' | '3030' | '4040'): THREE.Shape 
         c = 4;   // 8mm槽 / 2
         d = 4;   // 槽深
     }
-    
+
     // 绘制十字带槽截面
     shape.moveTo(-s, -s); // 左下
     shape.lineTo(-c, -s); // 底部槽口左
@@ -44,29 +44,30 @@ function createProfileShape(profileType: '2020' | '3030' | '4040'): THREE.Shape 
     shape.lineTo(c, -s + d);  // 槽内
     shape.lineTo(c, -s);    // 底部槽口右
     shape.lineTo(s, -s);  // 右下
-    
+
     shape.lineTo(s, -c);  // 右侧槽口下
     shape.lineTo(s - d, -c);
     shape.lineTo(s - d, c);
     shape.lineTo(s, c);   // 右侧槽口上
     shape.lineTo(s, s);   // 右上
-    
+
     shape.lineTo(c, s);
     shape.lineTo(c, s - d);
     shape.lineTo(-c, s - d);
     shape.lineTo(-c, s);
     shape.lineTo(-s, s);  // 左上
-    
+
     shape.lineTo(-s, c);
     shape.lineTo(-s + d, c);
     shape.lineTo(-s + d, -c);
     shape.lineTo(-s, -c);
     shape.lineTo(-s, -s); // 回到原点
-    
+
     return shape;
 }
 
 export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 0, 0] }: AluProfileProps) {
+    console.log('AluProfile rendering:', { type, length, position });
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
 
     const shape = useMemo(() => {
@@ -83,10 +84,10 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
     const [selected, setSelected] = useState(false);
 
     return (
-        <group 
-            position={position} 
-            rotation={rotation} 
-            onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }} 
+        <group
+            position={position}
+            rotation={rotation}
+            onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
             onClick={(e) => { e.stopPropagation(); setSelected(!selected); }}
         >
@@ -102,6 +103,10 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
                 />
                 <Edges color="#333" threshold={15} />
             </Extrude>
+            <mesh>
+                <boxGeometry args={[10, 10, length]} />
+                <meshBasicMaterial color="red" />
+            </mesh>
         </group>
     );
 }
