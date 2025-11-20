@@ -1,0 +1,125 @@
+'use client';
+
+import React from 'react';
+import { useSpring, animated } from '@react-spring/three';
+
+interface DoorPanelProps {
+    width: number;
+    height: number;
+    thickness?: number;
+    material?: 'Glass' | 'AluminumHoneycomb';
+    position: [number, number, number];
+    hingeSide?: 'left' | 'right';
+    isOpen: boolean;
+    // [NEW] Phase 3: 钻孔数据
+    showHoles?: boolean; // 是否显示孔位
+    kValue?: number;     // 比如 3, 4, 5, 6...
+    hingeSeries?: 'C80' | 'Cover25'; // 决定螺丝孔距
+}
+
+export function DoorPanel({
+    width,
+    height,
+    thickness = 20,
+    material = 'AluminumHoneycomb',
+    position,
+    hingeSide = 'left',
+    isOpen,
+    showHoles = true, // 默认开启
+    kValue = 4,       // 默认给个值防止报错
+    hingeSeries = 'C80'
+}: DoorPanelProps) {
+
+    // 动画逻辑
+    const { rotationY } = useSpring({
+        rotationY: isOpen ? (hingeSide === 'left' ? -Math.PI / 2 : Math.PI / 2) : 0,
+        config: { mass: 1, tension: 170, friction: 26 }
+    });
+
+    const meshOffsetX = hingeSide === 'left' ? width / 2 : -width / 2;
+
+    // --- 钻孔位置计算逻辑 ---
+    // 1. 铰链通常安装在离上下边缘 100mm - 150mm 的位置
+    const hingeOffsetY = 120;
+
+    // 2. 杯孔中心 X 坐标 (相对于门板边缘)
+    // 门板边缘在 meshOffsetX 那个方向的 0 点 (局部坐标系中，门板左边缘是 -width/2, 右边缘是 width/2)
+    // 如果 hingeSide='left', 铰链在左边 (-width/2)。
+    // 孔中心 X = -width/2 + (K + 17.5)
+    const cupRadius = 17.5; // 35mm / 2
+    const cupCenterDist = kValue + cupRadius;
+
+    // 局部坐标系修正：
+    // 我们的 Mesh 是居中的 (BoxGeometry)，所以左边缘是 -width/2。
+    const holeX_Local = hingeSide === 'left'
+        ? -width / 2 + cupCenterDist
+        : width / 2 - cupCenterDist;
+
+    // 3. 螺丝孔模式 (基于图11)
+    // C80: 48mm 间距; Cover25: 45mm 间距
+    const screwSpacing = hingeSeries === 'Cover25' ? 45 : 48;
+    const screwOffsetZ = 6; // 螺丝孔通常在杯孔中心线的两侧，或者有特定的偏置。
+    // 简化展示：假设螺丝孔就在杯孔两侧 (Y轴方向分布？不，通常是垂直于杯孔连线的)
+    // 查图11：螺丝孔是在杯孔的“耳朵”上。
+    // 简单可视化：我们在杯孔中心的两侧（上下方向，即 Y 轴）画两个小点代表螺丝孔。
+    const screwY_Offset = screwSpacing / 2;
+
+    // 定义一个渲染孔的子组件 (黑色的圆柱体)
+    const HingeHoleVisualizer = ({ yPosition }: { yPosition: number }) => (
+        <group position={[holeX_Local, yPosition, thickness / 2 + 0.1]}> {/* Z轴微调，浮在表面 */}
+            {/* 35mm 杯孔 */}
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[cupRadius, cupRadius, 1, 32]} />
+                <meshBasicMaterial color="#222" /> {/* 深灰色模拟空洞 */}
+            </mesh>
+
+            {/* 辅助线/文字 (可选， Phase 3 Step 2 再加) */}
+
+            {/* 两个螺丝孔 (模拟) */}
+            <mesh position={[0, screwY_Offset, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[2, 2, 1, 16]} /> {/* 4mm 螺丝孔 */}
+                <meshBasicMaterial color="#444" />
+            </mesh>
+            <mesh position={[0, -screwY_Offset, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[2, 2, 1, 16]} />
+                <meshBasicMaterial color="#444" />
+            </mesh>
+        </group>
+    );
+
+    return (
+        <group position={position}>
+            <animated.group rotation-y={rotationY}>
+
+                {/* 门板实体 */}
+                <mesh position={[meshOffsetX, 0, thickness / 2]} castShadow receiveShadow>
+                    <boxGeometry args={[width, height, thickness]} />
+                    <meshStandardMaterial
+                        color={material === 'Glass' ? '#aaddff' : '#ffffff'}
+                        transparent={material === 'Glass'}
+                        opacity={material === 'Glass' ? 0.6 : 1}
+                        roughness={0.2}
+                        metalness={0.1}
+                    />
+                </mesh>
+
+                {/* 把手 */}
+                <mesh position={[hingeSide === 'left' ? width - 30 : 30 - width, 0, thickness + 10]}>
+                    <boxGeometry args={[10, 100, 10]} />
+                    <meshStandardMaterial color="#333" />
+                </mesh>
+
+                {/* [NEW] 铰链孔位可视化 */}
+                {showHoles && (
+                    <>
+                        {/* 上铰链 */}
+                        <HingeHoleVisualizer yPosition={height / 2 - hingeOffsetY} />
+                        {/* 下铰链 */}
+                        <HingeHoleVisualizer yPosition={-height / 2 + hingeOffsetY} />
+                    </>
+                )}
+
+            </animated.group>
+        </group>
+    );
+}
