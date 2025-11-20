@@ -18,7 +18,8 @@ import {
   Plus,
   Trash2,
   Undo2,
-  Redo2
+  Redo2,
+  LucideIcon
 } from 'lucide-react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { calculateHinge } from '@/core/hinge-rules';
@@ -28,27 +29,88 @@ import { ProfileType } from '@/core/types';
 const LevaSlider = ({ label, value, min, max, step, onChange, unit = '' }: { 
   label: string, value: number, min: number, max: number, step: number, onChange: (v: number) => void, unit?: string 
 }) => {
+  const [localValue, setLocalValue] = useState(value.toString());
+
+  // Sync local value when prop changes
+  React.useEffect(() => {
+    setLocalValue(value.toString());
+  }, [value]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(e.target.value);
+  };
+
+  const handleBlur = () => {
+    let num = parseFloat(localValue);
+    if (isNaN(num)) {
+      setLocalValue(value.toString());
+      return;
+    }
+    // Clamp
+    num = Math.max(min, Math.min(max, num));
+    onChange(num);
+    setLocalValue(num.toString());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleBlur();
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
   return (
     <div className="flex items-center gap-3 h-7 group">
-      <label className="w-20 text-slate-400 truncate text-[10px] font-medium">{label}</label>
+      <label className="w-20 text-muted-foreground truncate text-[10px] font-medium">{label}</label>
       <div className="flex-1 relative h-full flex items-center">
         <input 
           type="range" min={min} max={max} step={step}
           value={value} onChange={(e) => onChange(Number(e.target.value))}
           className="absolute w-full h-full opacity-0 cursor-ew-resize z-10"
         />
-        <div className="w-full h-1 bg-[#333] rounded-full overflow-hidden">
+        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
           <div 
             className="h-full bg-blue-500 transition-all duration-75" 
             style={{ width: `${((value - min) / (max - min)) * 100}%` }}
           />
         </div>
       </div>
-      <div className="w-12 text-right text-blue-300 bg-[#222] rounded px-1 py-0.5 text-[10px] font-mono focus-within:ring-1 ring-blue-500">
-        {value}{unit}
+      <div className="w-12 flex items-center bg-muted rounded px-1 py-0.5 focus-within:ring-1 ring-blue-500">
+        <input
+            type="number"
+            value={localValue}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="w-full bg-transparent text-right text-[10px] font-mono focus:outline-none text-blue-500 appearance-none p-0 border-none"
+            style={{ MozAppearance: 'textfield' }}
+        />
+        {unit && <span className="text-[10px] text-muted-foreground ml-0.5">{unit}</span>}
       </div>
     </div>
   );
+};
+
+// Collapsible Section Component
+const CollapsibleSection = ({ title, icon: Icon, children, defaultOpen = true, action }: { title: string, icon: LucideIcon, children: React.ReactNode, defaultOpen?: boolean, action?: React.ReactNode }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+    return (
+        <div className="border-t border-border pt-2 mt-2 first:border-0 first:pt-0 first:mt-0">
+            <div 
+                className="flex items-center justify-between cursor-pointer py-2 hover:bg-muted/50 rounded px-1 -mx-1 transition-colors group"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-2 text-muted-foreground font-semibold uppercase tracking-wider text-[10px] group-hover:text-foreground transition-colors">
+                    <Icon size={12} /> {title}
+                </div>
+                <div className="flex items-center gap-2">
+                    {action}
+                    {isOpen ? <ChevronUp size={12} className="text-muted-foreground" /> : <ChevronDown size={12} className="text-muted-foreground" />}
+                </div>
+            </div>
+            {isOpen && <div className="space-y-3 pt-1">{children}</div>}
+        </div>
+    );
 };
 
 export function FloatingControls() {
@@ -160,14 +222,28 @@ export function FloatingControls() {
     reader.readAsText(file);
   };
 
+  const applyPreset = (preset: string) => {
+    switch (preset) {
+        case 'standard':
+            setWidth(600); setHeight(800); setDepth(400); setDoorCount(1);
+            break;
+        case 'wall':
+            setWidth(400); setHeight(600); setDepth(350); setDoorCount(1);
+            break;
+        case 'pantry':
+            setWidth(800); setHeight(2000); setDepth(500); setDoorCount(2);
+            break;
+    }
+  };
+
   return (
     <Draggable handle=".drag-handle" nodeRef={nodeRef as unknown as React.RefObject<HTMLElement>}>
       <div ref={nodeRef} className={`
         fixed top-4 right-4 z-50
         w-80
-        bg-[#1a1a1a]/90
+        bg-card/90
         backdrop-blur-md
-        border border-white/10
+        border border-border
         rounded-xl shadow-2xl
         transition-all duration-300 ease-in-out
         font-sans
@@ -179,29 +255,41 @@ export function FloatingControls() {
         
         {/* Header */}
         <div 
-          className="drag-handle flex items-center justify-between p-3 cursor-move hover:bg-white/5 select-none border-b border-white/10 shrink-0"
+          className="drag-handle flex items-center justify-between p-3 cursor-move hover:bg-muted/50 select-none border-b border-border shrink-0"
         >
-          <div className="flex items-center gap-2 text-slate-200 font-bold">
+          <div className="flex items-center gap-2 text-foreground font-bold">
             <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
-            ALUCRAFT <span className="text-slate-500 font-normal">CONTROLS</span>
+            ALUCRAFT <span className="text-muted-foreground font-normal">CONTROLS</span>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Presets Dropdown */}
+            <select 
+                className="bg-muted text-muted-foreground text-[10px] rounded px-1 py-0.5 border-none focus:ring-0 cursor-pointer hover:text-foreground"
+                onChange={(e) => applyPreset(e.target.value)}
+                defaultValue=""
+            >
+                <option value="" disabled>Presets</option>
+                <option value="standard">Standard Base</option>
+                <option value="wall">Wall Unit</option>
+                <option value="pantry">Pantry</option>
+            </select>
+
             {/* Undo / Redo */}
-            <div className="flex items-center gap-0.5 bg-white/5 rounded-lg p-0.5 border border-white/5" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5 border border-border" onPointerDown={(e) => e.stopPropagation()}>
               <button 
                 onClick={() => undo()} 
                 disabled={pastStates.length === 0}
-                className={`p-1 rounded hover:bg-white/10 transition-colors ${pastStates.length === 0 ? 'opacity-30 cursor-not-allowed' : 'text-blue-400 hover:text-blue-300'}`}
+                className={`p-1 rounded hover:bg-background transition-colors ${pastStates.length === 0 ? 'opacity-30 cursor-not-allowed' : 'text-blue-500 hover:text-blue-400'}`}
                 title="Undo"
               >
                 <Undo2 size={14} />
               </button>
-              <div className="w-px h-3 bg-white/10"></div>
+              <div className="w-px h-3 bg-border"></div>
               <button 
                 onClick={() => redo()} 
                 disabled={futureStates.length === 0}
-                className={`p-1 rounded hover:bg-white/10 transition-colors ${futureStates.length === 0 ? 'opacity-30 cursor-not-allowed' : 'text-blue-400 hover:text-blue-300'}`}
+                className={`p-1 rounded hover:bg-background transition-colors ${futureStates.length === 0 ? 'opacity-30 cursor-not-allowed' : 'text-blue-500 hover:text-blue-400'}`}
                 title="Redo"
               >
                 <Redo2 size={14} />
@@ -209,42 +297,35 @@ export function FloatingControls() {
             </div>
 
             <div 
-              className="cursor-pointer p-1 hover:bg-white/10 rounded"
+              className="cursor-pointer p-1 hover:bg-muted rounded"
               onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
             >
-              {isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+              {isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
             </div>
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="p-4 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+        <div className="p-4 space-y-1 overflow-y-auto custom-scrollbar flex-1">
           
           {/* Dimensions */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[#888] font-semibold uppercase tracking-wider text-[10px] mb-2">
-              <Ruler size={12} /> Dimensions
-            </div>
+          <CollapsibleSection title="Dimensions" icon={Ruler}>
             <LevaSlider label="Width" value={width} min={200} max={2000} step={10} onChange={setWidth} />
             <LevaSlider label="Height" value={height} min={200} max={3000} step={10} onChange={setHeight} />
             <LevaSlider label="Depth" value={depth} min={200} max={1000} step={10} onChange={setDepth} />
-          </div>
+          </CollapsibleSection>
 
           {/* Configuration */}
-          <div className="space-y-3 border-t border-white/5 pt-4">
-            <div className="flex items-center gap-2 text-[#888] font-semibold uppercase tracking-wider text-[10px]">
-              <Settings2 size={12} /> Configuration
-            </div>
-            
+          <CollapsibleSection title="Configuration" icon={Settings2}>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-500">Profile</label>
-                <div className="flex bg-[#222] p-1 rounded gap-1">
+                <label className="text-[10px] text-muted-foreground">Profile</label>
+                <div className="flex bg-muted p-1 rounded gap-1">
                   {['2020', '3030', '4040'].map(type => (
                     <button 
                       key={type}
                       onClick={() => setProfileType(type as ProfileType)}
-                      className={`flex-1 py-1 rounded text-[10px] transition-colors ${profileType === type ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                      className={`flex-1 py-1 rounded text-[10px] transition-colors ${profileType === type ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                       {type}
                     </button>
@@ -253,17 +334,17 @@ export function FloatingControls() {
               </div>
               
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-500">Doors</label>
-                <div className="flex bg-[#222] p-1 rounded gap-1">
+                <label className="text-[10px] text-muted-foreground">Doors</label>
+                <div className="flex bg-muted p-1 rounded gap-1">
                   <button 
                     onClick={() => setDoorCount(1)}
-                    className={`flex-1 py-1 rounded text-[10px] transition-colors ${doorCount === 1 ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    className={`flex-1 py-1 rounded text-[10px] transition-colors ${doorCount === 1 ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   >
                     1
                   </button>
                   <button 
                     onClick={() => setDoorCount(2)}
-                    className={`flex-1 py-1 rounded text-[10px] transition-colors ${doorCount === 2 ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    className={`flex-1 py-1 rounded text-[10px] transition-colors ${doorCount === 2 ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   >
                     2
                   </button>
@@ -272,29 +353,32 @@ export function FloatingControls() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] text-slate-500">Connector</label>
+              <label className="text-[10px] text-muted-foreground">Connector</label>
               <select 
                 value={connectorType}
                 onChange={(e) => setConnectorType(e.target.value as 'angle' | 'internal')}
-                className="w-full bg-[#222] border border-transparent text-slate-300 text-[10px] rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+                className="w-full bg-muted border border-transparent text-foreground text-[10px] rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
               >
                 <option value="angle">Angle Bracket (L-Bracket)</option>
                 <option value="internal">Internal Lock</option>
               </select>
             </div>
-          </div>
+          </CollapsibleSection>
 
           {/* Internal Structure */}
-          <div className="space-y-3 border-t border-white/5 pt-4">
-            <div className="flex items-center justify-between text-[#888] font-semibold uppercase tracking-wider text-[10px]">
-              <div className="flex items-center gap-2"><Box size={12} /> Shelves</div>
-              <button onClick={() => addShelf(height / 2)} className="hover:text-blue-400 transition-colors"><Plus size={14} /></button>
-            </div>
-            
+          <CollapsibleSection 
+            title="Shelves" 
+            icon={Box} 
+            action={
+                <button onClick={(e) => { e.stopPropagation(); addShelf(height / 2); }} className="hover:text-blue-400 transition-colors p-1 hover:bg-muted rounded">
+                    <Plus size={14} />
+                </button>
+            }
+          >
             <div className="space-y-2">
-              {shelves.length === 0 && <div className="text-[10px] text-slate-600 italic text-center">No shelves</div>}
+              {shelves.length === 0 && <div className="text-[10px] text-muted-foreground italic text-center py-2">No shelves added</div>}
               {shelves.map(shelf => (
-                <div key={shelf.id} className="flex items-center gap-2 bg-[#222] p-2 rounded border border-white/5">
+                <div key={shelf.id} className="flex items-center gap-2 bg-muted/50 p-2 rounded border border-border">
                   <div className="flex-1">
                     <LevaSlider 
                       label="Y-Pos" 
@@ -303,83 +387,79 @@ export function FloatingControls() {
                       onChange={(v) => updateShelf(shelf.id, v)} 
                     />
                   </div>
-                  <button onClick={() => removeShelf(shelf.id)} className="text-slate-500 hover:text-red-400">
+                  <button onClick={() => removeShelf(shelf.id)} className="text-muted-foreground hover:text-red-400 transition-colors">
                     <Trash2 size={12} />
                   </button>
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
 
           {/* Hinge Logic */}
-          <div className="space-y-3 border-t border-white/5 pt-4">
-            <div className="flex items-center gap-2 text-[#888] font-semibold uppercase tracking-wider text-[10px]">
-              <DoorOpen size={12} /> Hinge Logic
-            </div>
-            
+          <CollapsibleSection title="Hinge Logic" icon={DoorOpen}>
             <LevaSlider label="Overlay" value={overlay} min={-5} max={30} step={0.5} onChange={setOverlay} unit="mm" />
             
             <div className="flex flex-wrap gap-4 pt-1">
-              <label className="flex items-center gap-2 text-[10px] text-slate-400 cursor-pointer hover:text-slate-200">
-                <input type="checkbox" checked={hasLeftWall} onChange={(e) => setHasLeftWall(e.target.checked)} className="rounded bg-[#333] border-none text-blue-500 focus:ring-0" />
+              <label className="flex items-center gap-2 text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <input type="checkbox" checked={hasLeftWall} onChange={(e) => setHasLeftWall(e.target.checked)} className="rounded bg-muted border-border text-blue-500 focus:ring-0" />
                 Left Wall (Obstacle)
               </label>
-              <label className="flex items-center gap-2 text-[10px] text-slate-400 cursor-pointer hover:text-slate-200">
-                <input type="checkbox" checked={hasRightWall} onChange={(e) => setHasRightWall(e.target.checked)} className="rounded bg-[#333] border-none text-blue-500 focus:ring-0" />
+              <label className="flex items-center gap-2 text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <input type="checkbox" checked={hasRightWall} onChange={(e) => setHasRightWall(e.target.checked)} className="rounded bg-muted border-border text-blue-500 focus:ring-0" />
                 Right Wall (Obstacle)
               </label>
-              <div className="w-full h-px bg-white/5 my-1"></div>
-              <label className="flex items-center gap-2 text-[10px] text-slate-400 cursor-pointer hover:text-slate-200">
-                <input type="checkbox" checked={hasLeftPanel} onChange={(e) => setHasLeftPanel(e.target.checked)} className="rounded bg-[#333] border-none text-blue-500 focus:ring-0" />
+              <div className="w-full h-px bg-border my-1"></div>
+              <label className="flex items-center gap-2 text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <input type="checkbox" checked={hasLeftPanel} onChange={(e) => setHasLeftPanel(e.target.checked)} className="rounded bg-muted border-border text-blue-500 focus:ring-0" />
                 Left Panel
               </label>
-              <label className="flex items-center gap-2 text-[10px] text-slate-400 cursor-pointer hover:text-slate-200">
-                <input type="checkbox" checked={hasRightPanel} onChange={(e) => setHasRightPanel(e.target.checked)} className="rounded bg-[#333] border-none text-blue-500 focus:ring-0" />
+              <label className="flex items-center gap-2 text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <input type="checkbox" checked={hasRightPanel} onChange={(e) => setHasRightPanel(e.target.checked)} className="rounded bg-muted border-border text-blue-500 focus:ring-0" />
                 Right Panel
               </label>
-              <label className="flex items-center gap-2 text-[10px] text-slate-400 cursor-pointer hover:text-slate-200">
-                <input type="checkbox" checked={hasBackPanel} onChange={(e) => setHasBackPanel(e.target.checked)} className="rounded bg-[#333] border-none text-blue-500 focus:ring-0" />
+              <label className="flex items-center gap-2 text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <input type="checkbox" checked={hasBackPanel} onChange={(e) => setHasBackPanel(e.target.checked)} className="rounded bg-muted border-border text-blue-500 focus:ring-0" />
                 Back Panel
               </label>
-              <label className="flex items-center gap-2 text-[10px] text-slate-400 cursor-pointer hover:text-slate-200">
-                <input type="checkbox" checked={hasTopPanel} onChange={(e) => setHasTopPanel(e.target.checked)} className="rounded bg-[#333] border-none text-blue-500 focus:ring-0" />
+              <label className="flex items-center gap-2 text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <input type="checkbox" checked={hasTopPanel} onChange={(e) => setHasTopPanel(e.target.checked)} className="rounded bg-muted border-border text-blue-500 focus:ring-0" />
                 Top Panel
               </label>
-              <label className="flex items-center gap-2 text-[10px] text-slate-400 cursor-pointer hover:text-slate-200">
-                <input type="checkbox" checked={hasBottomPanel} onChange={(e) => setHasBottomPanel(e.target.checked)} className="rounded bg-[#333] border-none text-blue-500 focus:ring-0" />
+              <label className="flex items-center gap-2 text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <input type="checkbox" checked={hasBottomPanel} onChange={(e) => setHasBottomPanel(e.target.checked)} className="rounded bg-muted border-border text-blue-500 focus:ring-0" />
                 Bottom Panel
               </label>
             </div>
 
             <button 
               onClick={handleCalculate}
-              className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-600/30 rounded text-[10px] font-medium transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 border border-emerald-600/20 rounded text-[10px] font-medium transition-colors flex items-center justify-center gap-2 mt-2"
             >
               <Calculator size={12} /> Calculate Hinge
             </button>
 
             {result && (
-              <div className={`p-2 rounded border text-[10px] ${result.success ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-red-500/10 border-red-500/20 text-red-300'}`}>
+              <div className={`p-2 rounded border text-[10px] ${result.success ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'}`}>
                 <div className="flex items-center gap-2 font-bold mb-1">
                   {result.success ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
                   {result.success ? 'Valid' : 'Issue'}
                 </div>
-                <div className="opacity-80 leading-relaxed">{result.message}</div>
+                <div className="opacity-90 leading-relaxed">{result.message}</div>
                 {result.success && result.recommendedHinge && (
-                  <div className="mt-1 font-mono bg-black/20 p-1 rounded">
+                  <div className="mt-1 font-mono bg-background/50 p-1 rounded border border-border/50">
                     {result.recommendedHinge.name} (K={result.kValue})
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </CollapsibleSection>
 
           {/* Footer Actions */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
-            <button onClick={downloadDesign} className="flex items-center justify-center gap-2 py-1.5 bg-[#222] hover:bg-[#333] text-slate-400 rounded text-[10px] transition-colors">
+          <div className="grid grid-cols-2 gap-2 pt-4 border-t border-border mt-2">
+            <button onClick={downloadDesign} className="flex items-center justify-center gap-2 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-[10px] transition-colors">
               <Download size={12} /> Save
             </button>
-            <label className="flex items-center justify-center gap-2 py-1.5 bg-[#222] hover:bg-[#333] text-slate-400 rounded text-[10px] transition-colors cursor-pointer">
+            <label className="flex items-center justify-center gap-2 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-[10px] transition-colors cursor-pointer">
               <Upload size={12} /> Load
               <input type="file" accept="application/json" onChange={loadDesign} className="hidden" />
             </label>
