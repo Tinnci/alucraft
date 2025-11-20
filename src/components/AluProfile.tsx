@@ -93,7 +93,15 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
             onClick={(e) => { e.stopPropagation(); setSelected(!selected); }}
         >
             <Extrude args={[shape, extrudeSettings]} castShadow receiveShadow>
-                <meshBasicMaterial color="green" wireframe={showWireframe} />
+                {/* 铝材材质：金属质感，银灰色 */}
+                <meshStandardMaterial
+                    color={selected ? '#60a5fa' : (hovered ? '#cbd5e1' : '#e2e8f0')}
+                    roughness={0.5}
+                    metalness={0.6}
+                    emissive={selected ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000')}
+                    emissiveIntensity={selected ? 0.3 : (hovered ? 0.1 : 0)}
+                    wireframe={showWireframe}
+                />
                 <Edges color="#333" threshold={15} />
             </Extrude>
         </group>
