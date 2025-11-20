@@ -70,13 +70,14 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
     console.log('AluProfile rendering:', { type, length, position });
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
 
+    // Debug: Simple Square Shape
     const shape = useMemo(() => {
         return createProfileShape(type);
     }, [type]);
 
     const extrudeSettings = useMemo(() => ({
         depth: length,
-        bevelEnabled: false, // 工业型材通常不需要各种倒角计算，节省性能
+        bevelEnabled: false,
         steps: 1,
     }), [length]);
 
@@ -92,21 +93,9 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
             onClick={(e) => { e.stopPropagation(); setSelected(!selected); }}
         >
             <Extrude args={[shape, extrudeSettings]} castShadow receiveShadow>
-                {/* 铝材材质：金属质感，银灰色 */}
-                <meshPhysicalMaterial
-                    color={selected ? '#60a5fa' : (hovered ? '#cbd5e1' : '#e2e8f0')}
-                    roughness={0.4}
-                    metalness={0.8}
-                    emissive={selected ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000')}
-                    emissiveIntensity={selected ? 0.3 : (hovered ? 0.1 : 0)}
-                    wireframe={showWireframe}
-                />
+                <meshBasicMaterial color="green" wireframe={showWireframe} />
                 <Edges color="#333" threshold={15} />
             </Extrude>
-            <mesh>
-                <boxGeometry args={[10, 10, length]} />
-                <meshBasicMaterial color="red" />
-            </mesh>
         </group>
     );
 }
