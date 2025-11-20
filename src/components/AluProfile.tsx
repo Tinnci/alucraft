@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { Extrude, Edges } from '@react-three/drei';
+import useDesignStore, { DesignState } from '@/store/useDesignStore';
 
 interface AluProfileProps {
     type: '2020' | '3030' | '4040';
@@ -66,6 +67,7 @@ function createProfileShape(profileType: '2020' | '3030' | '4040'): THREE.Shape 
 }
 
 export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 0, 0] }: AluProfileProps) {
+    const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
 
     const shape = useMemo(() => {
         return createProfileShape(type);
@@ -96,6 +98,7 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
                     metalness={0.8}
                     emissive={selected ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000')}
                     emissiveIntensity={selected ? 0.3 : (hovered ? 0.1 : 0)}
+                    wireframe={showWireframe}
                 />
                 <Edges color="#333" threshold={15} />
             </Extrude>

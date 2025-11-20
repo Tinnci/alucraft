@@ -34,6 +34,8 @@ export interface DesignState {
   doorCount: number;
   connectorType: 'angle' | 'internal';
   shelves: Shelf[];
+  showDimensions: boolean;
+  showWireframe: boolean;
   setProfileType: (p: ProfileType) => void;
   setOverlay: (v: number) => void;
   setResult: (r: SimulationResult | null) => void;
@@ -50,9 +52,12 @@ export interface DesignState {
   setIsDoorOpen: (v: boolean) => void;
   setDoorCount: (v: number) => void;
   setConnectorType: (v: 'angle' | 'internal') => void;
+  setShowDimensions: (v: boolean) => void;
+  setShowWireframe: (v: boolean) => void;
   addShelf: (y: number) => void;
   removeShelf: (id: string) => void;
   updateShelf: (id: string, y: number) => void;
+  duplicateShelf: (id: string) => void;
   getDerived: () => { innerWidth: number; doorWidth: number };
   getBOM: () => BOMItem[];
 }
@@ -75,6 +80,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   doorCount: 1,
   connectorType: 'angle',
   shelves: [],
+  showDimensions: true,
+  showWireframe: false,
   setProfileType: (p: ProfileType) => set({ profileType: p }),
   setOverlay: (v: number) => set({ overlay: v }),
   setResult: (r: SimulationResult | null) => set({ result: r }),
@@ -91,6 +98,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setIsDoorOpen: (v: boolean) => set({ isDoorOpen: v }),
   setDoorCount: (v: number) => set({ doorCount: v }),
   setConnectorType: (v: 'angle' | 'internal') => set({ connectorType: v }),
+  setShowDimensions: (v: boolean) => set({ showDimensions: v }),
+  setShowWireframe: (v: boolean) => set({ showWireframe: v }),
   addShelf: (y: number) => set((state) => ({
     shelves: [...state.shelves, { id: Math.random().toString(36).substr(2, 9), y }]
   })),
@@ -100,6 +109,14 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   updateShelf: (id: string, y: number) => set((state) => ({
     shelves: state.shelves.map(s => s.id === id ? { ...s, y } : s)
   })),
+  duplicateShelf: (id: string) => set((state) => {
+    const shelf = state.shelves.find(s => s.id === id);
+    if (!shelf) return state;
+    // Offset slightly to avoid perfect overlap
+    return {
+        shelves: [...state.shelves, { id: Math.random().toString(36).substr(2, 9), y: Math.max(0, shelf.y - 50) }]
+    };
+  }),
   getDerived: () => {
     const state = get() as DesignState;
     const { width, profileType, overlay } = state;
@@ -205,7 +222,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
 }), {
   partialize: (state) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { isDoorOpen, ...rest } = state;
+    const { isDoorOpen, showDimensions, showWireframe, ...rest } = state;
     return rest;
   },
 }));

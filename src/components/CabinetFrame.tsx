@@ -34,13 +34,15 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [] }
     const hasBottomPanel = useDesignStore((state: DesignState) => state.hasBottomPanel);
     const connectorType = useDesignStore((state: DesignState) => state.connectorType);
     const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
+    const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
 
     // Panel Material (PBR-ish)
     const panelMaterial = new THREE.MeshStandardMaterial({
         color: '#f1f5f9',
         roughness: 0.2,
         metalness: 0.1,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        wireframe: showWireframe
     });
 
     return (

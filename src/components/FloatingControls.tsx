@@ -19,7 +19,12 @@ import {
   Trash2,
   Undo2,
   Redo2,
-  LucideIcon
+  LucideIcon,
+  SunMedium,
+  Copy,
+  Eye,
+  EyeOff,
+  Video
 } from 'lucide-react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { calculateHinge } from '@/core/hinge-rules';
@@ -134,6 +139,8 @@ export function FloatingControls() {
   const connectorType = useDesignStore((state: DesignState) => state.connectorType);
   const shelves = useDesignStore((state: DesignState) => state.shelves);
   const result = useDesignStore((state: DesignState) => state.result);
+  const showDimensions = useDesignStore((state: DesignState) => state.showDimensions);
+  const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
 
   // Temporal State
   const { undo, redo, pastStates, futureStates } = useStore(useDesignStore.temporal);
@@ -154,9 +161,12 @@ export function FloatingControls() {
   const setHasBottomPanel = useDesignStore((state: DesignState) => state.setHasBottomPanel);
   const setDoorCount = useDesignStore((state: DesignState) => state.setDoorCount);
   const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
+  const setShowDimensions = useDesignStore((state: DesignState) => state.setShowDimensions);
+  const setShowWireframe = useDesignStore((state: DesignState) => state.setShowWireframe);
   const addShelf = useDesignStore((state: DesignState) => state.addShelf);
   const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
   const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
+  const duplicateShelf = useDesignStore((state: DesignState) => state.duplicateShelf);
 
   const handleCalculate = () => {
     let currentOverlay = overlay;
@@ -275,6 +285,15 @@ export function FloatingControls() {
                 <option value="pantry">Pantry</option>
             </select>
 
+            {/* Dark Mode Toggle */}
+            <button 
+              onClick={() => document.documentElement.classList.toggle('dark')}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Toggle Dark Mode"
+            >
+              <SunMedium size={14} />
+            </button>
+
             {/* Undo / Redo */}
             <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5 border border-border" onPointerDown={(e) => e.stopPropagation()}>
               <button 
@@ -387,7 +406,10 @@ export function FloatingControls() {
                       onChange={(v) => updateShelf(shelf.id, v)} 
                     />
                   </div>
-                  <button onClick={() => removeShelf(shelf.id)} className="text-muted-foreground hover:text-red-400 transition-colors">
+                  <button onClick={() => duplicateShelf(shelf.id)} className="text-muted-foreground hover:text-blue-400 transition-colors" title="Duplicate">
+                    <Copy size={12} />
+                  </button>
+                  <button onClick={() => removeShelf(shelf.id)} className="text-muted-foreground hover:text-red-400 transition-colors" title="Remove">
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -455,7 +477,30 @@ export function FloatingControls() {
           </CollapsibleSection>
 
           {/* Footer Actions */}
-          <div className="grid grid-cols-2 gap-2 pt-4 border-t border-border mt-2">
+          <div className="flex justify-between items-center px-1 py-2 border-t border-border mt-2">
+            <div className="text-[10px] text-muted-foreground font-semibold uppercase">View</div>
+            <div className="flex gap-1">
+                <button 
+                    className={`p-1.5 rounded hover:bg-muted transition-colors ${showWireframe ? 'text-blue-500 bg-blue-500/10' : 'text-muted-foreground'}`} 
+                    title="Wireframe Mode"
+                    onClick={() => setShowWireframe(!showWireframe)}
+                >
+                    <Box size={14} className={showWireframe ? "" : "opacity-50"} /> 
+                </button>
+                <button 
+                    className={`p-1.5 rounded hover:bg-muted transition-colors ${showDimensions ? 'text-blue-500 bg-blue-500/10' : 'text-muted-foreground'}`} 
+                    title="Toggle Dimensions"
+                    onClick={() => setShowDimensions(!showDimensions)}
+                >
+                    {showDimensions ? <Eye size={14} /> : <EyeOff size={14} />}
+                </button>
+                <button className="p-1.5 rounded hover:bg-muted text-muted-foreground" title="Reset Camera (Coming Soon)">
+                    <Video size={14} /> 
+                </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
             <button onClick={downloadDesign} className="flex items-center justify-center gap-2 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-[10px] transition-colors">
               <Download size={12} /> Save
             </button>

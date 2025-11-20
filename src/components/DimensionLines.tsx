@@ -61,6 +61,9 @@ export function DimensionLines({ width, height, depth, offset = 60 }: DimensionL
   const setWidth = useDesignStore((state: DesignState) => state.setWidth);
   const setHeight = useDesignStore((state: DesignState) => state.setHeight);
   const setDepth = useDesignStore((state: DesignState) => state.setDepth);
+  const showDimensions = useDesignStore((state: DesignState) => state.showDimensions);
+
+  if (!showDimensions) return null;
 
   const halfW = width / 2;
   const halfH = height / 2;

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useDesignStore, DesignState } from '@/store/useDesignStore';
 // Hinge hole visualizer moved out to top-level to avoid creating components during render
 interface HingeHoleVisualizerProps {
     holeX: number;
@@ -67,6 +68,7 @@ export function DoorPanel({
 }: DoorPanelProps) {
     
     highlightError = Boolean(highlightError);
+    const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
 
     const [hovered, setHovered] = React.useState(false);
 
@@ -134,6 +136,7 @@ export function DoorPanel({
                         opacity={material === 'Glass' ? 0.8 : 1}
                         emissive={highlightError ? '#ff0000' : (hovered ? '#3b82f6' : '#000000')}
                         emissiveIntensity={emissiveIntensity}
+                        wireframe={showWireframe}
                     />
                 </mesh>
 
