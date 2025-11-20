@@ -11,6 +11,8 @@ declare module 'react-draggable' {
 
     export interface DraggableProps {
         allowAnyClick?: boolean;
+        allowMobileScroll?: boolean;
+        enableUserSelectHack?: boolean;
         axis?: 'both' | 'x' | 'y' | 'none';
         bounds?: DraggableBounds | string | false;
         cancel?: string;

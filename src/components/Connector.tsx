@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import useDesignStore, { DesignState } from '@/store/useDesignStore';
 
 interface ConnectorProps {
     size: number; // 20, 30, 40
@@ -10,6 +11,8 @@ interface ConnectorProps {
 }
 
 export function Connector({ size, position = [0, 0, 0], rotation = [0, 0, 0] }: ConnectorProps) {
+    const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+
     // Simple L-bracket shape
     // Approximate dimensions based on standard cast aluminum brackets
     // 2020 bracket: ~20x20mm arms, width 18mm
@@ -45,17 +48,17 @@ export function Connector({ size, position = [0, 0, 0], rotation = [0, 0, 0] }: 
             {/* Offset to align corner with origin */}
             <mesh position={[0, 0, -(size - 2) / 2]}>
                 <extrudeGeometry args={[shape, extrudeSettings]} />
-                <meshStandardMaterial color="#b0b0b0" roughness={0.6} metalness={0.6} />
+                <meshStandardMaterial color="#b0b0b0" roughness={0.6} metalness={0.6} wireframe={showWireframe} />
             </mesh>
             
             {/* Bolts (Visual only) */}
             <mesh position={[size/2, 2, 0]} rotation={[Math.PI/2, 0, 0]}>
                 <cylinderGeometry args={[3, 3, 1, 16]} />
-                <meshStandardMaterial color="#333" />
+                <meshStandardMaterial color="#333" wireframe={showWireframe} />
             </mesh>
             <mesh position={[2, size/2, 0]} rotation={[0, 0, Math.PI/2]}>
                 <cylinderGeometry args={[3, 3, 1, 16]} />
-                <meshStandardMaterial color="#333" />
+                <meshStandardMaterial color="#333" wireframe={showWireframe} />
             </mesh>
         </group>
     );

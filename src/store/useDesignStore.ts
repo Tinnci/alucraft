@@ -36,6 +36,7 @@ export interface DesignState {
   shelves: Shelf[];
   showDimensions: boolean;
   showWireframe: boolean;
+  cameraResetTrigger: number;
   setProfileType: (p: ProfileType) => void;
   setOverlay: (v: number) => void;
   setResult: (r: SimulationResult | null) => void;
@@ -54,6 +55,7 @@ export interface DesignState {
   setConnectorType: (v: 'angle' | 'internal') => void;
   setShowDimensions: (v: boolean) => void;
   setShowWireframe: (v: boolean) => void;
+  triggerCameraReset: () => void;
   addShelf: (y: number) => void;
   removeShelf: (id: string) => void;
   updateShelf: (id: string, y: number) => void;
@@ -82,6 +84,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   shelves: [],
   showDimensions: true,
   showWireframe: false,
+  cameraResetTrigger: 0,
   setProfileType: (p: ProfileType) => set({ profileType: p }),
   setOverlay: (v: number) => set({ overlay: v }),
   setResult: (r: SimulationResult | null) => set({ result: r }),
@@ -100,6 +103,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setConnectorType: (v: 'angle' | 'internal') => set({ connectorType: v }),
   setShowDimensions: (v: boolean) => set({ showDimensions: v }),
   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
+  triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
   addShelf: (y: number) => set((state) => ({
     shelves: [...state.shelves, { id: Math.random().toString(36).substr(2, 9), y }]
   })),

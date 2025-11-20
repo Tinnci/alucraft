@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, JSX } from 'react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { OrbitControls, Stage, Box, TransformControls, Environment } from '@react-three/drei';
 import { ProfileType, PROFILES } from '@/core/types';
@@ -12,6 +12,22 @@ import { BOMPanel } from '@/components/BOMPanel';
 import { Toolbar } from '@/components/Toolbar';
 import { FloatingControls } from '@/components/FloatingControls';
 import DimensionLines from '@/components/DimensionLines';
+
+function CameraHandler() {
+  const { camera, controls } = useThree();
+  const cameraResetTrigger = useDesignStore((state: DesignState) => state.cameraResetTrigger);
+
+  useEffect(() => {
+    if (cameraResetTrigger > 0) {
+      camera.position.set(1500, 1500, 1500);
+      // @ts-ignore
+      controls?.target.set(0, 0, 0);
+      // @ts-ignore
+      controls?.update();
+    }
+  }, [cameraResetTrigger, camera, controls]);
+  return null;
+}
 
 export default function Home() {
   // Extract global design state and setters from the store
@@ -183,6 +199,7 @@ export default function Home() {
 
       <div className="w-full h-full">
         <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
+        <CameraHandler />
         <color attach="background" args={['#0f172a']} />
         <fog attach="fog" args={['#0f172a', 2000, 5000]} />
 

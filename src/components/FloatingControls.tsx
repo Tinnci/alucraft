@@ -163,6 +163,7 @@ export function FloatingControls() {
   const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
   const setShowDimensions = useDesignStore((state: DesignState) => state.setShowDimensions);
   const setShowWireframe = useDesignStore((state: DesignState) => state.setShowWireframe);
+  const triggerCameraReset = useDesignStore((state: DesignState) => state.triggerCameraReset);
   const addShelf = useDesignStore((state: DesignState) => state.addShelf);
   const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
   const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
@@ -277,7 +278,7 @@ export function FloatingControls() {
             <select 
                 className="bg-muted text-muted-foreground text-[10px] rounded px-1 py-0.5 border-none focus:ring-0 cursor-pointer hover:text-foreground"
                 onChange={(e) => applyPreset(e.target.value)}
-                defaultValue=""
+                value=""
             >
                 <option value="" disabled>Presets</option>
                 <option value="standard">Standard Base</option>
@@ -494,7 +495,11 @@ export function FloatingControls() {
                 >
                     {showDimensions ? <Eye size={14} /> : <EyeOff size={14} />}
                 </button>
-                <button className="p-1.5 rounded hover:bg-muted text-muted-foreground" title="Reset Camera (Coming Soon)">
+                <button 
+                    className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-blue-500 transition-colors" 
+                    title="Reset Camera"
+                    onClick={triggerCameraReset}
+                >
                     <Video size={14} /> 
                 </button>
             </div>
