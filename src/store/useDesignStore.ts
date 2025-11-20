@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { temporal } from 'zundo';
 import { ProfileType, PROFILES, SimulationResult } from '@/core/types';
 
 export interface BOMItem {
@@ -24,6 +25,11 @@ export interface DesignState {
   depth: number;
   hasLeftWall: boolean;
   hasRightWall: boolean;
+  hasLeftPanel: boolean;
+  hasRightPanel: boolean;
+  hasBackPanel: boolean;
+  hasTopPanel: boolean;
+  hasBottomPanel: boolean;
   isDoorOpen: boolean;
   doorCount: number;
   connectorType: 'angle' | 'internal';
@@ -36,6 +42,11 @@ export interface DesignState {
   setDepth: (v: number) => void;
   setHasLeftWall: (v: boolean) => void;
   setHasRightWall: (v: boolean) => void;
+  setHasLeftPanel: (v: boolean) => void;
+  setHasRightPanel: (v: boolean) => void;
+  setHasBackPanel: (v: boolean) => void;
+  setHasTopPanel: (v: boolean) => void;
+  setHasBottomPanel: (v: boolean) => void;
   setIsDoorOpen: (v: boolean) => void;
   setDoorCount: (v: number) => void;
   setConnectorType: (v: 'angle' | 'internal') => void;
@@ -46,7 +57,7 @@ export interface DesignState {
   getBOM: () => BOMItem[];
 }
 
-export const useDesignStore = create<DesignState>((set, get) => ({
+export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   profileType: '2020',
   overlay: 14,
   result: null,
@@ -55,6 +66,11 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   depth: 400,
   hasLeftWall: false,
   hasRightWall: false,
+  hasLeftPanel: false,
+  hasRightPanel: false,
+  hasBackPanel: false,
+  hasTopPanel: false,
+  hasBottomPanel: false,
   isDoorOpen: false,
   doorCount: 1,
   connectorType: 'angle',
@@ -67,6 +83,11 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   setDepth: (v: number) => set({ depth: v }),
   setHasLeftWall: (v: boolean) => set({ hasLeftWall: v }),
   setHasRightWall: (v: boolean) => set({ hasRightWall: v }),
+  setHasLeftPanel: (v: boolean) => set({ hasLeftPanel: v }),
+  setHasRightPanel: (v: boolean) => set({ hasRightPanel: v }),
+  setHasBackPanel: (v: boolean) => set({ hasBackPanel: v }),
+  setHasTopPanel: (v: boolean) => set({ hasTopPanel: v }),
+  setHasBottomPanel: (v: boolean) => set({ hasBottomPanel: v }),
   setIsDoorOpen: (v: boolean) => set({ isDoorOpen: v }),
   setDoorCount: (v: number) => set({ doorCount: v }),
   setConnectorType: (v: 'angle' | 'internal') => set({ connectorType: v }),
@@ -89,8 +110,10 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   },
   getBOM: () => {
     const state = get() as DesignState;
-    const { width, height, depth, profileType, result, connectorType, doorCount } = state;
-    const s = PROFILES[profileType].size;
+    const { width, height, depth, profileType, result, connectorType, doorCount, hasLeftPanel, hasRightPanel, hasBackPanel, hasTopPanel, hasBottomPanel } = state;
+    const profile = PROFILES[profileType];
+    const s = profile.size;
+    const slotDepth = profile.slotDepth || 6;
     const innerWidth = width - (s * 2);
     const doorWidth = innerWidth + (get().overlay * 2);
 
@@ -105,6 +128,39 @@ export const useDesignStore = create<DesignState>((set, get) => ({
     profileItems.push({ name: `${profileType} Width Beam`, lengthMm: wLength, qty: 4 });
     // 4 depth beams
     profileItems.push({ name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4 });
+
+    // Panels (Enclosure)
+    const panelItems: BOMItem[] = [];
+    const tolerance = 1; // 1mm tolerance
+
+    // Side Panels (Left/Right)
+    const sidePanelWidth = Math.round((depth - (s * 2)) + (slotDepth * 2) - tolerance);
+    const sidePanelHeight = Math.round((height - (s * 2)) + (slotDepth * 2) - tolerance);
+    
+    if (hasLeftPanel) {
+        panelItems.push({ name: 'Side Panel (Left)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm` });
+    }
+    if (hasRightPanel) {
+        panelItems.push({ name: 'Side Panel (Right)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm` });
+    }
+
+    // Back Panel
+    if (hasBackPanel) {
+        const backPanelWidth = Math.round((width - (s * 2)) + (slotDepth * 2) - tolerance);
+        const backPanelHeight = Math.round((height - (s * 2)) + (slotDepth * 2) - tolerance);
+        panelItems.push({ name: 'Back Panel', qty: 1, note: `${backPanelWidth} x ${backPanelHeight} mm` });
+    }
+
+    // Top/Bottom Panels
+    const tbPanelWidth = Math.round((width - (s * 2)) + (slotDepth * 2) - tolerance);
+    const tbPanelDepth = Math.round((depth - (s * 2)) + (slotDepth * 2) - tolerance);
+
+    if (hasTopPanel) {
+        panelItems.push({ name: 'Top Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm` });
+    }
+    if (hasBottomPanel) {
+        panelItems.push({ name: 'Bottom Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm` });
+    }
 
     // Door panels
     const doorItems: BOMItem[] = [];
@@ -144,8 +200,14 @@ export const useDesignStore = create<DesignState>((set, get) => ({
       profileItems.push({ name: 'Internal Lock', qty: totalConnectors });
     }
 
-    return [...profileItems, ...doorItems, ...hinges];
+    return [...profileItems, ...panelItems, ...doorItems, ...hinges];
   }
+}), {
+  partialize: (state) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { isDoorOpen, ...rest } = state;
+    return rest;
+  },
 }));
 
 export default useDesignStore;
