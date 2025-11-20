@@ -42,3 +42,9 @@ export interface SimulationResult {
     message: string;
     details?: string;
 }
+
+export interface Drawer {
+    id: string;
+    y: number; // Vertical position (from bottom)
+    height: number; // Face height
+}

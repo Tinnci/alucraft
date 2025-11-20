@@ -138,6 +138,7 @@ export function FloatingControls() {
   const doorCount = useDesignStore((state: DesignState) => state.doorCount);
   const connectorType = useDesignStore((state: DesignState) => state.connectorType);
   const shelves = useDesignStore((state: DesignState) => state.shelves);
+  const drawers = useDesignStore((state: DesignState) => state.drawers);
   const result = useDesignStore((state: DesignState) => state.result);
   const showDimensions = useDesignStore((state: DesignState) => state.showDimensions);
   const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
@@ -168,6 +169,9 @@ export function FloatingControls() {
   const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
   const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
   const duplicateShelf = useDesignStore((state: DesignState) => state.duplicateShelf);
+  const addDrawer = useDesignStore((state: DesignState) => state.addDrawer);
+  const removeDrawer = useDesignStore((state: DesignState) => state.removeDrawer);
+  const updateDrawer = useDesignStore((state: DesignState) => state.updateDrawer);
 
   const handleCalculate = () => {
     let currentOverlay = overlay;
@@ -413,6 +417,46 @@ export function FloatingControls() {
                   <button onClick={() => removeShelf(shelf.id)} className="text-muted-foreground hover:text-red-400 transition-colors" title="Remove">
                     <Trash2 size={12} />
                   </button>
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+
+          {/* Drawers */}
+          <CollapsibleSection 
+            title="Drawers" 
+            icon={Box} 
+            action={
+                <button onClick={(e) => { e.stopPropagation(); addDrawer(height / 3, 200); }} className="hover:text-blue-400 transition-colors p-1 hover:bg-muted rounded">
+                    <Plus size={14} />
+                </button>
+            }
+          >
+            <div className="space-y-2">
+              {drawers.length === 0 && <div className="text-[10px] text-muted-foreground italic text-center py-2">No drawers added</div>}
+              {drawers.map(drawer => (
+                <div key={drawer.id} className="flex flex-col gap-2 bg-muted/50 p-2 rounded border border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                        <LevaSlider 
+                        label="Y-Pos" 
+                        value={Math.round(drawer.y)} 
+                        min={0} max={height} step={10} 
+                        onChange={(v) => updateDrawer(drawer.id, v, drawer.height)} 
+                        />
+                    </div>
+                    <button onClick={() => removeDrawer(drawer.id)} className="text-muted-foreground hover:text-red-400 transition-colors" title="Remove">
+                        <Trash2 size={12} />
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    <LevaSlider 
+                      label="Height" 
+                      value={Math.round(drawer.height)} 
+                      min={100} max={500} step={10} 
+                      onChange={(v) => updateDrawer(drawer.id, drawer.y, v)} 
+                    />
+                  </div>
                 </div>
               ))}
             </div>

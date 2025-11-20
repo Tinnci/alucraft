@@ -4,8 +4,9 @@ import React, { useRef, useState } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 import { AluProfile } from './AluProfile';
 import { Connector } from './Connector';
+import { DrawerUnit } from './DrawerUnit';
 import { PROFILES, ProfileType } from '@/core/types';
-import { Shelf, useDesignStore, DesignState } from '@/store/useDesignStore';
+import { Shelf, Drawer, useDesignStore, DesignState } from '@/store/useDesignStore';
 import * as THREE from 'three';
 
 interface CabinetFrameProps {
@@ -14,9 +15,10 @@ interface CabinetFrameProps {
     depth: number;
     profileType: ProfileType;
     shelves?: Shelf[];
+    drawers?: Drawer[];
 }
 
-export function CabinetFrame({ width, height, depth, profileType, shelves = [] }: CabinetFrameProps) {
+export function CabinetFrame({ width, height, depth, profileType, shelves = [], drawers = [] }: CabinetFrameProps) {
     const profile = PROFILES[profileType];
     const s = profile.size;
     const slotDepth = profile.slotDepth || 6;
@@ -92,6 +94,17 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [] }
                     <Connector size={s} position={[width/2 - s/2, height/2 - s, -depth/2 + s]} rotation={[Math.PI, -Math.PI/2, 0]} />
                 </group>
             )}
+
+            {/* --- Drawers --- */}
+            {drawers.map(drawer => (
+                <DrawerUnit
+                    key={drawer.id}
+                    width={width - (s * 2) - 2} // Internal width minus clearance
+                    height={drawer.height}
+                    depth={depth - (s * 2)} // Internal depth
+                    position={[0, -height / 2 + drawer.y + drawer.height / 2 + s, 0]}
+                />
+            ))}
 
             {/* --- Panels --- */}
             {hasLeftPanel && (

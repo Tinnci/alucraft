@@ -16,6 +16,12 @@ export interface Shelf {
   y: number; // Height from bottom in mm
 }
 
+export interface Drawer {
+  id: string;
+  y: number; // Height from bottom in mm
+  height: number; // Height of the drawer
+}
+
 export interface DesignState {
   profileType: ProfileType;
   overlay: number;
@@ -34,6 +40,7 @@ export interface DesignState {
   doorCount: number;
   connectorType: 'angle' | 'internal';
   shelves: Shelf[];
+  drawers: Drawer[];
   showDimensions: boolean;
   showWireframe: boolean;
   cameraResetTrigger: number;
@@ -60,6 +67,9 @@ export interface DesignState {
   removeShelf: (id: string) => void;
   updateShelf: (id: string, y: number) => void;
   duplicateShelf: (id: string) => void;
+  addDrawer: (y: number, height: number) => void;
+  removeDrawer: (id: string) => void;
+  updateDrawer: (id: string, y: number, height: number) => void;
   getDerived: () => { innerWidth: number; doorWidth: number };
   getBOM: () => BOMItem[];
 }
@@ -82,6 +92,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   doorCount: 1,
   connectorType: 'angle',
   shelves: [],
+  drawers: [],
   showDimensions: true,
   showWireframe: false,
   cameraResetTrigger: 0,
@@ -115,12 +126,20 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   })),
   duplicateShelf: (id: string) => set((state) => {
     const shelf = state.shelves.find(s => s.id === id);
-    if (!shelf) return state;
-    // Offset slightly to avoid perfect overlap
+    if (!shelf) return {};
     return {
-        shelves: [...state.shelves, { id: Math.random().toString(36).substr(2, 9), y: Math.max(0, shelf.y - 50) }]
+      shelves: [...state.shelves, { id: Math.random().toString(36).substr(2, 9), y: shelf.y + 50 }]
     };
   }),
+  addDrawer: (y: number, height: number) => set((state) => ({
+    drawers: [...state.drawers, { id: Math.random().toString(36).substr(2, 9), y, height }]
+  })),
+  removeDrawer: (id: string) => set((state) => ({
+    drawers: state.drawers.filter(d => d.id !== id)
+  })),
+  updateDrawer: (id: string, y: number, height: number) => set((state) => ({
+    drawers: state.drawers.map(d => d.id === id ? { ...d, y, height } : d)
+  })),
   getDerived: () => {
     const state = get() as DesignState;
     const { width, profileType, overlay } = state;

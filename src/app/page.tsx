@@ -42,6 +42,7 @@ export default function Home() {
   const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
   const doorCount = useDesignStore((state: DesignState) => state.doorCount);
   const shelves = useDesignStore((state: DesignState) => state.shelves);
+  const drawers = useDesignStore((state: DesignState) => state.drawers);
 
   const frameRef = useRef<THREE.Group | null>(null);
   // setters
@@ -231,6 +232,7 @@ export default function Home() {
                 depth={depth}
                 profileType={profileType}
                 shelves={shelves}
+                drawers={drawers}
               />
             </group>
           </TransformControls>
