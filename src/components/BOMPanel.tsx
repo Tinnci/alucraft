@@ -3,12 +3,22 @@
 import React, { useState } from 'react';
 import useDesignStore, { BOMItem, DesignState } from '@/store/useDesignStore';
 import { ChevronDown, ChevronUp, FileJson, FileSpreadsheet, Layers, Box, Wrench } from 'lucide-react';
+import { calculateCuttingList } from '@/core/optimizer';
 
 export function BOMPanel() {
   const getBOM = useDesignStore((state: DesignState) => state.getBOM);
   const bom: BOMItem[] = getBOM();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'profile' | 'panel' | 'hardware'>('all');
+
+  const cuttingData = React.useMemo(() => {
+    const profileItems = bom
+        .filter(i => i.category === 'profile' && i.lengthMm)
+        .map(i => ({ length: i.lengthMm!, qty: i.qty }));
+    
+    if (profileItems.length === 0) return null;
+    return calculateCuttingList(profileItems);
+  }, [bom]);
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(bom, null, 2)], { type: 'application/json' });
@@ -100,6 +110,39 @@ export function BOMPanel() {
             </div>
           ))}
         </div>
+
+        {/* Cutting Optimization Summary */}
+        {activeTab !== 'panel' && activeTab !== 'hardware' && cuttingData && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-2 shrink-0">
+                <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-semibold text-blue-200 flex items-center gap-1">
+                        <Box size={12} /> Material Estimate (6m Bars)
+                    </span>
+                    <span className="text-sm font-bold text-blue-100">{cuttingData.totalStockNeeded} x 6m</span>
+                </div>
+                <div className="space-y-1">
+                    {cuttingData.bars.map((bar, idx) => (
+                        <div key={idx} className="flex items-center gap-1 text-[10px] text-white/50">
+                            <div className="w-4 text-right opacity-50">#{idx + 1}</div>
+                            <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden flex">
+                                {bar.map((cut, cIdx) => (
+                                    <div 
+                                        key={cIdx} 
+                                        style={{ width: `${(cut / 6000) * 100}%` }} 
+                                        className={`h-full border-r border-black/50 ${cIdx % 2 === 0 ? 'bg-blue-500' : 'bg-blue-400'}`}
+                                        title={`${cut}mm`}
+                                    />
+                                ))}
+                            </div>
+                            <div className="w-8 text-right">{Math.round((bar.reduce((a,b)=>a+b,0) / 6000) * 100)}%</div>
+                        </div>
+                    ))}
+                </div>
+                <div className="text-[9px] text-white/30 mt-2 text-right">
+                    Includes 5mm saw blade kerf per cut
+                </div>
+            </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2 pt-2 mt-2 border-t border-white/10 shrink-0">
           <button 
