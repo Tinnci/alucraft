@@ -4,7 +4,7 @@ import { useRef, useEffect, JSX } from 'react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
-import { OrbitControls, Stage, Box, TransformControls } from '@react-three/drei';
+import { OrbitControls, Stage, Box, TransformControls, Environment } from '@react-three/drei';
 import { ProfileType, PROFILES } from '@/core/types';
 import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
@@ -232,6 +232,7 @@ export default function Home() {
         </Stage>
         <OrbitControls makeDefault maxDistance={10000} />
         <gridHelper args={[3000, 60, '#1e293b', '#1e293b']} />
+        <Environment preset="warehouse" />
       </Canvas>
     </div>
     </main>
