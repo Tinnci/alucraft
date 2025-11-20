@@ -1,5 +1,4 @@
 import { calculateHinge } from '../src/core/hinge-rules';
-import { SimulationResult } from '../src/core/types';
 
 console.log('Starting Hinge Logic Verification...');
 

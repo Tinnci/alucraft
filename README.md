@@ -18,6 +18,16 @@
   * **参数校验：** 自动计算 K 值 (孔边距) 和螺丝调节量，防止超出五金件的物理调节范围。
   * **环境感知：** 勾选“靠墙”选项，系统会自动检测碰撞风险，并强制修正遮盖量（例如自动推荐大弯铰链以避让墙体）。
 
+### 🆕 Recent improvements (from this round)
+
+  * State management: migrated UI state to a centralized `Zustand` store to make UI/data flow predictable and easier to extend.
+  * On-canvas interaction: Click door to toggle open/close; Alu profiles highlight on hover; Doors show hinge cup holes and screw positions.
+  * Dimension Lines: Added 3D dimension lines with labels for cabinet width, height, and depth to aid quick reading.
+  * BOM Panel: Added a simple live Bill of Materials panel showing profile pieces, door dimensions and hinge count.
+  * Basic transform controls: You can now drag/scale the frame in the 3D scene to change width/height/depth (uses TransformControls).
+  * Persistence: Designs auto-save to localStorage and can be downloaded as JSON or loaded back.
+
+
 ### 2\. 📐 参数化 3D 框架 (Parametric Frame)
 
   * **实时渲染：** 基于 React Three Fiber，实时生成 2020/3030/4040 等不同规格的铝型材模型。
@@ -53,6 +63,15 @@ npm run dev
 ```
 
 打开浏览器访问 `http://localhost:3000` 即可开始设计。
+
+## 🧭 Quick usage tips (how to use the new UI)
+
+  * Click the door in the 3D view to toggle open / close (the door also responds to the left-side 'Open Door' button).
+  * Use the transform/scale controls (drag handles) to scale the cabinet width/height/depth directly in the 3D scene.
+  * Hover over an aluminum profile to highlight it for easier visual recognition.
+  * A live BOM panel now shows the calculated parts as you change dimensions and options.
+  * Save and load: designs auto-save to localStorage. Use the Download JSON / Load Saved buttons to export/import designs.
+
 
 ## 📅 开发计划 (Roadmap)
 

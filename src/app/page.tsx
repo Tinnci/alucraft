@@ -1,31 +1,44 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useRef, useEffect } from 'react';
+import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { Canvas } from '@react-three/fiber';
+import * as THREE from 'three';
 import { OrbitControls, Stage, Box } from '@react-three/drei';
 import { calculateHinge } from '@/core/hinge-rules';
-import { ProfileType, SimulationResult, PROFILES } from '@/core/types';
+import { ProfileType, PROFILES } from '@/core/types';
 import { CabinetFrame } from '@/components/CabinetFrame';
+import { TransformControls } from '@react-three/drei';
 import { DoorPanel } from '@/components/DoorPanel';
+import { BOMPanel } from '@/components/BOMPanel';
+import DimensionLines from '@/components/DimensionLines';
 import styles from './page.module.css';
 
 export default function Home() {
-  // Hinge Calculator State
-  const [profileType, setProfileType] = useState<ProfileType>('2020');
-  const [overlay, setOverlay] = useState<number>(14);
-  const [result, setResult] = useState<SimulationResult | null>(null);
+  // Extract global design state and setters from the store
+  const profileType = useDesignStore((state: DesignState) => state.profileType);
+  const overlay = useDesignStore((state: DesignState) => state.overlay);
+  const result = useDesignStore((state: DesignState) => state.result);
+  const width = useDesignStore((state: DesignState) => state.width);
+  const height = useDesignStore((state: DesignState) => state.height);
+  const depth = useDesignStore((state: DesignState) => state.depth);
+  const hasLeftWall = useDesignStore((state: DesignState) => state.hasLeftWall);
+  const hasRightWall = useDesignStore((state: DesignState) => state.hasRightWall);
+  const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
+  const doorCount = useDesignStore((state: DesignState) => state.doorCount);
 
-  // 3D Visualization State
-  const [width, setWidth] = useState<number>(600);
-  const [height, setHeight] = useState<number>(800);
-  const [depth, setDepth] = useState<number>(400);
-
-  // Environment State
-  const [hasLeftWall, setHasLeftWall] = useState<boolean>(false);
-  const [hasRightWall, setHasRightWall] = useState<boolean>(false);
-
-  // [NEW] 门板开关状态
-  const [isDoorOpen, setIsDoorOpen] = useState(false);
+  const frameRef = useRef<THREE.Group | null>(null);
+  // setters
+  const setProfileType = useDesignStore((state: DesignState) => state.setProfileType);
+  const setOverlay = useDesignStore((state: DesignState) => state.setOverlay);
+  const setResult = useDesignStore((state: DesignState) => state.setResult);
+  const setWidth = useDesignStore((state: DesignState) => state.setWidth);
+  const setHeight = useDesignStore((state: DesignState) => state.setHeight);
+  const setDepth = useDesignStore((state: DesignState) => state.setDepth);
+  const setHasLeftWall = useDesignStore((state: DesignState) => state.setHasLeftWall);
+  const setHasRightWall = useDesignStore((state: DesignState) => state.setHasRightWall);
+  const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
+  const setDoorCount = useDesignStore((state: DesignState) => state.setDoorCount);
 
   const handleCalculate = () => {
     let currentOverlay = overlay;
@@ -72,8 +85,39 @@ export default function Home() {
     setResult(res);
   };
 
+  const downloadDesign = () => {
+    const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result };
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'alucraft-design.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const loadDesignFromLocal = () => {
+    try {
+      const raw = localStorage.getItem('alucraft-design');
+      if (!raw) { alert('No saved design in localStorage'); return; }
+      const parsed = JSON.parse(raw);
+      if (parsed.width) setWidth(parsed.width);
+      if (parsed.height) setHeight(parsed.height);
+      if (parsed.depth) setDepth(parsed.depth);
+      if (parsed.profileType) setProfileType(parsed.profileType);
+      if (parsed.overlay !== undefined) setOverlay(parsed.overlay);
+      if (parsed.hasLeftWall !== undefined) setHasLeftWall(parsed.hasLeftWall);
+      if (parsed.hasRightWall !== undefined) setHasRightWall(parsed.hasRightWall);
+      if (parsed.isDoorOpen !== undefined) setIsDoorOpen(parsed.isDoorOpen);
+      if (parsed.result) setResult(parsed.result);
+    } catch (err) {
+      alert('Failed to load design');
+      console.warn(err);
+    }
+  };
+
   // Calculate door dimensions
-  const profile = PROFILES[profileType];
+  const profile = PROFILES[profileType as ProfileType];
   const s = profile.size;
 
   // 门板宽度 = 内空 + 两侧遮盖
@@ -94,6 +138,41 @@ export default function Home() {
     0,
     depth / 2 + 2 // Z轴：放在柜体最前方 + 2mm 缝隙
   ];
+
+  const collisionLeft = Boolean(hasLeftWall && result && !result.success);
+  const collisionRight = Boolean(hasRightWall && result && !result.success);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('alucraft-design');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed.width) setWidth(parsed.width);
+      if (parsed.height) setHeight(parsed.height);
+      if (parsed.depth) setDepth(parsed.depth);
+      if (parsed.profileType) setProfileType(parsed.profileType);
+      if (parsed.overlay !== undefined) setOverlay(parsed.overlay);
+      if (parsed.hasLeftWall !== undefined) setHasLeftWall(parsed.hasLeftWall);
+      if (parsed.hasRightWall !== undefined) setHasRightWall(parsed.hasRightWall);
+      if (parsed.isDoorOpen !== undefined) setIsDoorOpen(parsed.isDoorOpen);
+      if (parsed.result) setResult(parsed.result);
+    } catch (err) {
+      console.warn('Failed to load saved design', err);
+    }
+  }, [setWidth, setHeight, setDepth, setProfileType, setOverlay, setHasLeftWall, setHasRightWall, setIsDoorOpen, setResult]);
+
+  // Persist to localStorage on change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result };
+    try {
+      localStorage.setItem('alucraft-design', JSON.stringify(state));
+    } catch (err) {
+      console.warn('Failed to save design to localStorage', err);
+    }
+  }, [width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result]);
 
   return (
     <main className={styles.main}>
@@ -118,12 +197,15 @@ export default function Home() {
 
             <div className={styles.inputGroup}>
               <label>Desired Overlay (期望遮盖量 mm)</label>
-              <input
-                type="number"
-                value={overlay}
-                onChange={(e) => setOverlay(Number(e.target.value))}
-                className={styles.input}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="number"
+                  value={overlay}
+                  onChange={(e) => setOverlay(Number(e.target.value))}
+                  className={styles.input}
+                />
+                <button title="Overlay is how much the door overlaps the cabinet's front face; positive values mean the door covers the frame edge." style={{ border: 0, background: 'transparent', cursor: 'help' }}>ⓘ</button>
+              </div>
             </div>
 
             <div className={styles.inputGroup}>
@@ -152,9 +234,21 @@ export default function Home() {
               </button>
             </div>
 
+            <div className={styles.inputGroup}>
+              <label>Door Count</label>
+              <select value={doorCount} onChange={(e) => setDoorCount(Number(e.target.value))} className={styles.select}>
+                <option value={1}>Single Door</option>
+                <option value={2}>Double Doors</option>
+              </select>
+            </div>
+
             <button onClick={handleCalculate} className={styles.button}>
               Calculate / 计算
             </button>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button onClick={downloadDesign} className={styles.button} style={{ backgroundColor: '#0ea5e9' }}>Download JSON</button>
+              <button onClick={loadDesignFromLocal} className={styles.button} style={{ backgroundColor: '#f59e0b' }}>Load Saved</button>
+            </div>
           </div>
 
           {result && (
@@ -172,6 +266,8 @@ export default function Home() {
               )}
             </div>
           )}
+          {/* BOM 列表 */}
+          <BOMPanel />
         </div>
 
         {/* Right Panel: 3D Visualization */}
@@ -213,37 +309,104 @@ export default function Home() {
             <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 50, near: 10, far: 20000 }}>
               <color attach="background" args={['#f0f2f5']} />
               <Stage environment="city" intensity={0.5} adjustCamera={false}>
-                <CabinetFrame
-                  width={width}
-                  height={height}
-                  depth={depth}
-                  profileType={profileType}
-                />
+                <TransformControls
+                  mode="scale"
+                  onChange={() => {
+                    const group = frameRef.current;
+                    if (!group) return;
+                    // Scale to calculate new dims
+                    const sx = group.scale.x;
+                    const sy = group.scale.y;
+                    const sz = group.scale.z;
+                    if (sx !== 1 || sy !== 1 || sz !== 1) {
+                      setWidth(Math.max(200, Math.round(width * sx)));
+                      setHeight(Math.max(200, Math.round(height * sy)));
+                      setDepth(Math.max(200, Math.round(depth * sz)));
+                      group.scale.set(1, 1, 1);
+                    }
+                  }}
+                >
+                  <group ref={frameRef}>
+                    <CabinetFrame
+                      width={width}
+                      height={height}
+                      depth={depth}
+                      profileType={profileType}
+                    />
+                  </group>
+                </TransformControls>
 
-                <DoorPanel
-                  width={doorWidth}
-                  height={doorHeight}
-                  thickness={20}
-                  position={hingePosition}
-                  hingeSide="left"
-                  isOpen={isDoorOpen}
-                  material="AluminumHoneycomb"
+                {doorCount === 1 ? (
+                  <DoorPanel
+                    width={doorWidth}
+                    height={doorHeight}
+                    thickness={20}
+                    position={hingePosition}
+                    hingeSide="left"
+                    isOpen={isDoorOpen}
+                    material="AluminumHoneycomb"
+                    showHoles={result?.success === true}
+                    kValue={result?.kValue || 4}
+                    hingeSeries={result?.recommendedHinge?.series || 'C80'}
+                    onToggle={() => setIsDoorOpen(!isDoorOpen)}
+                    highlightError={collisionLeft}
+                    overlay={overlay}
+                  />
+                ) : (
+                  (() => {
+                    const eachInner = innerWidth / 2;
+                    const doorEachWidth = eachInner + overlay; // rough approximation
+                    const hingeLeftPos: [number, number, number] = [-doorEachWidth / 2, 0, depth / 2 + 2];
+                    const hingeRightPos: [number, number, number] = [doorEachWidth / 2, 0, depth / 2 + 2];
+                    return (
+                      <>
+                        <DoorPanel
+                          width={doorEachWidth}
+                          height={doorHeight}
+                          thickness={20}
+                          position={hingeLeftPos}
+                          hingeSide="left"
+                          isOpen={isDoorOpen}
+                          material="AluminumHoneycomb"
+                          showHoles={result?.success === true}
+                          kValue={result?.kValue || 4}
+                          hingeSeries={result?.recommendedHinge?.series || 'C80'}
+                          onToggle={() => setIsDoorOpen(!isDoorOpen)}
+                          highlightError={collisionLeft}
+                          overlay={overlay}
+                        />
+                        <DoorPanel
+                          width={doorEachWidth}
+                          height={doorHeight}
+                          thickness={20}
+                          position={hingeRightPos}
+                          hingeSide="right"
+                          isOpen={isDoorOpen}
+                          material="AluminumHoneycomb"
+                          showHoles={result?.success === true}
+                          kValue={result?.kValue || 4}
+                          hingeSeries={result?.recommendedHinge?.series || 'C80'}
+                          onToggle={() => setIsDoorOpen(!isDoorOpen)}
+                          highlightError={collisionRight}
+                          overlay={overlay}
+                        />
+                      </>
+                    );
+                  })()
+                )}
 
-                  // [NEW] 传递 Phase 3 数据
-                  showHoles={result?.success === true} // 只有计算成功才显示孔
-                  kValue={result?.kValue || 4}         // 默认4，如果有结果则用结果
-                  hingeSeries={result?.recommendedHinge?.series || 'C80'} // 传入 'C80' 或 'Cover25'
-                />
+                {/* Dimension Lines */}
+                <DimensionLines width={width} height={height} depth={depth} offset={80} />
 
                 {/* Visualize Walls if enabled */}
                 {hasLeftWall && (
                   <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
-                    <meshStandardMaterial color="#ffaaaa" opacity={0.5} transparent />
+                    <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#ffaaaa'} opacity={0.5} transparent />
                   </Box>
                 )}
                 {hasRightWall && (
                   <Box args={[10, height, depth]} position={[width / 2 + 5 + 2, 0, 0]}>
-                    <meshStandardMaterial color="#ffaaaa" opacity={0.5} transparent />
+                    <meshStandardMaterial color={collisionRight ? '#ff4d4d' : '#ffaaaa'} opacity={0.5} transparent />
                   </Box>
                 )}
 

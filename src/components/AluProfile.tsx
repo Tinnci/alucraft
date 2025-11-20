@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { Extrude } from '@react-three/drei';
 
@@ -17,7 +17,7 @@ const profileShape2020 = new THREE.Shape();
 const s = 10; // 半宽 10mm
 const c = 3;  // 槽口宽的一半 (6mm槽 -> 3mm)
 const d = 3;  // 槽深 
-const i = 1.5; // 内部小倒角
+// const i = 1.5; // 内部小倒角 (unused)
 
 profileShape2020.moveTo(-s, -s); // 左下
 profileShape2020.lineTo(-c, -s); // 底部槽口左
@@ -44,12 +44,15 @@ profileShape2020.lineTo(-s + d, -c);
 profileShape2020.lineTo(-s, -c);
 profileShape2020.lineTo(-s, -s); // 回到原点
 
-export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 0, 0] }: AluProfileProps) {
+export function AluProfile({ type: _type, length, position = [0, 0, 0], rotation = [0, 0, 0] }: AluProfileProps) {
 
     const shape = useMemo(() => {
-        // 这里未来可以扩展 3030 等其他形状
+        // TODO: support other profile shapes (3030/4040) - currently reusing 2020.
         return profileShape2020;
-    }, [type]);
+    }, []);
+
+    // _type is only used for future profile types, reference it to avoid linting noise
+    void _type;
 
     const extrudeSettings = useMemo(() => ({
         depth: length,
@@ -57,12 +60,14 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
         steps: 1,
     }), [length]);
 
+    const [hovered, setHovered] = useState(false);
+
     return (
-        <group position={position} rotation={rotation}>
+        <group position={position} rotation={rotation} onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }} onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}>
             <Extrude args={[shape, extrudeSettings]} castShadow receiveShadow>
                 {/* 铝材材质：金属质感，银灰色 */}
                 <meshStandardMaterial
-                    color="#e0e0e0"
+                    color={hovered ? '#cde9ff' : '#e0e0e0'}
                     roughness={0.3}
                     metalness={0.8}
                 />
