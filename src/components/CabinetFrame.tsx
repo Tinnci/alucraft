@@ -47,6 +47,22 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
         wireframe: showWireframe
     });
 
+    // Simple Collision Logic: Check if any drawer overlaps with any shelf
+    const checkCollision = (drawer: Drawer) => {
+        // Drawer Y range (relative to bottom 0)
+        const drawerBottom = drawer.y;
+        const drawerTop = drawer.y + drawer.height;
+        
+        // Check shelves
+        for (const shelf of shelves) {
+            // Shelf Y is center position. Shelf thickness approx 20mm?
+            const shelfY = shelf.y;
+            if (shelfY > drawerBottom && shelfY < drawerTop) return true;
+        }
+        
+        return false;
+    };
+
     return (
         <group>
             {/* --- Frame --- */}
@@ -96,15 +112,19 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
             )}
 
             {/* --- Drawers --- */}
-            {drawers.map(drawer => (
-                <DrawerUnit
-                    key={drawer.id}
-                    width={width - (s * 2) - 2} // Internal width minus clearance
-                    height={drawer.height}
-                    depth={depth - (s * 2)} // Internal depth
-                    position={[0, -height / 2 + drawer.y + drawer.height / 2 + s, 0]}
-                />
-            ))}
+            {drawers.map(drawer => {
+                const isColliding = checkCollision(drawer);
+                return (
+                    <DrawerUnit
+                        key={drawer.id}
+                        width={width - (s * 2) - 2} // Internal width minus clearance
+                        height={drawer.height}
+                        depth={depth - (s * 2)} // Internal depth
+                        position={[0, -height / 2 + drawer.y + drawer.height / 2 + s, 0]}
+                        isColliding={isColliding}
+                    />
+                );
+            })}
 
             {/* --- Panels --- */}
             {hasLeftPanel && (
