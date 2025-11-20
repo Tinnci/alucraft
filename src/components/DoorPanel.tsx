@@ -73,7 +73,7 @@ export function DoorPanel({
     // 动画逻辑
     const { rotationY, emissiveIntensity } = useSpring({
         rotationY: isOpen ? (hingeSide === 'left' ? -Math.PI / 2 : Math.PI / 2) : 0,
-        emissiveIntensity: highlightError ? 0.8 : 0,
+        emissiveIntensity: highlightError ? 0.8 : (hovered ? 0.2 : 0),
         config: { mass: 1, tension: 170, friction: 26 }
     });
 
@@ -123,13 +123,16 @@ export function DoorPanel({
                     onClick={(e) => { e.stopPropagation(); if (typeof onToggle === 'function') onToggle(); }}
                 >
                     <boxGeometry args={[width, height, thickness]} />
-                    <animated.meshStandardMaterial
-                        color={hovered ? '#fef08a' : (highlightError ? '#ffe6e6' : (material === 'Glass' ? '#aaddff' : '#ffffff'))}
+                    <animated.meshPhysicalMaterial
+                        color={highlightError ? '#ff4d4d' : (material === 'Glass' ? '#e0f2fe' : '#f8fafc')}
+                        roughness={material === 'Glass' ? 0.1 : 0.5}
+                        metalness={material === 'Glass' ? 0.1 : 0.7}
+                        transmission={material === 'Glass' ? 0.5 : 0}
+                        thickness={material === 'Glass' ? thickness : 0}
+                        clearcoat={material === 'Glass' ? 1 : 0.1}
                         transparent={material === 'Glass'}
-                        opacity={material === 'Glass' ? 0.6 : 1}
-                        roughness={0.2}
-                        metalness={0.1}
-                        emissive="#ff4d4d"
+                        opacity={material === 'Glass' ? 0.8 : 1}
+                        emissive={highlightError ? '#ff0000' : (hovered ? '#3b82f6' : '#000000')}
                         emissiveIntensity={emissiveIntensity}
                     />
                 </mesh>

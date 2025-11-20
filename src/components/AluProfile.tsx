@@ -78,15 +78,24 @@ export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 
     }), [length]);
 
     const [hovered, setHovered] = useState(false);
+    const [selected, setSelected] = useState(false);
 
     return (
-        <group position={position} rotation={rotation} onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }} onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}>
+        <group 
+            position={position} 
+            rotation={rotation} 
+            onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }} 
+            onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
+            onClick={(e) => { e.stopPropagation(); setSelected(!selected); }}
+        >
             <Extrude args={[shape, extrudeSettings]} castShadow receiveShadow>
                 {/* 铝材材质：金属质感，银灰色 */}
-                <meshStandardMaterial
-                    color={hovered ? '#cde9ff' : '#e0e0e0'}
-                    roughness={0.3}
+                <meshPhysicalMaterial
+                    color={selected ? '#60a5fa' : (hovered ? '#cbd5e1' : '#e2e8f0')}
+                    roughness={0.4}
                     metalness={0.8}
+                    emissive={selected ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000')}
+                    emissiveIntensity={selected ? 0.3 : (hovered ? 0.1 : 0)}
                 />
             </Extrude>
 
