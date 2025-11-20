@@ -9,6 +9,7 @@ export interface BOMItem {
   lengthMm?: number; // mm for profiles
   qty: number;
   note?: string;
+  category?: 'profile' | 'panel' | 'hardware';
 }
 
 export interface Shelf {
@@ -163,11 +164,11 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
 
     const profileItems: BOMItem[] = [];
     // 4 vertical pillars
-    profileItems.push({ name: `${profileType} Vertical (Pillar)`, lengthMm: hLength, qty: 4 });
+    profileItems.push({ name: `${profileType} Vertical (Pillar)`, lengthMm: hLength, qty: 4, category: 'profile' });
     // 4 horizontal width beams
-    profileItems.push({ name: `${profileType} Width Beam`, lengthMm: wLength, qty: 4 });
+    profileItems.push({ name: `${profileType} Width Beam`, lengthMm: wLength, qty: 4, category: 'profile' });
     // 4 depth beams
-    profileItems.push({ name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4 });
+    profileItems.push({ name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4, category: 'profile' });
 
     // Panels (Enclosure)
     const panelItems: BOMItem[] = [];
@@ -178,17 +179,17 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const sidePanelHeight = Math.round((height - (s * 2)) + (slotDepth * 2) - tolerance);
     
     if (hasLeftPanel) {
-        panelItems.push({ name: 'Side Panel (Left)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm` });
+        panelItems.push({ name: 'Side Panel (Left)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm`, category: 'panel' });
     }
     if (hasRightPanel) {
-        panelItems.push({ name: 'Side Panel (Right)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm` });
+        panelItems.push({ name: 'Side Panel (Right)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm`, category: 'panel' });
     }
 
     // Back Panel
     if (hasBackPanel) {
         const backPanelWidth = Math.round((width - (s * 2)) + (slotDepth * 2) - tolerance);
         const backPanelHeight = Math.round((height - (s * 2)) + (slotDepth * 2) - tolerance);
-        panelItems.push({ name: 'Back Panel', qty: 1, note: `${backPanelWidth} x ${backPanelHeight} mm` });
+        panelItems.push({ name: 'Back Panel', qty: 1, note: `${backPanelWidth} x ${backPanelHeight} mm`, category: 'panel' });
     }
 
     // Top/Bottom Panels
@@ -196,26 +197,60 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const tbPanelDepth = Math.round((depth - (s * 2)) + (slotDepth * 2) - tolerance);
 
     if (hasTopPanel) {
-        panelItems.push({ name: 'Top Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm` });
+        panelItems.push({ name: 'Top Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm`, category: 'panel' });
     }
     if (hasBottomPanel) {
-        panelItems.push({ name: 'Bottom Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm` });
+        panelItems.push({ name: 'Bottom Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm`, category: 'panel' });
     }
 
     // Door panels
     const doorItems: BOMItem[] = [];
     if (doorCount === 1) {
-      doorItems.push({ name: 'Door Panel', qty: 1, note: `${doorWidth} x ${height} mm` });
+      doorItems.push({ name: 'Door Panel', qty: 1, note: `${doorWidth} x ${height} mm`, category: 'panel' });
     } else {
       const eachWidth = Math.round(innerWidth / doorCount + get().overlay);
-      doorItems.push({ name: 'Door Panel', qty: doorCount, note: `${eachWidth} x ${height} mm each` });
+      doorItems.push({ name: 'Door Panel', qty: doorCount, note: `${eachWidth} x ${height} mm each`, category: 'panel' });
     }
 
     // Shelves
     const shelves = state.shelves || [];
     if (shelves.length > 0) {
-      profileItems.push({ name: `${profileType} Shelf Width Beam`, lengthMm: wLength, qty: shelves.length * 2 });
-      profileItems.push({ name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: shelves.length * 2 });
+      profileItems.push({ name: `${profileType} Shelf Width Beam`, lengthMm: wLength, qty: shelves.length * 2, category: 'profile' });
+      profileItems.push({ name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: shelves.length * 2, category: 'profile' });
+    }
+
+    // Drawers
+    const drawers = state.drawers || [];
+    if (drawers.length > 0) {
+        // 1. Drawer Slides (Pair per drawer)
+        // Assuming slide length is depth - 50mm, rounded down to nearest 50mm
+        const slideLength = Math.floor((depth - 50) / 50) * 50; 
+        panelItems.push({ 
+            name: `Drawer Slides (${slideLength}mm)`, 
+            qty: drawers.length, 
+            note: 'Pair (L+R)',
+            category: 'hardware'
+        });
+
+        // 2. Drawer Faces & Boxes
+        drawers.forEach((d, idx) => {
+            const faceWidth = Math.round(innerWidth + (get().overlay * 2));
+            panelItems.push({ 
+                name: `Drawer Face #${idx+1}`, 
+                qty: 1, 
+                note: `${faceWidth} x ${Math.round(d.height)} mm`,
+                category: 'panel'
+            });
+            
+            panelItems.push({
+                name: `Drawer Box/Body #${idx+1}`,
+                qty: 1,
+                note: `Fits inside ${Math.round(innerWidth)}mm width`,
+                category: 'hardware'
+            });
+            
+            panelItems.push({ name: 'Handle', qty: 1, category: 'hardware' });
+        });
     }
 
     // Hinges
@@ -223,7 +258,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     if (result && result.success) {
       const hingeName = result.recommendedHinge?.name || 'Hinge';
       const hingeQty = 2 * doorCount; // default to 2 per door
-      hinges.push({ name: hingeName, qty: hingeQty });
+      hinges.push({ name: hingeName, qty: hingeQty, category: 'hardware' });
     }
 
     // Connectors (angle brackets or internal locks)
@@ -235,9 +270,9 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const totalConnectors = baseConnectors + shelfConnectors;
 
     if (connectorType === 'angle') {
-      profileItems.push({ name: 'Angle bracket (L)', qty: totalConnectors });
+      profileItems.push({ name: 'Angle bracket (L)', qty: totalConnectors, category: 'hardware' });
     } else if (connectorType === 'internal') {
-      profileItems.push({ name: 'Internal Lock', qty: totalConnectors });
+      profileItems.push({ name: 'Internal Lock', qty: totalConnectors, category: 'hardware' });
     }
 
     return [...profileItems, ...panelItems, ...doorItems, ...hinges];
