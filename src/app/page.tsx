@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, JSX } from 'react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -26,6 +26,7 @@ export default function Home() {
   const hasRightWall = useDesignStore((state: DesignState) => state.hasRightWall);
   const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
   const doorCount = useDesignStore((state: DesignState) => state.doorCount);
+  const connectorType = useDesignStore((state: DesignState) => state.connectorType);
 
   const frameRef = useRef<THREE.Group | null>(null);
   // setters
@@ -39,6 +40,7 @@ export default function Home() {
   const setHasRightWall = useDesignStore((state: DesignState) => state.setHasRightWall);
   const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
   const setDoorCount = useDesignStore((state: DesignState) => state.setDoorCount);
+  const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
 
   const handleCalculate = () => {
     let currentOverlay = overlay;
@@ -142,6 +144,83 @@ export default function Home() {
   const collisionLeft = Boolean(hasLeftWall && result && !result.success);
   const collisionRight = Boolean(hasRightWall && result && !result.success);
 
+  // Precompute door elements for single or double doors to simplify JSX
+  let doorElements: JSX.Element | null = null;
+  if (doorCount === 1) {
+    doorElements = (
+      <>
+        <DoorPanel
+          width={doorWidth}
+          height={doorHeight}
+          thickness={20}
+          position={hingePosition}
+          hingeSide="left"
+          isOpen={isDoorOpen}
+          material="AluminumHoneycomb"
+          showHoles={result?.success === true}
+          kValue={result?.kValue || 4}
+          hingeSeries={result?.recommendedHinge?.series || 'C80'}
+          onToggle={() => setIsDoorOpen(!isDoorOpen)}
+          highlightError={collisionLeft}
+          overlay={overlay}
+        />
+
+        <mesh position={[hingePosition[0], -height / 2 + 1, hingePosition[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0, Math.max(width, depth) * 1.2, 32, 1, 0, Math.PI / 2]} />
+          <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#60a5fa'} opacity={0.12} transparent />
+        </mesh>
+      </>
+    );
+  } else {
+    const eachInner = innerWidth / 2;
+    const doorEachWidth = eachInner + overlay; // rough approximation
+    const hingeLeftPos: [number, number, number] = [-doorEachWidth / 2, 0, depth / 2 + 2];
+    const hingeRightPos: [number, number, number] = [doorEachWidth / 2, 0, depth / 2 + 2];
+    doorElements = (
+      <>
+        <DoorPanel
+          width={doorEachWidth}
+          height={doorHeight}
+          thickness={20}
+          position={hingeLeftPos}
+          hingeSide="left"
+          isOpen={isDoorOpen}
+          material="AluminumHoneycomb"
+          showHoles={result?.success === true}
+          kValue={result?.kValue || 4}
+          hingeSeries={result?.recommendedHinge?.series || 'C80'}
+          onToggle={() => setIsDoorOpen(!isDoorOpen)}
+          highlightError={collisionLeft}
+          overlay={overlay}
+        />
+        <mesh position={[hingeLeftPos[0], -height / 2 + 1, hingeLeftPos[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0, Math.max(width, depth) * 1.1, 32, 1, 0, Math.PI / 2]} />
+          <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#60a5fa'} opacity={0.08} transparent />
+        </mesh>
+
+        <DoorPanel
+          width={doorEachWidth}
+          height={doorHeight}
+          thickness={20}
+          position={hingeRightPos}
+          hingeSide="right"
+          isOpen={isDoorOpen}
+          material="AluminumHoneycomb"
+          showHoles={result?.success === true}
+          kValue={result?.kValue || 4}
+          hingeSeries={result?.recommendedHinge?.series || 'C80'}
+          onToggle={() => setIsDoorOpen(!isDoorOpen)}
+          highlightError={collisionRight}
+          overlay={overlay}
+        />
+        <mesh position={[hingeRightPos[0], -height / 2 + 1, hingeRightPos[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0, Math.max(width, depth) * 1.1, 32, 1, 0, Math.PI / 2]} />
+          <meshStandardMaterial color={collisionRight ? '#ff4d4d' : '#60a5fa'} opacity={0.08} transparent />
+        </mesh>
+      </>
+    );
+  }
+
   // Load from localStorage on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -184,15 +263,34 @@ export default function Home() {
           <div className={styles.card}>
             <div className={styles.inputGroup}>
               <label>Profile Type (型材)</label>
-              <select
-                value={profileType}
-                onChange={(e) => setProfileType(e.target.value as ProfileType)}
-                className={styles.select}
-              >
-                <option value="2020">2020 (20mm)</option>
-                <option value="3030">3030 (30mm)</option>
-                <option value="4040">4040 (40mm)</option>
-              </select>
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                <select
+                  value={profileType}
+                  onChange={(e) => setProfileType(e.target.value as ProfileType)}
+                  className={styles.select}
+                  style={{ flex: 1 }}
+                >
+                  <option value="2020">2020</option>
+                  <option value="3030">3030</option>
+                  <option value="4040">4040</option>
+                </select>
+                <span 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0 0.5rem',
+                    backgroundColor: '#f0f9ff',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold',
+                    color: '#0369a1',
+                    border: '1px solid #cffafe'
+                  }}
+                  title={`Profile size: ${PROFILES[profileType].size}mm x ${PROFILES[profileType].size}mm`}
+                >
+                  {PROFILES[profileType].size}mm
+                </span>
+              </div>
             </div>
 
             <div className={styles.inputGroup}>
@@ -239,6 +337,14 @@ export default function Home() {
               <select value={doorCount} onChange={(e) => setDoorCount(Number(e.target.value))} className={styles.select}>
                 <option value={1}>Single Door</option>
                 <option value={2}>Double Doors</option>
+              </select>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label>Connector Type</label>
+              <select value={connectorType} onChange={(e) => setConnectorType(e.target.value as 'angle' | 'internal')} className={styles.select}>
+                <option value="angle">Angle Bracket (L-Bracket)</option>
+                <option value="internal">Internal Lock</option>
               </select>
             </div>
 
@@ -336,64 +442,7 @@ export default function Home() {
                   </group>
                 </TransformControls>
 
-                {doorCount === 1 ? (
-                  <DoorPanel
-                    width={doorWidth}
-                    height={doorHeight}
-                    thickness={20}
-                    position={hingePosition}
-                    hingeSide="left"
-                    isOpen={isDoorOpen}
-                    material="AluminumHoneycomb"
-                    showHoles={result?.success === true}
-                    kValue={result?.kValue || 4}
-                    hingeSeries={result?.recommendedHinge?.series || 'C80'}
-                    onToggle={() => setIsDoorOpen(!isDoorOpen)}
-                    highlightError={collisionLeft}
-                    overlay={overlay}
-                  />
-                ) : (
-                  (() => {
-                    const eachInner = innerWidth / 2;
-                    const doorEachWidth = eachInner + overlay; // rough approximation
-                    const hingeLeftPos: [number, number, number] = [-doorEachWidth / 2, 0, depth / 2 + 2];
-                    const hingeRightPos: [number, number, number] = [doorEachWidth / 2, 0, depth / 2 + 2];
-                    return (
-                      <>
-                        <DoorPanel
-                          width={doorEachWidth}
-                          height={doorHeight}
-                          thickness={20}
-                          position={hingeLeftPos}
-                          hingeSide="left"
-                          isOpen={isDoorOpen}
-                          material="AluminumHoneycomb"
-                          showHoles={result?.success === true}
-                          kValue={result?.kValue || 4}
-                          hingeSeries={result?.recommendedHinge?.series || 'C80'}
-                          onToggle={() => setIsDoorOpen(!isDoorOpen)}
-                          highlightError={collisionLeft}
-                          overlay={overlay}
-                        />
-                        <DoorPanel
-                          width={doorEachWidth}
-                          height={doorHeight}
-                          thickness={20}
-                          position={hingeRightPos}
-                          hingeSide="right"
-                          isOpen={isDoorOpen}
-                          material="AluminumHoneycomb"
-                          showHoles={result?.success === true}
-                          kValue={result?.kValue || 4}
-                          hingeSeries={result?.recommendedHinge?.series || 'C80'}
-                          onToggle={() => setIsDoorOpen(!isDoorOpen)}
-                          highlightError={collisionRight}
-                          overlay={overlay}
-                        />
-                      </>
-                    );
-                  })()
-                )}
+                {doorElements}
 
                 {/* Dimension Lines */}
                 <DimensionLines width={width} height={height} depth={depth} offset={80} />

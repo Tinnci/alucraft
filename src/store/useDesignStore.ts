@@ -21,11 +21,13 @@ export interface DesignState {
   hasRightWall: boolean;
   isDoorOpen: boolean;
   doorCount: number;
+  connectorType: 'angle' | 'internal';
   setProfileType: (p: ProfileType) => void;
   setOverlay: (v: number) => void;
   setResult: (r: SimulationResult | null) => void;
   setWidth: (v: number) => void;
   setDoorCount: (v: number) => void;
+  setConnectorType: (v: 'angle' | 'internal') => void;
   setHeight: (v: number) => void;
   setDepth: (v: number) => void;
   setHasLeftWall: (v: boolean) => void;
@@ -46,6 +48,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   hasRightWall: false,
   isDoorOpen: false,
   doorCount: 1,
+  connectorType: 'angle',
   setProfileType: (p: ProfileType) => set({ profileType: p }),
   setOverlay: (v: number) => set({ overlay: v }),
   setResult: (r: SimulationResult | null) => set({ result: r }),
@@ -53,6 +56,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   setHeight: (v: number) => set({ height: v }),
   setDepth: (v: number) => set({ depth: v }),
   setDoorCount: (v: number) => set({ doorCount: v }),
+  setConnectorType: (v: 'angle' | 'internal') => set({ connectorType: v }),
   setHasLeftWall: (v: boolean) => set({ hasLeftWall: v }),
   setHasRightWall: (v: boolean) => set({ hasRightWall: v }),
   setIsDoorOpen: (v: boolean) => set({ isDoorOpen: v }),
@@ -66,7 +70,7 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   },
   getBOM: () => {
     const state = get() as DesignState;
-    const { width, height, depth, profileType, result } = state;
+    const { width, height, depth, profileType, result, connectorType, doorCount } = state;
     const s = PROFILES[profileType].size;
     const innerWidth = width - (s * 2);
     const doorWidth = innerWidth + (get().overlay * 2);
@@ -83,15 +87,28 @@ export const useDesignStore = create<DesignState>((set, get) => ({
     // 4 depth beams
     profileItems.push({ name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4 });
 
-    // Door
-    const doorItems: BOMItem[] = [{ name: 'Door Panel', qty: 1, note: `${doorWidth} x ${height} mm` }];
+    // Door panels
+    const doorItems: BOMItem[] = [];
+    if (doorCount === 1) {
+      doorItems.push({ name: 'Door Panel', qty: 1, note: `${doorWidth} x ${height} mm` });
+    } else {
+      const eachWidth = Math.round(innerWidth / doorCount + get().overlay);
+      doorItems.push({ name: 'Door Panel', qty: doorCount, note: `${eachWidth} x ${height} mm each` });
+    }
 
     // Hinges
     const hinges: BOMItem[] = [];
     if (result && result.success) {
       const hingeName = result.recommendedHinge?.name || 'Hinge';
-      const hingeQty = 2; // default to 2 for typical doors
+      const hingeQty = 2 * doorCount; // default to 2 per door
       hinges.push({ name: hingeName, qty: hingeQty });
+    }
+
+    // Connectors (angle brackets or internal locks)
+    if (connectorType === 'angle') {
+      profileItems.push({ name: 'Angle bracket (L)', qty: 8 });
+    } else if (connectorType === 'internal') {
+      profileItems.push({ name: 'Internal Lock', qty: 4 });
     }
 
     return [...profileItems, ...doorItems, ...hinges];

@@ -11,48 +11,65 @@ interface AluProfileProps {
     rotation?: [number, number, number];
 }
 
-// 2020型材的截面路径 (单位: mm, 中心点为 0,0)
-// 这是一个简化的十字带槽形状，足够视觉展示使用
-const profileShape2020 = new THREE.Shape();
-const s = 10; // 半宽 10mm
-const c = 3;  // 槽口宽的一半 (6mm槽 -> 3mm)
-const d = 3;  // 槽深 
-// const i = 1.5; // 内部小倒角 (unused)
+// 型材截面形状生成函数 (单位: mm, 中心点为 0,0)
+// 简化的十字带槽形状，用于 3D 可视化
 
-profileShape2020.moveTo(-s, -s); // 左下
-profileShape2020.lineTo(-c, -s); // 底部槽口左
-profileShape2020.lineTo(-c, -s + d); // 槽内
-profileShape2020.lineTo(c, -s + d);  // 槽内
-profileShape2020.lineTo(c, -s);    // 底部槽口右
-profileShape2020.lineTo(s, -s);  // 右下
+function createProfileShape(profileType: '2020' | '3030' | '4040'): THREE.Shape {
+    const shape = new THREE.Shape();
+    
+    let s: number; // 半宽 (mm)
+    let c: number; // 槽口宽的一半 (mm)
+    let d: number; // 槽深 (mm)
+    
+    if (profileType === '2020') {
+        s = 10;  // 20mm / 2
+        c = 3;   // 6mm槽 / 2
+        d = 3;   // 槽深
+    } else if (profileType === '3030') {
+        s = 15;  // 30mm / 2
+        c = 4;   // 8mm槽 / 2
+        d = 4;   // 槽深
+    } else {
+        // '4040'
+        s = 20;  // 40mm / 2
+        c = 4;   // 8mm槽 / 2
+        d = 4;   // 槽深
+    }
+    
+    // 绘制十字带槽截面
+    shape.moveTo(-s, -s); // 左下
+    shape.lineTo(-c, -s); // 底部槽口左
+    shape.lineTo(-c, -s + d); // 槽内
+    shape.lineTo(c, -s + d);  // 槽内
+    shape.lineTo(c, -s);    // 底部槽口右
+    shape.lineTo(s, -s);  // 右下
+    
+    shape.lineTo(s, -c);  // 右侧槽口下
+    shape.lineTo(s - d, -c);
+    shape.lineTo(s - d, c);
+    shape.lineTo(s, c);   // 右侧槽口上
+    shape.lineTo(s, s);   // 右上
+    
+    shape.lineTo(c, s);
+    shape.lineTo(c, s - d);
+    shape.lineTo(-c, s - d);
+    shape.lineTo(-c, s);
+    shape.lineTo(-s, s);  // 左上
+    
+    shape.lineTo(-s, c);
+    shape.lineTo(-s + d, c);
+    shape.lineTo(-s + d, -c);
+    shape.lineTo(-s, -c);
+    shape.lineTo(-s, -s); // 回到原点
+    
+    return shape;
+}
 
-profileShape2020.lineTo(s, -c);  // 右侧槽口下
-profileShape2020.lineTo(s - d, -c);
-profileShape2020.lineTo(s - d, c);
-profileShape2020.lineTo(s, c);   // 右侧槽口上
-profileShape2020.lineTo(s, s);   // 右上
-
-profileShape2020.lineTo(c, s);
-profileShape2020.lineTo(c, s - d);
-profileShape2020.lineTo(-c, s - d);
-profileShape2020.lineTo(-c, s);
-profileShape2020.lineTo(-s, s);  // 左上
-
-profileShape2020.lineTo(-s, c);
-profileShape2020.lineTo(-s + d, c);
-profileShape2020.lineTo(-s + d, -c);
-profileShape2020.lineTo(-s, -c);
-profileShape2020.lineTo(-s, -s); // 回到原点
-
-export function AluProfile({ type: _type, length, position = [0, 0, 0], rotation = [0, 0, 0] }: AluProfileProps) {
+export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 0, 0] }: AluProfileProps) {
 
     const shape = useMemo(() => {
-        // TODO: support other profile shapes (3030/4040) - currently reusing 2020.
-        return profileShape2020;
-    }, []);
-
-    // _type is only used for future profile types, reference it to avoid linting noise
-    void _type;
+        return createProfileShape(type);
+    }, [type]);
 
     const extrudeSettings = useMemo(() => ({
         depth: length,

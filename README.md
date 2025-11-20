@@ -26,6 +26,7 @@
   * BOM Panel: Added a simple live Bill of Materials panel showing profile pieces, door dimensions and hinge count.
   * Basic transform controls: You can now drag/scale the frame in the 3D scene to change width/height/depth (uses TransformControls).
   * Persistence: Designs auto-save to localStorage and can be downloaded as JSON or loaded back.
+  * Export BOM: The BOM panel now supports Export to CSV and JSON for easy sharing or procurement.
 
 
 ### 2\. 📐 参数化 3D 框架 (Parametric Frame)
@@ -63,15 +64,6 @@ npm run dev
 ```
 
 打开浏览器访问 `http://localhost:3000` 即可开始设计。
-
-## 🧭 Quick usage tips (how to use the new UI)
-
-  * Click the door in the 3D view to toggle open / close (the door also responds to the left-side 'Open Door' button).
-  * Use the transform/scale controls (drag handles) to scale the cabinet width/height/depth directly in the 3D scene.
-  * Hover over an aluminum profile to highlight it for easier visual recognition.
-  * A live BOM panel now shows the calculated parts as you change dimensions and options.
-  * Save and load: designs auto-save to localStorage. Use the Download JSON / Load Saved buttons to export/import designs.
-
 
 ## 📅 开发计划 (Roadmap)
 
