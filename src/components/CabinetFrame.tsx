@@ -19,7 +19,6 @@ interface CabinetFrameProps {
 }
 
 export function CabinetFrame({ width, height, depth, profileType, shelves = [], drawers = [] }: CabinetFrameProps) {
-    console.log('CabinetFrame rendering:', { width, height, depth, profileType });
     const profile = PROFILES[profileType];
     const s = profile.size;
     const slotDepth = profile.slotDepth || 6;

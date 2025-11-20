@@ -67,7 +67,6 @@ function createProfileShape(profileType: '2020' | '3030' | '4040'): THREE.Shape 
 }
 
 export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 0, 0] }: AluProfileProps) {
-    console.log('AluProfile rendering:', { type, length, position });
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
 
     // Debug: Simple Square Shape
