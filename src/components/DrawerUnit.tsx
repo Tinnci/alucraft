@@ -27,7 +27,6 @@ export function DrawerUnit({ width, height, depth, position, isColliding = false
 
     // Drawer Box Dimensions (simplified)
     const boxHeight = Math.max(50, height - 40); // Box is shorter than face
-    const boxThickness = 12; 
 
     // Material props
     const materialColor = isColliding ? '#ff4d4d' : '#f1f5f9';

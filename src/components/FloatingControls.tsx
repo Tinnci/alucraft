@@ -27,7 +27,7 @@ import {
   Video,
   LayoutGrid
 } from 'lucide-react';
-import useDesignStore, { DesignState, LayoutBay } from '@/store/useDesignStore';
+import useDesignStore, { DesignState, LayoutBay, createDefaultDoorConfig, MaterialType } from '@/store/useDesignStore';
 import { calculateHinge } from '@/core/hinge-rules';
 import { ProfileType } from '@/core/types';
 import { DxfGenerator } from '@/utils/DxfGenerator';
@@ -157,7 +157,6 @@ export function FloatingControls() {
   const hasBackPanel = useDesignStore((state: DesignState) => state.hasBackPanel);
   const hasTopPanel = useDesignStore((state: DesignState) => state.hasTopPanel);
   const hasBottomPanel = useDesignStore((state: DesignState) => state.hasBottomPanel);
-  const doorCount = useDesignStore((state: DesignState) => state.doorCount);
   const connectorType = useDesignStore((state: DesignState) => state.connectorType);
   const result = useDesignStore((state: DesignState) => state.result);
   const showDimensions = useDesignStore((state: DesignState) => state.showDimensions);
@@ -182,12 +181,12 @@ export function FloatingControls() {
   const setHasBackPanel = useDesignStore((state: DesignState) => state.setHasBackPanel);
   const setHasTopPanel = useDesignStore((state: DesignState) => state.setHasTopPanel);
   const setHasBottomPanel = useDesignStore((state: DesignState) => state.setHasBottomPanel);
-  const setDoorCount = useDesignStore((state: DesignState) => state.setDoorCount);
   const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
   const setShowDimensions = useDesignStore((state: DesignState) => state.setShowDimensions);
   const setShowWireframe = useDesignStore((state: DesignState) => state.setShowWireframe);
   const setMaterial = useDesignStore((state: DesignState) => state.setMaterial);
   const triggerCameraReset = useDesignStore((state: DesignState) => state.triggerCameraReset);
+  const setBayDoorConfig = useDesignStore((state: DesignState) => state.setBayDoorConfig);
 
   // Layout Actions
   const addBay = useDesignStore((state: DesignState) => state.addBay);
@@ -208,18 +207,18 @@ export function FloatingControls() {
 
   // Auto-select first bay if none selected or selected is invalid
   useEffect(() => {
-    if (bays.length > 0) {
-      if (!selectedBayId || !bays.find(b => b.id === selectedBayId)) {
-        setSelectedBayId(bays[0].id);
-      }
-    } else {
+    const isValidSelection = selectedBayId && bays.some(b => b.id === selectedBayId);
+    if (!isValidSelection && bays.length > 0) {
+      setSelectedBayId(bays[0].id);
+    } else if (bays.length === 0) {
       setSelectedBayId(null);
     }
-  }, [bays, selectedBayId]);
+  }, [bays, selectedBayId, setSelectedBayId]);
 
   const selectedBay = bays.find(b => b.id === selectedBayId);
   const shelves = selectedBay?.shelves || [];
   const drawers = selectedBay?.drawers || [];
+  const selectedDoor = selectedBay ? (selectedBay.door ?? createDefaultDoorConfig()) : null;
 
   const handleCalculate = () => {
     let currentOverlay = overlay;
@@ -248,7 +247,7 @@ export function FloatingControls() {
   };
 
   const downloadDesign = () => {
-    const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, doorCount, connectorType, result, layout };
+  const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, connectorType, result, layout };
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -272,7 +271,6 @@ export function FloatingControls() {
         if (parsed.overlay !== undefined) setOverlay(parsed.overlay);
         if (parsed.hasLeftWall !== undefined) setHasLeftWall(parsed.hasLeftWall);
         if (parsed.hasRightWall !== undefined) setHasRightWall(parsed.hasRightWall);
-        if (parsed.doorCount !== undefined) setDoorCount(parsed.doorCount);
         if (parsed.connectorType !== undefined) setConnectorType(parsed.connectorType);
         if (parsed.result) setResult(parsed.result);
         // TODO: Load layout if present, otherwise migrate?
@@ -288,15 +286,19 @@ export function FloatingControls() {
   };
 
   const applyPreset = (preset: string) => {
+    const primaryBay = bays[0];
     switch (preset) {
       case 'standard':
-        setWidth(600); setHeight(800); setDepth(400); setDoorCount(1);
+        setWidth(600); setHeight(800); setDepth(400);
+        if (primaryBay) setBayDoorConfig(primaryBay.id, { enabled: true, type: 'single', hingeSide: 'left' });
         break;
       case 'wall':
-        setWidth(400); setHeight(600); setDepth(350); setDoorCount(1);
+        setWidth(400); setHeight(600); setDepth(350);
+        if (primaryBay) setBayDoorConfig(primaryBay.id, { enabled: true, type: 'single', hingeSide: 'right' });
         break;
       case 'pantry':
-        setWidth(800); setHeight(2000); setDepth(500); setDoorCount(2);
+        setWidth(800); setHeight(2000); setDepth(500);
+        if (primaryBay) setBayDoorConfig(primaryBay.id, { enabled: true, type: 'double' });
         break;
     }
   };
@@ -397,6 +399,77 @@ export function FloatingControls() {
             <LevaSlider label="Depth" value={depth} min={200} max={1000} step={10} onChange={setDepth} />
           </CollapsibleSection>
 
+          {/* Door Configuration */}
+          <CollapsibleSection title="Doors & Fronts" icon={DoorOpen}>
+            {!selectedBay && (
+              <div className="text-xs text-muted-foreground italic text-center py-1">
+                Select a bay to configure doors
+              </div>
+            )}
+            {selectedBay && selectedDoor && (
+              <div className="space-y-2 bg-muted/30 p-2 rounded border border-border/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">Bay {bays.findIndex(b => b.id === selectedBay.id) + 1}</div>
+                    <div className="text-[10px] text-muted-foreground">{Math.round(selectedBay.width)} mm span</div>
+                  </div>
+                  <button
+                    onClick={() => setBayDoorConfig(selectedBay.id, { enabled: !selectedDoor.enabled })}
+                    className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${selectedDoor.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-muted text-muted-foreground'}`}
+                  >
+                    {selectedDoor.enabled ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                {selectedDoor.enabled ? (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Door Type</label>
+                      <div className="flex bg-muted p-1 rounded gap-1">
+                        {(['single', 'double'] as const).map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setBayDoorConfig(selectedBay.id, { type })}
+                            className={`flex-1 py-1 rounded text-xs transition-colors ${selectedDoor.type === type ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                          >
+                            {type === 'single' ? 'Single' : 'Double'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {selectedDoor.type === 'single' && (
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Hinge Side</label>
+                        <div className="flex bg-muted p-1 rounded gap-1">
+                          {(['left', 'right'] as const).map(side => (
+                            <button
+                              key={side}
+                              onClick={() => setBayDoorConfig(selectedBay.id, { hingeSide: side })}
+                              className={`flex-1 py-1 rounded text-xs transition-colors ${selectedDoor.hingeSide === side ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                              {side === 'left' ? 'Left' : 'Right'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-[11px] text-muted-foreground/80 bg-background/40 rounded px-2 py-1 border border-border/40">
+                      {selectedDoor.type === 'single'
+                        ? `Door width ≈ ${Math.round(selectedBay.width + overlay * 2)} mm`
+                        : `Each door ≈ ${Math.round(selectedBay.width / 2 + overlay)} mm`}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-[11px] text-muted-foreground italic">
+                    Doors disabled for this bay
+                  </div>
+                )}
+              </div>
+            )}
+          </CollapsibleSection>
+
           {/* Layout Management */}
           <CollapsibleSection title="Layout (Bays)" icon={LayoutGrid}
             action={
@@ -465,7 +538,7 @@ export function FloatingControls() {
                   {['silver', 'dark_metal', 'wood'].map(mat => (
                     <button
                       key={mat}
-                      onClick={() => setMaterial(mat as any)}
+                      onClick={() => setMaterial(mat as MaterialType)}
                       className={`flex-1 py-1 rounded text-xs transition-colors ${material === mat ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                       {mat === 'dark_metal' ? 'Dark' : mat.charAt(0).toUpperCase() + mat.slice(1)}
@@ -474,23 +547,6 @@ export function FloatingControls() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Doors</label>
-                <div className="flex bg-muted p-1 rounded gap-1">
-                  <button
-                    onClick={() => setDoorCount(1)}
-                    className={`flex-1 py-1 rounded text-xs transition-colors ${doorCount === 1 ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    1
-                  </button>
-                  <button
-                    onClick={() => setDoorCount(2)}
-                    className={`flex-1 py-1 rounded text-xs transition-colors ${doorCount === 2 ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    2
-                  </button>
-                </div>
-              </div>
             </div>
 
             <div className="space-y-1">

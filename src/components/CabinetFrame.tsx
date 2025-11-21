@@ -6,7 +6,7 @@ import { ProfileInstances, ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
 import { PROFILES, ProfileType } from '@/core/types';
-import { Shelf, Drawer, useDesignStore, DesignState, LayoutBay, LayoutDivider } from '@/store/useDesignStore';
+import { Shelf, useDesignStore, DesignState, LayoutBay } from '@/store/useDesignStore';
 import * as THREE from 'three';
 
 interface CabinetFrameProps {
@@ -47,7 +47,16 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
     });
 
     // Calculate positions for layout nodes
-    let currentX = -width / 2 + s; // Start after left pillar
+    const nodePositions = React.useMemo(() => {
+        const positions: { id: string, type: 'bay' | 'divider', x: number, width: number }[] = [];
+        let currentX = -width / 2 + s;
+        for (const node of layout) {
+            const centerX = currentX + node.width / 2;
+            positions.push({ id: node.id, type: node.type, x: centerX, width: node.width });
+            currentX += node.width;
+        }
+        return positions;
+    }, [layout, width, s]);
 
     return (
         <group>
@@ -72,33 +81,25 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                 <ProfileInstance length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
 
                 {/* --- Layout Nodes (Bays & Dividers) --- */}
-                {layout.map((node, index) => {
-                    if (node.type === 'bay') {
-                        const bayWidth = node.width;
-                        const centerX = currentX + bayWidth / 2;
-                        currentX += bayWidth;
+                {nodePositions.map((nodeInfo) => {
+                    const node = layout.find(n => n.id === nodeInfo.id);
+                    if (!node) return null;
 
+                    if (node.type === 'bay') {
                         return (
                             <Bay
                                 key={node.id}
-                                bay={node}
-                                position={[centerX, 0, 0]}
+                                bay={node as LayoutBay}
+                                position={[nodeInfo.x, 0, 0]}
                                 height={height}
                                 depth={depth}
                                 profileType={profileType}
                             />
                         );
                     } else if (node.type === 'divider') {
-                        const divWidth = node.width;
-                        const centerX = currentX + divWidth / 2;
-                        currentX += divWidth;
-
                         // Render Divider (Vertical Profile)
-                        // Assuming divider is a single vertical profile at front and back? Or just one?
-                        // Usually a divider in this system implies a full vertical separation.
-                        // So we need Front and Back verticals.
                         return (
-                            <group key={node.id} position={[centerX, 0, 0]}>
+                            <group key={node.id} position={[nodeInfo.x, 0, 0]}>
                                 <ProfileInstance length={hLength - (s * 2)} position={[0, -height / 2 + s, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
                                 <ProfileInstance length={hLength - (s * 2)} position={[0, -height / 2 + s, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
                             </group>

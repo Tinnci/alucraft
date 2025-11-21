@@ -23,12 +23,35 @@ export interface Drawer {
   height: number; // Height of the drawer
 }
 
+export type DoorType = 'single' | 'double';
+export type HingeSide = 'left' | 'right';
+
+export interface BayDoorConfig {
+  enabled: boolean;
+  type: DoorType;
+  hingeSide: HingeSide; // Used when type === 'single'
+}
+
+export const createDefaultDoorConfig = (): BayDoorConfig => ({
+  enabled: true,
+  type: 'single',
+  hingeSide: 'left'
+});
+
+export const getDoorStateKey = (bayId: string, side: HingeSide) => `${bayId}:${side}`;
+
+export const getDoorSides = (door?: BayDoorConfig): HingeSide[] => {
+  if (!door || !door.enabled) return [];
+  return door.type === 'double' ? ['left', 'right'] : [door.hingeSide];
+};
+
 export interface LayoutBay {
   type: 'bay';
   id: string;
   width: number;
   shelves: Shelf[];
   drawers: Drawer[];
+  door?: BayDoorConfig;
 }
 
 export interface LayoutDivider {
@@ -38,6 +61,8 @@ export interface LayoutDivider {
 }
 
 export type LayoutNode = LayoutBay | LayoutDivider;
+
+export type MaterialType = 'silver' | 'dark_metal' | 'wood';
 
 export interface DesignState {
   profileType: ProfileType;
@@ -55,13 +80,13 @@ export interface DesignState {
   hasTopPanel: boolean;
   hasBottomPanel: boolean;
   isDoorOpen: boolean;
-  doorCount: number;
   connectorType: 'angle' | 'internal';
   showDimensions: boolean;
   showWireframe: boolean;
   cameraResetTrigger: number;
   isDarkMode: boolean;
-  material: 'silver' | 'dark_metal' | 'wood';
+  material: MaterialType;
+  doorStates: Record<string, boolean>;
 
   setProfileType: (p: ProfileType) => void;
   setOverlay: (v: number) => void;
@@ -77,13 +102,15 @@ export interface DesignState {
   setHasTopPanel: (v: boolean) => void;
   setHasBottomPanel: (v: boolean) => void;
   setIsDoorOpen: (v: boolean) => void;
-  setDoorCount: (v: number) => void;
   setConnectorType: (v: 'angle' | 'internal') => void;
   setShowDimensions: (v: boolean) => void;
   setShowWireframe: (v: boolean) => void;
   triggerCameraReset: () => void;
   toggleTheme: () => void;
-  setMaterial: (material: 'silver' | 'dark_metal' | 'wood') => void;
+  setMaterial: (material: MaterialType) => void;
+  setDoorState: (doorId: string, isOpen: boolean) => void;
+  toggleDoorState: (doorId: string) => void;
+  setBayDoorConfig: (bayId: string, config: Partial<BayDoorConfig>) => void;
 
   // Layout Actions
   addBay: () => void;
@@ -114,7 +141,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   depth: 400,
   // Initial Layout: One Bay
   layout: [
-    { type: 'bay', id: 'bay-initial', width: 560, shelves: [], drawers: [] } // 600 - 40 (20*2)
+    { type: 'bay', id: 'bay-initial', width: 560, shelves: [], drawers: [], door: createDefaultDoorConfig() } // 600 - 40 (20*2)
   ],
   hasLeftWall: false,
   hasRightWall: false,
@@ -124,20 +151,19 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   hasTopPanel: false,
   hasBottomPanel: false,
   isDoorOpen: false,
-  doorCount: 1,
   connectorType: 'angle',
   showDimensions: true,
   showWireframe: false,
   cameraResetTrigger: 0,
   isDarkMode: true,
   material: 'silver',
+  doorStates: {},
 
   setProfileType: (p: ProfileType) => set({ profileType: p }),
   setOverlay: (v: number) => set({ overlay: v }),
   setResult: (r: SimulationResult | null) => set({ result: r }),
   setWidth: (v: number) => set((state) => {
     // When total width changes, resize the first bay (simplified logic for now)
-    const profileSize = PROFILES[state.profileType].size;
     const diff = v - state.width;
     const newLayout = [...state.layout];
     const firstBay = newLayout.find(n => n.type === 'bay') as LayoutBay;
@@ -155,14 +181,56 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setHasBackPanel: (v: boolean) => set({ hasBackPanel: v }),
   setHasTopPanel: (v: boolean) => set({ hasTopPanel: v }),
   setHasBottomPanel: (v: boolean) => set({ hasBottomPanel: v }),
-  setIsDoorOpen: (v: boolean) => set({ isDoorOpen: v }),
-  setDoorCount: (v: number) => set({ doorCount: v }),
+  setIsDoorOpen: (v: boolean) => set((state) => {
+    const nextDoorStates = { ...state.doorStates };
+    state.layout.forEach((node) => {
+      if (node.type !== 'bay') return;
+      const doorConfig = node.door ?? createDefaultDoorConfig();
+      getDoorSides(doorConfig).forEach((side) => {
+        nextDoorStates[getDoorStateKey(node.id, side)] = v;
+      });
+    });
+    return { isDoorOpen: v, doorStates: nextDoorStates };
+  }),
   setConnectorType: (v: 'angle' | 'internal') => set({ connectorType: v }),
   setShowDimensions: (v: boolean) => set({ showDimensions: v }),
   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   setMaterial: (material) => set({ material }),
+  setDoorState: (doorId, isOpen) => set((state) => ({ doorStates: { ...state.doorStates, [doorId]: isOpen } })),
+  toggleDoorState: (doorId) => set((state) => ({ doorStates: { ...state.doorStates, [doorId]: !state.doorStates[doorId] } })),
+  setBayDoorConfig: (bayId, config) => set((state) => {
+    let targetDoor: BayDoorConfig | undefined;
+    const newLayout = state.layout.map((node) => {
+      if (node.type === 'bay' && node.id === bayId) {
+        const base = node.door ?? createDefaultDoorConfig();
+        const newDoorConfig = { ...base, ...config };
+        targetDoor = newDoorConfig;
+        return { ...node, door: newDoorConfig };
+      }
+      return node;
+    });
+
+    if (!targetDoor) {
+      return {};
+    }
+
+    const newDoorStates = { ...state.doorStates };
+    const allowedKeys = getDoorSides(targetDoor).map((side) => getDoorStateKey(bayId, side));
+    Object.keys(newDoorStates).forEach((key) => {
+      if (key.startsWith(`${bayId}:`) && !allowedKeys.includes(key)) {
+        delete newDoorStates[key];
+      }
+    });
+    allowedKeys.forEach((key) => {
+      if (!(key in newDoorStates)) {
+        newDoorStates[key] = state.isDoorOpen;
+      }
+    });
+
+    return { layout: newLayout, doorStates: newDoorStates };
+  }),
 
   // --- Layout Actions ---
   addBay: () => set((state) => {
@@ -175,7 +243,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       id: Math.random().toString(36).substr(2, 9),
       width: newBayWidth,
       shelves: [],
-      drawers: []
+      drawers: [],
+      door: createDefaultDoorConfig()
     };
     const newDivider: LayoutDivider = {
       type: 'divider',
@@ -183,9 +252,15 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       width: dividerWidth
     };
 
+    const newDoorStates = { ...state.doorStates };
+    getDoorSides(newBay.door).map((side) => getDoorStateKey(newBay.id, side)).forEach((key: string) => {
+      newDoorStates[key] = state.isDoorOpen;
+    });
+
     return {
       layout: [...state.layout, newDivider, newBay],
-      width: state.width + dividerWidth + newBayWidth
+      width: state.width + dividerWidth + newBayWidth,
+      doorStates: newDoorStates
     };
   }),
   removeBay: (id: string) => set((state) => {
@@ -195,7 +270,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const bayCount = state.layout.filter(n => n.type === 'bay').length;
     if (bayCount <= 1) return {};
 
-    let newLayout = [...state.layout];
+    const newLayout = [...state.layout];
     let widthReduction = 0;
 
     const node = newLayout[index] as LayoutBay;
@@ -211,9 +286,13 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       newLayout.splice(index, 1);
     }
 
+    const doorPrefix = `${id}:`;
+    const newDoorStatesEntries = Object.entries(state.doorStates).filter(([key]) => !key.startsWith(doorPrefix));
+
     return {
       layout: newLayout,
-      width: state.width - widthReduction
+      width: state.width - widthReduction,
+      doorStates: Object.fromEntries(newDoorStatesEntries)
     };
   }),
   resizeBay: (id: string, width: number) => set((state) => {
@@ -324,13 +403,11 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   },
   getBOM: () => {
     const state = get() as DesignState;
-    const { width, height, depth, profileType, result, connectorType, doorCount, hasLeftPanel, hasRightPanel, hasBackPanel, hasTopPanel, hasBottomPanel, layout } = state;
+  const { width, height, depth, profileType, result, connectorType, hasLeftPanel, hasRightPanel, hasBackPanel, hasTopPanel, hasBottomPanel, layout, overlay } = state;
     const profile = PROFILES[profileType];
     const s = profile.size;
     const slotDepth = profile.slotDepth || 6;
     const innerWidth = width - (s * 2);
-    const doorWidth = innerWidth + (get().overlay * 2);
-
     const hLength = Math.round(height);
     const wLength = Math.round(innerWidth);
     const dLength = Math.round(depth - (s * 2));
@@ -345,7 +422,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
 
     // Dividers
     const dividers = layout.filter(n => n.type === 'divider') as LayoutDivider[];
-    dividers.forEach(d => {
+    dividers.forEach(() => {
       profileItems.push({ name: `${profileType} Vertical (Divider)`, lengthMm: hLength - (s * 2), qty: 1, category: 'profile' });
     });
 
@@ -382,19 +459,41 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       panelItems.push({ name: 'Bottom Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm`, category: 'panel' });
     }
 
-    // Door panels
+    // Door panels (per bay)
     const doorItems: BOMItem[] = [];
-    if (doorCount === 1) {
-      doorItems.push({ name: 'Door Panel', qty: 1, note: `${doorWidth} x ${height} mm`, category: 'panel' });
-    } else {
-      const eachWidth = Math.round(innerWidth / doorCount + get().overlay);
-      doorItems.push({ name: 'Door Panel', qty: doorCount, note: `${eachWidth} x ${height} mm each`, category: 'panel' });
-    }
-
-    // Iterate Bays for Shelves and Drawers
-    let totalShelves = 0;
-    let totalDrawers = 0;
     const bays = layout.filter(n => n.type === 'bay') as LayoutBay[];
+
+    const doorLeafCount = bays.reduce((acc, bay) => {
+      const doorConfig = bay.door ?? createDefaultDoorConfig();
+      if (!doorConfig.enabled) return acc;
+      return acc + (doorConfig.type === 'double' ? 2 : 1);
+    }, 0);
+
+    bays.forEach((bay) => {
+      const doorConfig = bay.door ?? createDefaultDoorConfig();
+      if (!doorConfig.enabled) return;
+
+      const bayLabel = `Bay ${bays.length > 1 ? bays.findIndex(b => b.id === bay.id) + 1 : ''}`.trim();
+      if (doorConfig.type === 'single') {
+        const singleWidth = Math.round(bay.width + overlay * 2);
+        doorItems.push({
+          name: `${bayLabel} Door Panel (Single)`,
+          qty: 1,
+          note: `${singleWidth} x ${height} mm`,
+          category: 'panel'
+        });
+      } else {
+        const leafWidth = Math.round(bay.width / 2 + overlay);
+        doorItems.push({
+          name: `${bayLabel} Door Panel (Pair)`,
+          qty: 2,
+          note: `${leafWidth} x ${height} mm each`,
+          category: 'panel'
+        });
+      }
+    });
+
+    let totalShelves = 0;
 
     bays.forEach(bay => {
       const bayWLength = Math.round(bay.width);
@@ -416,7 +515,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
           category: 'hardware'
         });
 
-        bay.drawers.forEach((d, idx) => {
+        bay.drawers.forEach((d) => {
           const faceWidth = Math.round(bay.width + (s * 2) + (get().overlay * 2)); // Approx
           panelItems.push({
             name: `Drawer Face`,
@@ -432,15 +531,14 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
           });
           panelItems.push({ name: 'Handle', qty: 1, category: 'hardware' });
         });
-        totalDrawers += bay.drawers.length;
       }
     });
 
     // Hinges
     const hinges: BOMItem[] = [];
-    if (result && result.success) {
+    if (result && result.success && doorLeafCount > 0) {
       const hingeName = result.recommendedHinge?.name || 'Hinge';
-      const hingeQty = 2 * doorCount; // default to 2 per door
+      const hingeQty = 2 * doorLeafCount; // default to 2 per door leaf
       hinges.push({ name: hingeName, qty: hingeQty, category: 'hardware' });
     }
 
@@ -460,7 +558,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
 }), {
   partialize: (state) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { isDoorOpen, showDimensions, showWireframe, ...rest } = state;
+    const { cameraResetTrigger, ...rest } = state;
     return rest;
   },
 }));

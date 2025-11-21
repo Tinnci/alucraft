@@ -1,5 +1,5 @@
 import DxfWriter from 'dxf-writer';
-import { DesignState, LayoutNode } from '@/store/useDesignStore';
+import { DesignState } from '@/store/useDesignStore';
 import { PROFILES } from '@/core/types';
 
 export class DxfGenerator {
@@ -20,7 +20,7 @@ export class DxfGenerator {
     }
 
     public generate(): string {
-        const { width, height, depth, profileType, layout } = this.state;
+        const { width, height, profileType, layout } = this.state;
         const profile = PROFILES[profileType];
         const s = profile.size;
 
@@ -72,11 +72,12 @@ export class DxfGenerator {
     }
 
     private drawRect(x: number, y: number, w: number, h: number, layer: string) {
+        this.writer.setActiveLayer(layer);
         // DxfWriter draws lines.
         // Rect: (x,y) -> (x+w, y) -> (x+w, y+h) -> (x, y+h) -> (x,y)
-        this.writer.drawLine(x, y, x + w, y, layer);
-        this.writer.drawLine(x + w, y, x + w, y + h, layer);
-        this.writer.drawLine(x + w, y + h, x, y + h, layer);
-        this.writer.drawLine(x, y + h, x, y, layer);
+        this.writer.drawLine(x, y, x + w, y);
+        this.writer.drawLine(x + w, y, x + w, y + h);
+        this.writer.drawLine(x + w, y + h, x, y + h);
+        this.writer.drawLine(x, y + h, x, y);
     }
 }

@@ -27,6 +27,7 @@
   * On-canvas interaction: Click door to toggle open/close; Alu profiles highlight on hover; Doors show hinge cup holes and screw positions.
   * Dimension Lines: Added 3D dimension lines with labels for cabinet width, height, and depth to aid quick reading.
   * BOM Panel: Added a simple live Bill of Materials panel showing profile pieces, door dimensions and hinge count.
+  * Per-bay door controls: Each bay now owns its own door/hinge configuration so asymmetric cabinets (open shelves next to doors, mixed single/double leaves) stay accurate in 3D and in the BOM.
   * Basic transform controls: You can now drag/scale the frame in the 3D scene to change width/height/depth (uses TransformControls).
   * Persistence: Designs auto-save to localStorage and can be downloaded as JSON or loaded back.
   * Export BOM: The BOM panel now supports Export to CSV and JSON for easy sharing or procurement.

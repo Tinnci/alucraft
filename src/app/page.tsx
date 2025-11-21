@@ -1,10 +1,10 @@
 'use client';
 
-import { useRef, useEffect, JSX } from 'react';
-import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import { useRef, useEffect, JSX, Fragment } from 'react';
+import useDesignStore, { DesignState, LayoutBay, createDefaultDoorConfig, getDoorStateKey } from '@/store/useDesignStore';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { OrbitControls, Stage, Box, TransformControls, Environment } from '@react-three/drei';
+import { OrbitControls, Stage, Box, Environment } from '@react-three/drei';
 import { ProfileType, PROFILES } from '@/core/types';
 import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
@@ -20,9 +20,9 @@ function CameraHandler() {
   useEffect(() => {
     if (cameraResetTrigger > 0) {
       camera.position.set(1500, 1500, 1500);
-      // @ts-ignore
+      // @ts-expect-error -- The 'target' property exists on OrbitControls, but the type definition is not precise.
       controls?.target.set(0, 0, 0);
-      // @ts-ignore
+      // @ts-expect-error -- The 'update' method exists on OrbitControls, but the type definition is not precise.
       controls?.update();
     }
   }, [cameraResetTrigger, camera, controls]);
@@ -40,7 +40,8 @@ export default function Home() {
   const hasLeftWall = useDesignStore((state: DesignState) => state.hasLeftWall);
   const hasRightWall = useDesignStore((state: DesignState) => state.hasRightWall);
   const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
-  const doorCount = useDesignStore((state: DesignState) => state.doorCount);
+  const layout = useDesignStore((state: DesignState) => state.layout);
+  const doorStates = useDesignStore((state: DesignState) => state.doorStates);
 
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
 
@@ -55,97 +56,83 @@ export default function Home() {
   const setHasLeftWall = useDesignStore((state: DesignState) => state.setHasLeftWall);
   const setHasRightWall = useDesignStore((state: DesignState) => state.setHasRightWall);
   const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
+  const toggleDoorState = useDesignStore((state: DesignState) => state.toggleDoorState);
 
-  // Calculate door dimensions
   const profile = PROFILES[profileType as ProfileType];
   const s = profile.size;
-  const innerWidth = width - (s * 2);
-  const doorWidth = innerWidth + (overlay * 2);
   const doorHeight = height;
-
-  const hingePosition: [number, number, number] = [
-    -doorWidth / 2,
-    0,
-    depth / 2 + 2
-  ];
-
+  const doorDepthOffset = depth / 2 + 2;
   const collisionLeft = useDesignStore((state: DesignState) => state.getCollisions().left);
   const collisionRight = useDesignStore((state: DesignState) => state.getCollisions().right);
 
-  let doorElements: JSX.Element | null = null;
-  if (doorCount === 1) {
-    doorElements = (
-      <>
-        <DoorPanel
-          width={doorWidth}
-          height={doorHeight}
-          thickness={20}
-          position={hingePosition}
-          hingeSide="left"
-          isOpen={isDoorOpen}
-          material="AluminumHoneycomb"
-          showHoles={result?.success === true}
-          kValue={result?.kValue || 4}
-          hingeSeries={result?.recommendedHinge?.series || 'C80'}
-          onToggle={() => setIsDoorOpen(!isDoorOpen)}
-          highlightError={collisionLeft}
-          overlay={overlay}
-        />
-        <mesh position={[hingePosition[0], -height / 2 + 1, hingePosition[2]]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0, Math.max(width, depth) * 1.2, 32, 1, 0, Math.PI / 2]} />
-          <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#60a5fa'} opacity={0.12} transparent />
-        </mesh>
-      </>
-    );
-  } else {
-    const eachInner = innerWidth / 2;
-    const doorEachWidth = eachInner + overlay;
-    const hingeLeftPos: [number, number, number] = [-doorEachWidth / 2, 0, depth / 2 + 2];
-    const hingeRightPos: [number, number, number] = [doorEachWidth / 2, 0, depth / 2 + 2];
-    doorElements = (
-      <>
-        <DoorPanel
-          width={doorEachWidth}
-          height={doorHeight}
-          thickness={20}
-          position={hingeLeftPos}
-          hingeSide="left"
-          isOpen={isDoorOpen}
-          material="AluminumHoneycomb"
-          showHoles={result?.success === true}
-          kValue={result?.kValue || 4}
-          hingeSeries={result?.recommendedHinge?.series || 'C80'}
-          onToggle={() => setIsDoorOpen(!isDoorOpen)}
-          highlightError={collisionLeft}
-          overlay={overlay}
-        />
-        <mesh position={[hingeLeftPos[0], -height / 2 + 1, hingeLeftPos[2]]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0, Math.max(width, depth) * 1.1, 32, 1, 0, Math.PI / 2]} />
-          <meshStandardMaterial color={collisionLeft ? '#ff4d4d' : '#60a5fa'} opacity={0.08} transparent />
-        </mesh>
+  const leftEdge = -width / 2;
+  const rightEdge = width / 2;
+  const edgeTolerance = s;
 
-        <DoorPanel
-          width={doorEachWidth}
-          height={doorHeight}
-          thickness={20}
-          position={hingeRightPos}
-          hingeSide="right"
-          isOpen={isDoorOpen}
-          material="AluminumHoneycomb"
-          showHoles={result?.success === true}
-          kValue={result?.kValue || 4}
-          hingeSeries={result?.recommendedHinge?.series || 'C80'}
-          onToggle={() => setIsDoorOpen(!isDoorOpen)}
-          highlightError={collisionRight}
-          overlay={overlay}
-        />
-        <mesh position={[hingeRightPos[0], -height / 2 + 1, hingeRightPos[2]]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0, Math.max(width, depth) * 1.1, 32, 1, 0, Math.PI / 2]} />
-          <meshStandardMaterial color={collisionRight ? '#ff4d4d' : '#60a5fa'} opacity={0.08} transparent />
-        </mesh>
-      </>
-    );
-  }
+  const doorElements: JSX.Element[] = [];
+  let cursor = -width / 2 + s;
+
+  layout.forEach((node) => {
+    if (node.type === 'bay') {
+      const bay = node as LayoutBay;
+      const centerX = cursor + bay.width / 2;
+      cursor += bay.width;
+
+      const doorConfig = bay.door ?? createDefaultDoorConfig();
+      if (!doorConfig.enabled) {
+        return;
+      }
+
+      const buildDoor = (hingeSide: 'left' | 'right', doorWidth: number, hingeX: number, highlight: boolean) => {
+        const doorId = getDoorStateKey(bay.id, hingeSide);
+        const isOpen = doorStates[doorId] ?? isDoorOpen;
+        doorElements.push(
+          <Fragment key={`${doorId}-panel`}>
+            <DoorPanel
+              width={doorWidth}
+              height={doorHeight}
+              thickness={20}
+              position={[hingeX, 0, doorDepthOffset]}
+              hingeSide={hingeSide}
+              isOpen={isOpen}
+              material="AluminumHoneycomb"
+              showHoles={result?.success === true}
+              kValue={result?.kValue || 4}
+              hingeSeries={result?.recommendedHinge?.series || 'C80'}
+              onToggle={() => toggleDoorState(doorId)}
+              highlightError={highlight}
+              overlay={overlay}
+            />
+            <mesh position={[hingeX, -height / 2 + 1, doorDepthOffset]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[0, Math.max(width, depth) * 1.05, 32, 1, 0, Math.PI / 2]} />
+              <meshStandardMaterial color={highlight ? '#ff4d4d' : '#60a5fa'} opacity={0.08} transparent />
+            </mesh>
+          </Fragment>
+        );
+      };
+
+      if (doorConfig.type === 'single') {
+        const doorWidth = bay.width + overlay * 2;
+        const hingeX = doorConfig.hingeSide === 'left'
+          ? centerX - (bay.width / 2 + overlay)
+          : centerX + (bay.width / 2 + overlay);
+        const highlight = doorConfig.hingeSide === 'left'
+          ? collisionLeft && Math.abs(hingeX - leftEdge) <= edgeTolerance
+          : collisionRight && Math.abs(hingeX - rightEdge) <= edgeTolerance;
+        buildDoor(doorConfig.hingeSide, doorWidth, hingeX, highlight);
+      } else {
+        const leafWidth = bay.width / 2 + overlay;
+        const leftHingeX = centerX - (bay.width / 2 + overlay);
+        const rightHingeX = centerX + (bay.width / 2 + overlay);
+        const leftHighlight = collisionLeft && Math.abs(leftHingeX - leftEdge) <= edgeTolerance;
+        const rightHighlight = collisionRight && Math.abs(rightHingeX - rightEdge) <= edgeTolerance;
+        buildDoor('left', leafWidth, leftHingeX, leftHighlight);
+        buildDoor('right', leafWidth, rightHingeX, rightHighlight);
+      }
+    } else {
+      cursor += node.width;
+    }
+  });
 
   // Load from localStorage on mount
   useEffect(() => {
