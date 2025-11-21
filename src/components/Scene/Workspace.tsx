@@ -170,9 +170,9 @@ export function Workspace() {
       <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
       <Environment preset="city" />
 
-      {/* 2. 阴影平面 (替代 Stage 的阴影) */}
+      {/* 2. 阴影平面 (替代 Stage 的阴影) - 更低的 Y 值以避免与 Grid 冲突 */}
       <ContactShadows
-        position={[0, 0, 0]}
+        position={[0, -0.13, 0]}
         opacity={0.4}
         scale={10000}
         blur={2}
@@ -219,7 +219,7 @@ export function Workspace() {
       <OrbitControls makeDefault maxDistance={10000} target={[0, height / 2, 0]} />
 
       {/* 4. 网格帮助线 (center line color, regular grid color) */}
-      <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} position={[0, 0.01, 0]} />
+  <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} position={[0, 0, 0]} />
     </>
   );
 }
