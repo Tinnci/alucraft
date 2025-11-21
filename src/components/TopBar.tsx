@@ -8,6 +8,8 @@ import {
   Undo2,
   Redo2,
   SunMedium,
+  PanelRightOpen,
+  PanelRightClose,
   Eye,
   EyeOff,
   Video,
@@ -48,6 +50,8 @@ export function TopBar() {
   const isTopBarExpanded = useUIStore((state) => state.isTopBarExpanded);
   const setTopBarExpanded = useUIStore((state) => state.setTopBarExpanded);
   const setBOMPanelOpen = useUIStore((state) => state.setBOMPanelOpen);
+  const isPropertyPanelOpen = useUIStore((state) => state.isPropertyPanelOpen);
+  const setPropertyPanelOpen = useUIStore((state) => state.setPropertyPanelOpen);
 
   // Export/Import handlers
   const downloadDesign = () => {
@@ -145,12 +149,21 @@ export function TopBar() {
             </div>
           </div>
 
-          <button
-            onClick={() => setTopBarExpanded(!isTopBarExpanded)}
-            className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {isTopBarExpanded ? '−' : '+'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setTopBarExpanded(!isTopBarExpanded)}
+              className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {isTopBarExpanded ? '−' : '+'}
+            </button>
+            <button
+              onClick={() => setPropertyPanelOpen(!isPropertyPanelOpen)}
+              className={`p-2 rounded-md transition-colors ${isPropertyPanelOpen ? 'bg-blue-600 text-white' : 'text-muted-foreground hover:bg-white/10 hover:text-foreground'}`}
+              title={isPropertyPanelOpen ? "Hide Inspector" : "Show Inspector"}
+            >
+              {isPropertyPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+            </button>
+          </div>
         </div>
 
         {/* Content (shown when expanded) */}

@@ -376,6 +376,21 @@ function SnappingGuides({ height, width, depth }: { height: number, width: numbe
     return <group>{lines}</group>;
 }
 
+// SnapLine: Shows a focused snapping guide (across the full cabinet width)
+function SnapLine({ y, depth, totalWidth }: { y: number; depth: number; totalWidth: number }) {
+    return (
+        <group position={[0, y, depth / 2 + 1]}>
+            <Line
+                points={[[-totalWidth / 2 - 50, 0, 0], [totalWidth / 2 + 50, 0, 0]]}
+                color="#ec4899"
+                lineWidth={2}
+                transparent
+                opacity={0.9}
+            />
+        </group>
+    );
+}
+
 function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf }: DraggableShelfProps) {
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -384,6 +399,9 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
     const intersectPoint = useRef(new THREE.Vector3());
     const groupRef = useRef<THREE.Group>(null);
     const currentYRef = useRef(shelf.y);
+    const totalWidth = useDesignStore((state: DesignState) => state.width);
+    const layout = useDesignStore((state: DesignState) => state.layout);
+    const [snapY, setSnapY] = useState<number | null>(null);
 
     const selectShelf = useUIStore(state => state.selectShelf);
     const selectedShelfId = useUIStore(state => state.selectedShelfId);
@@ -435,15 +453,46 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
         const newWorldY = intersectPoint.current.y;
         let newShelfY = newWorldY + height / 2;
 
-        // Clamp
-        const limit = 40;
-        newShelfY = Math.max(limit, Math.min(height - limit, newShelfY));
+        // Apply snapping (smart shelf snap first, then grid snap)
+        const applySnapping = (rawY: number): number => {
+            const SNAP_THRESHOLD = 15; // mm
+            let bestY = rawY;
+            let activeSnap: number | null = null;
 
-        // Snap to 32mm system
-        const snap = 32;
-        if (Math.abs(newShelfY % snap) < 10) {
-            newShelfY = Math.round(newShelfY / snap) * snap;
-        }
+            // Smart snap to other shelves
+            let minDiff = Infinity;
+            for (const node of layout) {
+                if (node.type === 'bay') {
+                    for (const s of node.shelves) {
+                        if (node.id === bayId && s.id === shelf.id) continue;
+                        const diff = Math.abs(rawY - s.y);
+                        if (diff < SNAP_THRESHOLD && diff < minDiff) {
+                            minDiff = diff;
+                            bestY = s.y;
+                            activeSnap = s.y;
+                        }
+                    }
+                }
+            }
+
+            // Grid snap to 32mm if no smart snap
+            if (activeSnap === null) {
+                const GRID_SIZE = 32;
+                const snappedGrid = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
+                if (Math.abs(rawY - snappedGrid) < 10) {
+                    bestY = snappedGrid;
+                }
+            }
+
+            // Clamp range
+            const limit = 40;
+            bestY = Math.max(limit, Math.min(height - limit, bestY));
+
+            setSnapY(activeSnap);
+            return bestY;
+        };
+
+        newShelfY = applySnapping(newShelfY);
 
         // Update visual only
         if (groupRef.current) {
@@ -464,12 +513,32 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                     onObjectChange={() => {
                         if (groupRef.current) {
                             const newY = groupRef.current.position.y + height / 2;
-                            // Snap logic for gizmo
-                            const snap = 32;
-                            let snappedY = newY;
-                            if (Math.abs(newY % snap) < 10) {
-                                snappedY = Math.round(newY / snap) * snap;
-                            }
+                            // Snap logic for gizmo: use same applySnapping logic
+                            const applySnappingGizmo = (rawY: number): number => {
+                                const SNAP_THRESHOLD = 15;
+                                let bestY = rawY;
+                                let minDiff = Infinity;
+                                for (const node of layout) {
+                                    if (node.type === 'bay') {
+                                        for (const s of node.shelves) {
+                                            if (node.id === bayId && s.id === shelf.id) continue;
+                                            const diff = Math.abs(rawY - s.y);
+                                            if (diff < SNAP_THRESHOLD && diff < minDiff) {
+                                                minDiff = diff;
+                                                bestY = s.y;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (bestY === rawY) {
+                                    const GRID_SIZE = 32;
+                                    const snappedGrid = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
+                                    if (Math.abs(rawY - snappedGrid) < 10) bestY = snappedGrid;
+                                }
+                                const limit = 40;
+                                return Math.max(limit, Math.min(height - limit, bestY));
+                            };
+                            let snappedY = applySnappingGizmo(newY);
                             // Clamp
                             const limit = 40;
                             snappedY = Math.max(limit, Math.min(height - limit, snappedY));
@@ -478,7 +547,9 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                         }
                     }}
                     onMouseUp={() => {
+                        setSnapY(null);
                         updateShelf(bayId, shelf.id, currentYRef.current);
+                        if (groupRef.current) groupRef.current.position.y = currentYRef.current - height / 2;
                     }}
                 />
             )}
@@ -509,6 +580,7 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                 {(isDragging || isSelected) && (
                     <group position={[0, -(shelf.y - height / 2), 0]}>
                         <SnappingGuides height={height} width={width} depth={depth} />
+                        {snapY !== null && <SnapLine y={snapY - height / 2} depth={depth} totalWidth={totalWidth} />}
                     </group>
                 )}
 

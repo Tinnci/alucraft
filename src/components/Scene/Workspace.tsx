@@ -221,8 +221,8 @@ export function Workspace() {
       {/* 4. 网格帮助线 (center line color, regular grid color) */}
       <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} position={[0, 0, 0]} />
       {/* 5. View Navigation Gizmo */}
-      {/* Move to bottom-right to avoid overlap with PropertyInspector and BottomBar */}
-      <GizmoHelper alignment="bottom-left" margin={[100, 160]}>
+      {/* Move to bottom-right to avoid overlap with Toolbar and PropertyInspector */}
+      <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
         <GizmoViewcube />
       </GizmoHelper>
     </>

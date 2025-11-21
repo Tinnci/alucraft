@@ -104,7 +104,7 @@ const AccordionItem = ({
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
-  icon?: React.ComponentType<any>;
+  icon?: React.ComponentType<{ size?: number | string; className?: string }>;
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -152,7 +152,6 @@ export function PropertyInspector() {
   const selectedShelfId = useUIStore((state) => state.selectedShelfId);
   const selectedDrawerId = useUIStore((state) => state.selectedDrawerId);
   const selectedObjectType = useUIStore((state) => state.selectedObjectType);
-  const isPropertyPanelOpen = useUIStore((state) => state.isPropertyPanelOpen);
   const setPropertyPanelOpen = useUIStore((state) => state.setPropertyPanelOpen);
 
   // Setters
@@ -216,9 +215,8 @@ export function PropertyInspector() {
     setResult(res);
   };
 
-  if (!isPropertyPanelOpen) {
-    return null;
-  }
+  // The panel is now mounted by the page and its visibility is controlled
+  // via CSS (width/opacity) for smooth transitions. Keep this component always mounted.
 
   return (
     <div

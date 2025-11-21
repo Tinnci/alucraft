@@ -20,6 +20,7 @@ export default function Home() {
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
   const result = useDesignStore((state: DesignState) => state.result);
   const isPropertyPanelOpen = useUIStore((s) => s.isPropertyPanelOpen);
+  const setPropertyPanelOpen = useUIStore((s) => s.setPropertyPanelOpen);
   const bgColor = isDarkMode ? '#0f172a' : '#f8fafc';
 
   // 获取清除选中状态的方法
@@ -67,12 +68,20 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right: Property Inspector (Docked; collapses if closed) */}
-        {isPropertyPanelOpen && (
-          <div className="w-80 border-l border-white/10 bg-slate-900/80 backdrop-blur-md z-40 flex flex-col shrink-0 h-full pointer-events-auto">
+        {/* Mobile Backdrop (only visible on small screens when panel open) */}
+        <div
+          className={`md:hidden fixed inset-0 z-30 bg-black/50 backdrop-blur-sm transition-opacity ${isPropertyPanelOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+          onClick={() => setPropertyPanelOpen(false)}
+        />
+
+        {/* Right: Property Inspector (Docked with smooth width transition on desktop; overlay on mobile) */}
+        <div
+          className={`fixed md:relative top-0 right-0 bottom-0 z-40 flex flex-col h-full transition-transform duration-300 ease-in-out overflow-hidden bg-slate-900/95 backdrop-blur-md ${isPropertyPanelOpen ? 'translate-x-0 md:w-80 w-80 opacity-100 pointer-events-auto' : 'translate-x-full md:w-0 w-0 opacity-0 pointer-events-none md:border-l-0'}`}
+        >
+          <div className="w-80 h-full md:h-full md:w-80">
             <PropertyInspector />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Modals / panels */}
