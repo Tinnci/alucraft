@@ -8,10 +8,7 @@ import {
     HardwareBOMItem,
     ConnectorType,
     CONNECTORS,
-    LayoutNode,
-    LayoutBay,
-    LayoutDivider,
-    Drawer
+    LayoutNode
 } from './types';
 import { calculateHinge } from './hinge-rules';
 
@@ -59,7 +56,6 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     const slotDepth = profile.slotDepth || 6;
     const innerWidth = width - (s * 2);
     const hLength = Math.round(height);
-    const wLength = Math.round(innerWidth);
     const dLength = Math.round(depth - (s * 2));
 
     // 获取连接件扣减量
@@ -68,7 +64,6 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
 
     // 计算实际的下料长度（应用连接件扣减）
     // 横梁长度 = 内宽 - (连接件扣减 * 2)
-    const beamDeductedLength = Math.round(wLength - (connectorDeduction * 2));
     const frameBeamDeductedLength = Math.round(innerWidth - (connectorDeduction * 2));
 
     const profileItems: ProfileBOMItem[] = [];

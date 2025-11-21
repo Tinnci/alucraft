@@ -1,13 +1,16 @@
-'use client';
 
-import React, { useRef, useState } from 'react';
+"use client";
+
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as THREE from 'three';
 import { useThree, ThreeEvent } from '@react-three/fiber';
+import { Line, TransformControls } from '@react-three/drei';
+import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import useUIStore from '@/store/useUIStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
-import { PROFILES, ProfileType, ConnectorType, Shelf, LayoutBay } from '@/core/types';
-import { useDesignStore, DesignState } from '@/store/useDesignStore';
-import * as THREE from 'three';
+import { PROFILES, ProfileType, LayoutBay, Shelf } from '@/core/types';
 
 interface CabinetFrameProps {
     width: number;
@@ -112,7 +115,7 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
     });
 
     // Calculate positions for layout nodes
-    const nodePositions = React.useMemo(() => {
+    const nodePositions = useMemo(() => {
         const positions: { id: string, type: 'bay' | 'divider', x: number, width: number }[] = [];
         let currentX = -width / 2 + s;
         for (const node of layout) {
@@ -348,6 +351,31 @@ interface DraggableShelfProps {
     updateShelf: (bayId: string, id: string, y: number) => void;
 }
 
+function SnappingGuides({ height, width, depth }: { height: number, width: number, depth: number }) {
+    const lines: React.ReactNode[] = [];
+    const step = 32;
+    const startY = -height / 2;
+    const endY = height / 2;
+
+    for (let y = startY; y <= endY; y += step) {
+        // Skip lines too close to ends
+        if (Math.abs(y - startY) < 1 || Math.abs(y - endY) < 1) continue;
+
+        lines.push(
+            <Line
+                key={y}
+                points={[[-width / 2, y, depth / 2 + 1], [width / 2, y, depth / 2 + 1]]}
+                color="#ef4444"
+                transparent
+                opacity={0.3}
+                lineWidth={1}
+            />
+        );
+    }
+
+    return <group>{lines}</group>;
+}
+
 function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf }: DraggableShelfProps) {
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -357,21 +385,24 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
     const groupRef = useRef<THREE.Group>(null);
     const currentYRef = useRef(shelf.y);
 
+    const selectShelf = useUIStore(state => state.selectShelf);
+    const selectedShelfId = useUIStore(state => state.selectedShelfId);
+    const isSelected = selectedShelfId === shelf.id;
+
     const profile = PROFILES[profileType];
     const s = profile.size;
 
     // Sync ref with prop when not dragging
-    React.useEffect(() => {
-        if (!isDragging) {
+    useEffect(() => {
+        if (!isDragging && groupRef.current) {
             currentYRef.current = shelf.y;
-            if (groupRef.current) {
-                groupRef.current.position.y = shelf.y - height / 2;
-            }
+            groupRef.current.position.y = shelf.y - height / 2;
         }
     }, [shelf.y, height, isDragging]);
 
     const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
         e.stopPropagation();
+        selectShelf(bayId, shelf.id); // Select on click/drag start
         setIsDragging(true);
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
@@ -422,48 +453,86 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
     };
 
     return (
-        <group
-            ref={groupRef}
-            position={[0, shelf.y - height / 2, 0]}
-            onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-            onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
-            onPointerDown={onPointerDown}
-            onPointerUp={onPointerUp}
-            onPointerMove={onPointerMove}
-        >
-            {/* Hit Box for easier selection */}
-            <mesh visible={false}>
-                <boxGeometry args={[width, 40, depth]} />
-            </mesh>
+        <>
+            {isSelected && (
+                <TransformControls
+                    object={groupRef as unknown as React.MutableRefObject<THREE.Object3D>}
+                    mode="translate"
+                    showX={false}
+                    showZ={false}
+                    size={0.8}
+                    onObjectChange={() => {
+                        if (groupRef.current) {
+                            const newY = groupRef.current.position.y + height / 2;
+                            // Snap logic for gizmo
+                            const snap = 32;
+                            let snappedY = newY;
+                            if (Math.abs(newY % snap) < 10) {
+                                snappedY = Math.round(newY / snap) * snap;
+                            }
+                            // Clamp
+                            const limit = 40;
+                            snappedY = Math.max(limit, Math.min(height - limit, snappedY));
 
-            {/* Visual Highlight */}
-            {hovered && (
-                <mesh position={[0, 0, 0]}>
-                    <boxGeometry args={[width + 10, 10, depth + 10]} />
-                    <meshBasicMaterial color="#3b82f6" opacity={0.3} transparent depthTest={false} />
-                </mesh>
+                            currentYRef.current = snappedY;
+                        }
+                    }}
+                    onMouseUp={() => {
+                        updateShelf(bayId, shelf.id, currentYRef.current);
+                    }}
+                />
             )}
+            <group
+                ref={groupRef}
+                position={[0, shelf.y - height / 2, 0]}
+                onClick={(e) => { e.stopPropagation(); selectShelf(bayId, shelf.id); }}
+                onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
+                onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
+                onPointerDown={onPointerDown}
+                onPointerUp={onPointerUp}
+                onPointerMove={onPointerMove}
+            >
+                {/* Hit Box for easier selection */}
+                <mesh visible={false}>
+                    <boxGeometry args={[width, 40, depth]} />
+                </mesh>
 
-            {/* Shelf Beams */}
-            <ProfileInstance length={wLength} position={[-wLength / 2, 0, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
-            <ProfileInstance length={wLength} position={[-wLength / 2, 0, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
-            <ProfileInstance length={dLength} position={[-width / 2 + offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
-            <ProfileInstance length={dLength} position={[width / 2 - offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
+                {/* Visual Highlight */}
+                {hovered && (
+                    <mesh position={[0, 0, 0]}>
+                        <boxGeometry args={[width + 10, 10, depth + 10]} />
+                        <meshBasicMaterial color="#3b82f6" opacity={0.3} transparent depthTest={false} />
+                    </mesh>
+                )}
 
-            {/* Connectors (Below the shelf beams) */}
-            <group>
-                {/* Width Beam Connectors (4) */}
-                <Connector size={s} position={[-width / 2 + s, -s / 2, depth / 2 - s / 2]} rotation={[0, 0, -Math.PI / 2]} />
-                <Connector size={s} position={[width / 2 - s, -s / 2, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
-                <Connector size={s} position={[-width / 2 + s, -s / 2, -depth / 2 + s / 2]} rotation={[0, 0, -Math.PI / 2]} />
-                <Connector size={s} position={[width / 2 - s, -s / 2, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
+                {/* Snapping Guides (Static relative to Bay) */}
+                {(isDragging || isSelected) && (
+                    <group position={[0, -(shelf.y - height / 2), 0]}>
+                        <SnappingGuides height={height} width={width} depth={depth} />
+                    </group>
+                )}
 
-                {/* Depth Beam Connectors (4) */}
-                <Connector size={s} position={[-width / 2 + s / 2, -s / 2, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
-                <Connector size={s} position={[-width / 2 + s / 2, -s / 2, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
-                <Connector size={s} position={[width / 2 - s / 2, -s / 2, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
-                <Connector size={s} position={[width / 2 - s / 2, -s / 2, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
+                {/* Shelf Beams */}
+                <ProfileInstance length={wLength} position={[-wLength / 2, 0, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
+                <ProfileInstance length={wLength} position={[-wLength / 2, 0, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
+                <ProfileInstance length={dLength} position={[-width / 2 + offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
+                <ProfileInstance length={dLength} position={[width / 2 - offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
+
+                {/* Connectors (Below the shelf beams) */}
+                <group>
+                    {/* Width Beam Connectors (4) */}
+                    <Connector size={s} position={[-width / 2 + s, -s / 2, depth / 2 - s / 2]} rotation={[0, 0, -Math.PI / 2]} />
+                    <Connector size={s} position={[width / 2 - s, -s / 2, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
+                    <Connector size={s} position={[-width / 2 + s, -s / 2, -depth / 2 + s / 2]} rotation={[0, 0, -Math.PI / 2]} />
+                    <Connector size={s} position={[width / 2 - s, -s / 2, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
+
+                    {/* Depth Beam Connectors (4) */}
+                    <Connector size={s} position={[-width / 2 + s / 2, -s / 2, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
+                    <Connector size={s} position={[-width / 2 + s / 2, -s / 2, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
+                    <Connector size={s} position={[width / 2 - s / 2, -s / 2, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
+                    <Connector size={s} position={[width / 2 - s / 2, -s / 2, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
+                </group>
             </group>
-        </group>
+        </>
     );
 }

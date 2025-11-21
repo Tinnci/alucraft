@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 declare module 'react-draggable' {
     import * as React from 'react';
 

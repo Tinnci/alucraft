@@ -3,12 +3,12 @@
 import { useRef, Fragment, JSX, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { OrbitControls, Environment, ContactShadows, Box } from '@react-three/drei';
-import useDesignStore, { DesignState, LayoutBay, createDefaultDoorConfig, getDoorStateKey } from '@/store/useDesignStore';
+import { OrbitControls, Environment, ContactShadows, Box, GizmoHelper, GizmoViewcube } from '@react-three/drei';
+import useDesignStore, { DesignState, createDefaultDoorConfig, getDoorStateKey } from '@/store/useDesignStore';
 import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
 import DimensionLines from '@/components/DimensionLines';
-import { PROFILES, ProfileType } from '@/core/types';
+import { PROFILES, ProfileType, LayoutBay } from '@/core/types';
 
 /**
  * CameraHandler - 处理相机重置触发
@@ -219,7 +219,11 @@ export function Workspace() {
       <OrbitControls makeDefault maxDistance={10000} target={[0, height / 2, 0]} />
 
       {/* 4. 网格帮助线 (center line color, regular grid color) */}
-  <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} position={[0, 0, 0]} />
+      <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} position={[0, 0, 0]} />
+      {/* 5. View Navigation Gizmo */}
+      <GizmoHelper alignment="top-right" margin={[80, 80]}>
+        <GizmoViewcube />
+      </GizmoHelper>
     </>
   );
 }

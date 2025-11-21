@@ -45,7 +45,7 @@ function EditableLabel({ value, onChange }: EditableLabelProps) {
   }
 
   return (
-    <div 
+    <div
       className="bg-black/60 text-white backdrop-blur-sm px-2 py-1 rounded-full text-xs font-mono border border-white/20 cursor-pointer hover:bg-blue-500 transition-colors select-none"
       onClick={() => {
         setTempValue(value.toString());
@@ -85,19 +85,19 @@ export function DimensionLines({ width, height, depth, offset = 60 }: DimensionL
     <group>
       {/* Width */}
       <Line points={[widthStart, widthEnd]} color="#94a3b8" lineWidth={1} dashed={false} opacity={0.5} transparent />
-      <Html position={[0, halfH + offset + 10, -halfD]} center>
+      <Html position={[0, halfH + offset + 10, -halfD]} center zIndexRange={[100, 0]}>
         <EditableLabel value={width} onChange={setWidth} />
       </Html>
 
       {/* Height */}
       <Line points={[heightStart, heightEnd]} color="#94a3b8" lineWidth={1} dashed={false} opacity={0.5} transparent />
-      <Html position={[-halfW - offset - 20, 0, -halfD]} center>
+      <Html position={[-halfW - offset - 20, 0, -halfD]} center zIndexRange={[100, 0]}>
         <EditableLabel value={height} onChange={setHeight} />
       </Html>
 
       {/* Depth */}
       <Line points={[depthStart, depthEnd]} color="#94a3b8" lineWidth={1} dashed={false} opacity={0.5} transparent />
-      <Html position={[halfW + offset + 10, halfH - 10, 0]} center>
+      <Html position={[halfW + offset + 10, halfH - 10, 0]} center zIndexRange={[100, 0]}>
         <EditableLabel value={depth} onChange={setDepth} />
       </Html>
     </group>

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import useDesignStore, { DesignState, LayoutBay, createDefaultDoorConfig } from '@/store/useDesignStore';
+import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, DoorOpen, BoxSelect, Layers } from 'lucide-react';
+import useDesignStore, { DesignState, createDefaultDoorConfig } from '@/store/useDesignStore';
+import { LayoutBay } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
 import { calculateHinge } from '@/core/hinge-rules';
 import { CONNECTORS, ConnectorType } from '@/core/types';
@@ -87,6 +88,39 @@ const LevaSlider = ({
         />
         {unit && <span className="text-xs text-muted-foreground ml-0.5">{unit}</span>}
       </div>
+    </div>
+  );
+};
+
+/**
+ * Accordion Item Component
+ */
+const AccordionItem = ({
+  title,
+  children,
+  defaultOpen = true,
+  icon: Icon
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  icon?: React.ElementType;
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="border border-border/50 rounded-lg bg-muted/10 overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-3 bg-muted/20 hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          {Icon && <Icon size={14} className="text-muted-foreground" />}
+          {title}
+        </div>
+        {isOpen ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
+      </button>
+      {isOpen && <div className="p-3 space-y-3 border-t border-border/50">{children}</div>}
     </div>
   );
 };
@@ -189,44 +223,46 @@ export function PropertyInspector() {
   return (
     <div
       className={`
-        w-96
-        bg-slate-900/50 backdrop-blur-md glass-shine
-        border border-white/10 rounded-lg shadow-xl
+        fixed bottom-0 left-0 right-0 z-40 w-full
+        md:static md:w-96 md:z-auto
+        bg-slate-900/90 backdrop-blur-xl
+        border-t md:border border-white/10 md:rounded-lg shadow-2xl
         overflow-hidden flex flex-col
         transition-all duration-300
-        max-h-full
+        max-h-[60vh] md:max-h-[calc(100vh-100px)]
+        md:mr-4 md:mt-4
       `}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border shrink-0">
-        <div className="text-sm font-semibold text-foreground">
-          {selectedObjectType === 'bay' && `Bay ${bays.findIndex((b) => b.id === selectedBayId) + 1}`}
-          {selectedObjectType === 'shelf' && `Shelf`}
-          {selectedObjectType === 'drawer' && `Drawer`}
-          {!selectedObjectType && 'Properties'}
+      <div className="flex items-center justify-between p-3 border-b border-white/10 bg-white/5 shrink-0">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          {selectedObjectType === 'bay' && <BoxSelect size={16} className="text-blue-400" />}
+          {selectedObjectType === 'shelf' && <Layers size={16} className="text-blue-400" />}
+          {selectedObjectType === 'drawer' && <Layers size={16} className="text-blue-400" />}
+          {!selectedObjectType && <BoxSelect size={16} className="text-blue-400" />}
+
+          <span>
+            {selectedObjectType === 'bay' && `Bay #${bays.findIndex((b) => b.id === selectedBayId) + 1}`}
+            {selectedObjectType === 'shelf' && `Shelf`}
+            {selectedObjectType === 'drawer' && `Drawer`}
+            {!selectedObjectType && 'Global Settings'}
+          </span>
         </div>
         <button
           onClick={() => setPropertyPanelOpen(false)}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors p-1 hover:bg-white/10 rounded"
         >
           ✕
         </button>
       </div>
 
       {/* Content */}
-      <div className="overflow-y-auto custom-scrollbar flex-1 p-4 space-y-4">
-        {!selectedObjectType && (
-          <div className="text-xs text-muted-foreground italic text-center py-8">
-            Select a bay, shelf, or drawer in the 3D view to edit its properties
-          </div>
-        )}
+      <div className="overflow-y-auto custom-scrollbar flex-1 p-3 space-y-3">
 
         {/* Bay Properties */}
         {selectedObjectType === 'bay' && selectedBay && (
-          <div className="space-y-4">
-            {/* Bay Width */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-foreground">Width</label>
+          <>
+            <AccordionItem title="Dimensions" icon={BoxSelect}>
               <LevaSlider
                 label="Width"
                 value={Math.round(selectedBay.width)}
@@ -236,74 +272,70 @@ export function PropertyInspector() {
                 onChange={(v) => resizeBay(selectedBay.id, v)}
                 unit="mm"
               />
-            </div>
+            </AccordionItem>
 
-            {/* Door Configuration */}
             {selectedDoor && (
-              <div className="space-y-2 bg-muted/30 p-3 rounded border border-border/50">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">Door Config</span>
+              <AccordionItem title="Door Configuration" icon={DoorOpen}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">Enable Door</span>
                   <button
                     onClick={() => setBayDoorConfig(selectedBay.id, { enabled: !selectedDoor.enabled })}
-                    className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
-                      selectedDoor.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-muted text-muted-foreground'
-                    }`}
+                    className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${selectedDoor.enabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-muted text-muted-foreground border border-transparent'
+                      }`}
                   >
-                    {selectedDoor.enabled ? 'Enabled' : 'Disabled'}
+                    {selectedDoor.enabled ? 'ON' : 'OFF'}
                   </button>
                 </div>
 
                 {selectedDoor.enabled && (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Door Type</label>
-                      <div className="flex bg-muted p-1 rounded gap-1">
+                  <div className="space-y-3 pt-2 border-t border-border/30">
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">Type</label>
+                      <div className="grid grid-cols-2 gap-2">
                         {(['single', 'double'] as const).map((type) => (
                           <button
                             key={type}
                             onClick={() => setBayDoorConfig(selectedBay.id, { type })}
-                            className={`flex-1 py-1 rounded text-xs transition-colors ${
-                              selectedDoor.type === type
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground'
-                            }`}
+                            className={`py-1.5 px-2 rounded text-xs border transition-all ${selectedDoor.type === type
+                              ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
+                              : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+                              }`}
                           >
-                            {type === 'single' ? 'Single' : 'Double'}
+                            {type === 'single' ? 'Single Door' : 'Double Door'}
                           </button>
                         ))}
                       </div>
                     </div>
 
                     {selectedDoor.type === 'single' && (
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         <label className="text-xs text-muted-foreground">Hinge Side</label>
-                        <div className="flex bg-muted p-1 rounded gap-1">
+                        <div className="grid grid-cols-2 gap-2">
                           {(['left', 'right'] as const).map((side) => (
                             <button
                               key={side}
                               onClick={() => setBayDoorConfig(selectedBay.id, { hingeSide: side })}
-                              className={`flex-1 py-1 rounded text-xs transition-colors ${
-                                selectedDoor.hingeSide === side
-                                  ? 'bg-blue-600 text-white shadow-sm'
-                                  : 'text-muted-foreground hover:text-foreground'
-                              }`}
+                              className={`py-1.5 px-2 rounded text-xs border transition-all ${selectedDoor.hingeSide === side
+                                ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
+                                : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+                                }`}
                             >
-                              {side === 'left' ? 'Left' : 'Right'}
+                              {side === 'left' ? 'Left Hinge' : 'Right Hinge'}
                             </button>
                           ))}
                         </div>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
-              </div>
+              </AccordionItem>
             )}
-          </div>
+          </>
         )}
 
         {/* Shelf Properties */}
         {selectedObjectType === 'shelf' && selectedShelf && selectedBay && (
-          <div className="space-y-4">
+          <AccordionItem title="Shelf Properties" icon={Layers}>
             <LevaSlider
               label="Y-Position"
               value={Math.round(selectedShelf.y)}
@@ -314,26 +346,26 @@ export function PropertyInspector() {
               unit="mm"
             />
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 onClick={() => duplicateShelf(selectedBay.id, selectedShelf.id)}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors border border-transparent hover:border-border"
               >
                 <Copy size={12} /> Duplicate
               </button>
               <button
                 onClick={() => removeShelf(selectedBay.id, selectedShelf.id)}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded text-xs transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded text-xs transition-colors"
               >
                 <Trash2 size={12} /> Remove
               </button>
             </div>
-          </div>
+          </AccordionItem>
         )}
 
         {/* Drawer Properties */}
         {selectedObjectType === 'drawer' && selectedDrawer && selectedBay && (
-          <div className="space-y-4">
+          <AccordionItem title="Drawer Properties" icon={Layers}>
             <LevaSlider
               label="Y-Position"
               value={Math.round(selectedDrawer.y)}
@@ -354,30 +386,27 @@ export function PropertyInspector() {
               unit="mm"
             />
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 onClick={() => duplicateDrawer(selectedBay.id, selectedDrawer.id)}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors border border-transparent hover:border-border"
               >
                 <Copy size={12} /> Duplicate
               </button>
               <button
                 onClick={() => removeDrawer(selectedBay.id, selectedDrawer.id)}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded text-xs transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded text-xs transition-colors"
               >
                 <Trash2 size={12} /> Remove
               </button>
             </div>
-          </div>
+          </AccordionItem>
         )}
 
         {/* Global Settings (shown when nothing is selected) */}
         {!selectedObjectType && (
-          <div className="space-y-4">
-            {/* Hinge Logic */}
-            <div className="space-y-3 bg-muted/30 p-3 rounded border border-border/50">
-              <div className="text-xs font-semibold text-foreground">Hinge Logic</div>
-
+          <>
+            <AccordionItem title="Hinge Logic" icon={Calculator}>
               <LevaSlider
                 label="Overlay"
                 value={overlay}
@@ -389,7 +418,7 @@ export function PropertyInspector() {
               />
 
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
                   <input
                     type="checkbox"
                     checked={hasLeftWall}
@@ -398,7 +427,7 @@ export function PropertyInspector() {
                   />
                   Left Wall
                 </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
                   <input
                     type="checkbox"
                     checked={hasRightWall}
@@ -418,11 +447,10 @@ export function PropertyInspector() {
 
               {result && (
                 <div
-                  className={`p-2 rounded border text-xs ${
-                    result.success
-                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
-                  }`}
+                  className={`p-2 rounded border text-xs ${result.success
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
+                    }`}
                 >
                   <div className="flex items-center gap-2 font-bold mb-1">
                     {result.success ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
@@ -431,14 +459,11 @@ export function PropertyInspector() {
                   <div className="opacity-90 leading-relaxed">{result.message}</div>
                 </div>
               )}
-            </div>
+            </AccordionItem>
 
-            {/* Panel Settings */}
-            <div className="space-y-3 bg-muted/30 p-3 rounded border border-border/50">
-              <div className="text-xs font-semibold text-foreground">Panels</div>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+            <AccordionItem title="Panels" icon={Layers}>
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
                   <input
                     type="checkbox"
                     checked={hasLeftPanel}
@@ -447,7 +472,7 @@ export function PropertyInspector() {
                   />
                   Left Panel
                 </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
                   <input
                     type="checkbox"
                     checked={hasRightPanel}
@@ -456,7 +481,7 @@ export function PropertyInspector() {
                   />
                   Right Panel
                 </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
                   <input
                     type="checkbox"
                     checked={hasBackPanel}
@@ -465,7 +490,7 @@ export function PropertyInspector() {
                   />
                   Back Panel
                 </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
                   <input
                     type="checkbox"
                     checked={hasTopPanel}
@@ -474,7 +499,7 @@ export function PropertyInspector() {
                   />
                   Top Panel
                 </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
                   <input
                     type="checkbox"
                     checked={hasBottomPanel}
@@ -485,45 +510,60 @@ export function PropertyInspector() {
                 </label>
               </div>
 
-              <div className="flex gap-2 items-center">
-                <label className="text-xs text-muted-foreground">Thickness</label>
-                <input
-                  type="number"
-                  min={3}
-                  max={50}
-                  value={panelThickness}
-                  onChange={(e) => setPanelThickness(Number(e.target.value))}
-                  className="w-16 bg-muted text-foreground rounded px-2 py-1 text-xs"
-                />
-              </div>
+              <div className="pt-2 border-t border-border/30 space-y-2">
+                <div className="flex gap-2 items-center justify-between">
+                  <label className="text-xs text-muted-foreground">Thickness</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={3}
+                      max={50}
+                      value={panelThickness}
+                      onChange={(e) => setPanelThickness(Number(e.target.value))}
+                      className="w-12 bg-muted text-foreground rounded px-1.5 py-1 text-xs text-right"
+                    />
+                    <span className="text-xs text-muted-foreground">mm</span>
+                  </div>
+                </div>
 
-              <div className="flex gap-2 items-center">
-                <label className="text-xs text-muted-foreground">Tolerance</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={tolerance}
-                  onChange={(e) => setTolerance(Number(e.target.value))}
-                  className="w-16 bg-muted text-foreground rounded px-2 py-1 text-xs"
-                />
+                <div className="flex gap-2 items-center justify-between">
+                  <label className="text-xs text-muted-foreground">Tolerance</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={tolerance}
+                      onChange={(e) => setTolerance(Number(e.target.value))}
+                      className="w-12 bg-muted text-foreground rounded px-1.5 py-1 text-xs text-right"
+                    />
+                    <span className="text-xs text-muted-foreground">mm</span>
+                  </div>
+                </div>
               </div>
-            </div>
+            </AccordionItem>
 
-            {/* Connector Settings */}
-            <div className="space-y-2 bg-muted/30 p-3 rounded border border-border/50">
-              <label className="text-xs text-muted-foreground font-semibold">Connector Type</label>
-              <select
-                value={connectorType}
-                onChange={(e) => setConnectorType(e.target.value as ConnectorType)}
-                className="w-full bg-muted border border-transparent text-foreground text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
-              >
+            <AccordionItem title="Connectors" icon={BoxSelect}>
+              <div className="grid grid-cols-2 gap-2">
                 {Object.entries(CONNECTORS).map(([key, spec]) => (
-                  <option key={key} value={key}>{spec.name}</option>
+                  <button
+                    key={key}
+                    onClick={() => setConnectorType(key as ConnectorType)}
+                    className={`
+                      flex flex-col items-start p-2 rounded border text-left transition-all
+                      ${connectorType === key
+                        ? 'bg-blue-600/20 border-blue-500 text-blue-100'
+                        : 'bg-muted/20 border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <span className="text-xs font-semibold">{spec.name}</span>
+                    <span className="text-[10px] opacity-70 mt-0.5">Deduction: {spec.deduction}mm</span>
+                  </button>
                 ))}
-              </select>
-            </div>
-          </div>
+              </div>
+            </AccordionItem>
+          </>
         )}
       </div>
     </div>

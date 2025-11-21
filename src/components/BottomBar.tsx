@@ -2,7 +2,8 @@
 
 import React, { useMemo } from 'react';
 import { Plus, LayoutGrid, Box } from 'lucide-react';
-import useDesignStore, { DesignState, LayoutBay } from '@/store/useDesignStore';
+import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import { LayoutBay } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
 
 /**
@@ -59,11 +60,10 @@ export function BottomBar() {
                   setSelectedBayId(bay.id);
                   setPropertyPanelOpen(true);
                 }}
-                className={`flex-shrink-0 px-2 py-1 rounded border text-xs font-medium transition-all whitespace-nowrap ${
-                  activeBayId === bay.id
+                className={`flex-shrink-0 px-2 py-1 rounded border text-xs font-medium transition-all whitespace-nowrap ${activeBayId === bay.id
                     ? 'bg-blue-600 text-white border-blue-500 shadow-md'
                     : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
-                }`}
+                  }`}
               >
                 Bay {index + 1}
               </button>
@@ -91,11 +91,10 @@ export function BottomBar() {
               }
             }}
             disabled={!activeBayId}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-              activeBayId
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${activeBayId
                 ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20'
                 : 'bg-muted text-muted-foreground border-transparent opacity-50 cursor-not-allowed'
-            }`}
+              }`}
             title="Add Shelf"
           >
             <Plus size={12} /> Shelf
@@ -108,11 +107,10 @@ export function BottomBar() {
               }
             }}
             disabled={!activeBayId}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-              activeBayId
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${activeBayId
                 ? 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 border border-purple-500/20'
                 : 'bg-muted text-muted-foreground border-transparent opacity-50 cursor-not-allowed'
-            }`}
+              }`}
             title="Add Drawer"
           >
             <Plus size={12} /> Drawer
@@ -122,11 +120,10 @@ export function BottomBar() {
         {/* BOM Panel Toggle */}
         <button
           onClick={() => setBOMPanelOpen(!isBOMPanelOpen)}
-          className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-            isBOMPanelOpen
+          className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${isBOMPanelOpen
               ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30'
               : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-transparent'
-          }`}
+            }`}
         >
           📋 BOM
         </button>
