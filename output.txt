@@ -1,0 +1,168 @@
+diff --git a/src/components/CabinetFrame.tsx b/src/components/CabinetFrame.tsx
+index d3522d2..564b710 100644
+--- a/src/components/CabinetFrame.tsx
++++ b/src/components/CabinetFrame.tsx
+@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
+ import * as THREE from 'three';
+ import { useThree } from '@react-three/fiber';
+ import { Line, TransformControls, Html } from '@react-three/drei';
++import { animated, useSpring } from '@react-spring/three';
+ import useDesignStore, { DesignState } from '@/store/useDesignStore';
+ import useUIStore from '@/store/useUIStore';
+ import { ProfileInstances, ProfileInstance } from './AluProfile';
+@@ -393,16 +394,17 @@ function SnappingGuides({ height, width, depth }: { height: number, width: numbe
+ // SnapLine: Shows a focused snapping guide (across the full cabinet width)
+ function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth: number; totalWidth: number; type: 'smart' | 'grid'; labelValue: number }) {
+     const color = type === 'smart' ? '#ec4899' : '#3b82f6';
+-    const opacity = type === 'smart' ? 0.9 : 0.55;
+     const dashed = type === 'grid';
++    const targetOpacity = type === 'smart' ? 0.9 : 0.55;
++    const props = useSpring<{ opacity: number; scale: number }>({ opacity: targetOpacity, scale: 1, from: { opacity: 0, scale: 0.8 }, config: { tension: 300, friction: 18 } });
+     return (
+-        <group position={[0, y, depth / 2 + 1]}>
++    <animated.group position={[0, y, depth / 2 + 1]} scale={props.scale as unknown as number}>
+             <Line
+                 points={[[-totalWidth / 2 - 50, 0, 0], [totalWidth / 2 + 50, 0, 0]]}
+                 color={color}
+                 lineWidth={2}
+                 transparent
+-                opacity={opacity}
++                opacity={props.opacity as unknown as number}
+                 depthTest={false}
+                 dashed={dashed}
+                 dashScale={dashed ? 10 : undefined}
+@@ -414,7 +416,7 @@ function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth
+                     {Math.round(labelValue)} mm
+                 </div>
+             </Html>
+-        </group>
++        </animated.group>
+     );
+ }
+ 
+@@ -532,7 +534,8 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
+                             setActiveSnap(snappedType ? { y: snappedValue, type: snappedType } : null);
+                             // Haptic feedback on first edge enter
+                             const isSnappedNow = !!snappedType;
+-                            if (isSnappedNow && !wasSnappedRef.current) {
++                            const shouldHaptics = useDesignStore.getState().enableHaptics;
++                            if (isSnappedNow && !wasSnappedRef.current && shouldHaptics) {
+                                 if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                                     try { navigator.vibrate(5); } catch {}
+                                 }
+diff --git a/src/components/PropertyInspector.tsx b/src/components/PropertyInspector.tsx
+index a1ace70..a4579a0 100644
+--- a/src/components/PropertyInspector.tsx
++++ b/src/components/PropertyInspector.tsx
+@@ -170,6 +170,8 @@ export function PropertyInspector() {
+   const setBayDoorConfig = useDesignStore((state: DesignState) => state.setBayDoorConfig);
+   const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
+   const setShowSnapGuides = useDesignStore((state: DesignState) => state.setShowSnapGuides);
++  const enableHaptics = useDesignStore((state: DesignState) => state.enableHaptics);
++  const setEnableHaptics = useDesignStore((state: DesignState) => state.setEnableHaptics);
+   const resizeBay = useDesignStore((state: DesignState) => state.resizeBay);
+   const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
+   const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
+@@ -472,6 +474,20 @@ export function PropertyInspector() {
+                 <p className="text-[10px] text-muted-foreground px-2">显示吸附辅助线和数值标签</p>
+               </div>
+             </AccordionItem>
++            <AccordionItem title="Haptics" icon={Eye}>
++              <div className="space-y-2">
++                <label className="flex items-center justify-between p-2 hover:bg-white/5 rounded cursor-pointer group">
++                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Haptic Feedback</span>
++                  <div
++                    className={`w-8 h-4 rounded-full relative transition-colors ${enableHaptics ? 'bg-blue-600' : 'bg-muted'}`}
++                    onClick={(e) => { e.preventDefault(); setEnableHaptics(!enableHaptics); }}
++                  >
++                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${enableHaptics ? 'translate-x-4' : 'translate-x-0'}`} />
++                  </div>
++                </label>
++                <p className="text-[10px] text-muted-foreground px-2">Enable vibration on snap (if device supports)</p>
++              </div>
++            </AccordionItem>
+ 
+             <AccordionItem title="Panels" icon={Layers}>
+               <div className="space-y-1">
+diff --git a/src/hooks/useAppState.ts b/src/hooks/useAppState.ts
+index 8bbac51..b8254fd 100644
+--- a/src/hooks/useAppState.ts
++++ b/src/hooks/useAppState.ts
+@@ -26,6 +26,7 @@ export function useAppState() {
+   const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
+   const setResult = useDesignStore((state: DesignState) => state.setResult);
+   const setShowSnapGuides = useDesignStore((state: DesignState) => state.setShowSnapGuides);
++  const setEnableHaptics = useDesignStore((state: DesignState) => state.setEnableHaptics);
+ 
+   // ===== 状态 Getters =====
+   const width = useDesignStore((state: DesignState) => state.width);
+@@ -39,6 +40,7 @@ export function useAppState() {
+   const result = useDesignStore((state: DesignState) => state.result);
+   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
+   const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
++  const enableHaptics = useDesignStore((state: DesignState) => state.enableHaptics);
+ 
+   // ===== 效果 1: 初始化 - 从 localStorage 读取数据 =====
+   useEffect(() => {
+@@ -59,21 +61,22 @@ export function useAppState() {
+       if (parsed.isDoorOpen !== undefined) setIsDoorOpen(parsed.isDoorOpen);
+       if (parsed.result) setResult(parsed.result);
+   if (parsed.showSnapGuides !== undefined) setShowSnapGuides(parsed.showSnapGuides);
++  if (parsed.enableHaptics !== undefined) setEnableHaptics(parsed.enableHaptics);
+     } catch (err) {
+       console.warn('Failed to load saved design from localStorage', err);
+     }
+-  }, [setWidth, setHeight, setDepth, setProfileType, setOverlay, setHasLeftWall, setHasRightWall, setIsDoorOpen, setResult, setShowSnapGuides]);
++  }, [setWidth, setHeight, setDepth, setProfileType, setOverlay, setHasLeftWall, setHasRightWall, setIsDoorOpen, setResult, setShowSnapGuides, setEnableHaptics]);
+ 
+   // ===== 效果 2: 持久化 - 数据变化时保存到 localStorage =====
+   useEffect(() => {
+     if (typeof window === 'undefined') return;
+-    const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result, showSnapGuides };
++  const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result, showSnapGuides, enableHaptics };
+     try {
+       localStorage.setItem('alucraft-design', JSON.stringify(state));
+     } catch (err) {
+       console.warn('Failed to save design to localStorage', err);
+     }
+-  }, [width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result, showSnapGuides]);
++  }, [width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result, showSnapGuides, enableHaptics]);
+ 
+   // ===== 效果 3: 主题同步 - 将 isDarkMode 状态同步到 HTML class =====
+   // 这样 Tailwind 的 dark: 伪类选择器才能生效
+diff --git a/src/store/useDesignStore.ts b/src/store/useDesignStore.ts
+index c5972f6..4482144 100644
+--- a/src/store/useDesignStore.ts
++++ b/src/store/useDesignStore.ts
+@@ -54,6 +54,7 @@ export interface DesignState {
+   showDimensions: boolean;
+   showWireframe: boolean;
+   showSnapGuides: boolean;
++  enableHaptics: boolean;
+   cameraResetTrigger: number;
+   isDarkMode: boolean;
+   material: MaterialType;
+@@ -80,6 +81,7 @@ export interface DesignState {
+   setShowDimensions: (v: boolean) => void;
+   setShowWireframe: (v: boolean) => void;
+   setShowSnapGuides: (v: boolean) => void;
++  setEnableHaptics: (v: boolean) => void;
+   triggerCameraReset: () => void;
+   toggleTheme: () => void;
+   setMaterial: (material: MaterialType) => void;
+@@ -134,6 +136,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
+   showDimensions: true,
+   showWireframe: false,
+   showSnapGuides: true,
++  enableHaptics: true,
+   cameraResetTrigger: 0,
+   isDarkMode: true,
+   material: 'silver',
+@@ -179,6 +182,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
+   setShowDimensions: (v: boolean) => set({ showDimensions: v }),
+   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
+   setShowSnapGuides: (v: boolean) => set({ showSnapGuides: v }),
++  setEnableHaptics: (v: boolean) => set({ enableHaptics: v }),
+   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
+   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+   setMaterial: (material) => set({ material }),

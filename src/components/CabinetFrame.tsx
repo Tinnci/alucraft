@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { Line, TransformControls, Html } from '@react-three/drei';
+import { animated, useSpring } from '@react-spring/three';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
@@ -393,16 +394,17 @@ function SnappingGuides({ height, width, depth }: { height: number, width: numbe
 // SnapLine: Shows a focused snapping guide (across the full cabinet width)
 function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth: number; totalWidth: number; type: 'smart' | 'grid'; labelValue: number }) {
     const color = type === 'smart' ? '#ec4899' : '#3b82f6';
-    const opacity = type === 'smart' ? 0.9 : 0.55;
     const dashed = type === 'grid';
+    const targetOpacity = type === 'smart' ? 0.9 : 0.55;
+    const props = useSpring<{ opacity: number; scale: number }>({ opacity: targetOpacity, scale: 1, from: { opacity: 0, scale: 0.8 }, config: { tension: 300, friction: 18 } });
     return (
-        <group position={[0, y, depth / 2 + 1]}>
+    <animated.group position={[0, y, depth / 2 + 1]} scale={props.scale as unknown as number}>
             <Line
                 points={[[-totalWidth / 2 - 50, 0, 0], [totalWidth / 2 + 50, 0, 0]]}
                 color={color}
                 lineWidth={2}
                 transparent
-                opacity={opacity}
+                opacity={props.opacity as unknown as number}
                 depthTest={false}
                 dashed={dashed}
                 dashScale={dashed ? 10 : undefined}
@@ -414,7 +416,7 @@ function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth
                     {Math.round(labelValue)} mm
                 </div>
             </Html>
-        </group>
+        </animated.group>
     );
 }
 
@@ -532,7 +534,8 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                             setActiveSnap(snappedType ? { y: snappedValue, type: snappedType } : null);
                             // Haptic feedback on first edge enter
                             const isSnappedNow = !!snappedType;
-                            if (isSnappedNow && !wasSnappedRef.current) {
+                            const shouldHaptics = useDesignStore.getState().enableHaptics;
+                            if (isSnappedNow && !wasSnappedRef.current && shouldHaptics) {
                                 if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
                                     try { navigator.vibrate(5); } catch {}
                                 }

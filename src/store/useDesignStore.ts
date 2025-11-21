@@ -54,6 +54,7 @@ export interface DesignState {
   showDimensions: boolean;
   showWireframe: boolean;
   showSnapGuides: boolean;
+  enableHaptics: boolean;
   cameraResetTrigger: number;
   isDarkMode: boolean;
   material: MaterialType;
@@ -80,6 +81,7 @@ export interface DesignState {
   setShowDimensions: (v: boolean) => void;
   setShowWireframe: (v: boolean) => void;
   setShowSnapGuides: (v: boolean) => void;
+  setEnableHaptics: (v: boolean) => void;
   triggerCameraReset: () => void;
   toggleTheme: () => void;
   setMaterial: (material: MaterialType) => void;
@@ -134,6 +136,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   showDimensions: true,
   showWireframe: false,
   showSnapGuides: true,
+  enableHaptics: true,
   cameraResetTrigger: 0,
   isDarkMode: true,
   material: 'silver',
@@ -179,6 +182,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setShowDimensions: (v: boolean) => set({ showDimensions: v }),
   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
   setShowSnapGuides: (v: boolean) => set({ showSnapGuides: v }),
+  setEnableHaptics: (v: boolean) => set({ enableHaptics: v }),
   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   setMaterial: (material) => set({ material }),

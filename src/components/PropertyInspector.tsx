@@ -170,6 +170,8 @@ export function PropertyInspector() {
   const setBayDoorConfig = useDesignStore((state: DesignState) => state.setBayDoorConfig);
   const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
   const setShowSnapGuides = useDesignStore((state: DesignState) => state.setShowSnapGuides);
+  const enableHaptics = useDesignStore((state: DesignState) => state.enableHaptics);
+  const setEnableHaptics = useDesignStore((state: DesignState) => state.setEnableHaptics);
   const resizeBay = useDesignStore((state: DesignState) => state.resizeBay);
   const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
   const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
@@ -470,6 +472,20 @@ export function PropertyInspector() {
                   </div>
                 </label>
                 <p className="text-[10px] text-muted-foreground px-2">显示吸附辅助线和数值标签</p>
+              </div>
+            </AccordionItem>
+            <AccordionItem title="Haptics" icon={Eye}>
+              <div className="space-y-2">
+                <label className="flex items-center justify-between p-2 hover:bg-white/5 rounded cursor-pointer group">
+                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Haptic Feedback</span>
+                  <div
+                    className={`w-8 h-4 rounded-full relative transition-colors ${enableHaptics ? 'bg-blue-600' : 'bg-muted'}`}
+                    onClick={(e) => { e.preventDefault(); setEnableHaptics(!enableHaptics); }}
+                  >
+                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${enableHaptics ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </label>
+                <p className="text-[10px] text-muted-foreground px-2">Enable vibration on snap (if device supports)</p>
               </div>
             </AccordionItem>
 
