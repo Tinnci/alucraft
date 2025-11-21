@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { Line, TransformControls, Html } from '@react-three/drei';
@@ -9,9 +9,10 @@ import { animated, useSpring } from '@react-spring/three';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
+import { RecursiveRender } from './RecursiveRender';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
-import { PROFILES, ProfileType, LayoutBay, Shelf, isBayNode } from '@/core/types';
+import { PROFILES, ProfileType, LayoutBay, Shelf, isBayNode, ContainerNode } from '@/core/types';
 
 interface CabinetFrameProps {
     width: number;
@@ -115,18 +116,7 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         wireframe: showWireframe
     });
 
-    // Calculate positions for layout nodes
-    const nodePositions = useMemo(() => {
-        const positions: { id: string, type: 'item' | 'divider', x: number, width: number }[] = [];
-        let currentX = -width / 2 + s;
-        for (const node of layout) {
-            const nodeWidth = node.type === 'item' ? (node.config?.width ?? 0) : (node.type === 'divider' ? node.thickness : 0);
-            const centerX = currentX + nodeWidth / 2;
-            positions.push({ id: node.id, type: node.type as 'item' | 'divider', x: centerX, width: nodeWidth });
-            currentX += nodeWidth;
-        }
-        return positions;
-    }, [layout, width, s]);
+    // Layout node positions are now handled by RecursiveRender
 
     // Global keyboard tracking for Shift key to disable snapping during TransformControls drag
     const [isShiftDown, setIsShiftDown] = useState(false);
@@ -161,33 +151,17 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                 <ProfileInstance length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
 
                 {/* --- Layout Nodes (Bays & Dividers) --- */}
-                {nodePositions.map((nodeInfo) => {
-                    const node = layout.find(n => n.id === nodeInfo.id);
-                    if (!node) return null;
-
-                    if (isBayNode(node)) {
-                            return (
-                                <Bay
-                                    key={node.id}
-                                    bay={node as LayoutBay}
-                                    position={[nodeInfo.x, 0, 0]}
-                                    height={height}
-                                    depth={depth}
-                                    profileType={profileType}
-                                    isShiftDown={isShiftDown}
-                                />
-                            );
-                    } else if (node.type === 'divider') {
-                        // Render Divider (Vertical Profile)
-                        return (
-                            <group key={node.id} position={[nodeInfo.x, 0, 0]}>
-                                <ProfileInstance length={hLength - (s * 2)} position={[0, -height / 2 + s, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
-                                <ProfileInstance length={hLength - (s * 2)} position={[0, -height / 2 + s, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
-                            </group>
-                        );
-                    }
-                    return null;
-                })}
+                {/* use RecursiveRender to draw the layout tree */}
+                                <RecursiveRender
+                                    node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
+                  origin={[0, 0, 0]}
+                  dims={[width, height, depth]}
+                  profileType={profileType}
+                  height={height}
+                  depth={depth}
+                  isShiftDown={isShiftDown}
+                />
+                
             </ProfileInstances>
 
             {/* --- Connectors (Outer Frame) --- */}
@@ -300,9 +274,10 @@ interface BayProps {
     depth: number;
     profileType: ProfileType;
     isShiftDown?: boolean;
+    computedWidth?: number;
 }
 
-    function Bay({ bay, position, height, depth, profileType, isShiftDown }: BayProps) {
+    export function Bay({ bay, position, height, depth, profileType, isShiftDown, computedWidth }: BayProps) {
     const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
     const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
 
@@ -310,7 +285,7 @@ interface BayProps {
     const s = profile.size;
     const offset = s / 2;
 
-    const bayWidth = bay.config.width ?? 0;
+    const bayWidth = typeof computedWidth === 'number' ? computedWidth : (typeof bay.config.width === 'number' ? bay.config.width : 0);
 
     const wLength = bayWidth;
     const dLength = depth - (s * 2);

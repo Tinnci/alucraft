@@ -174,6 +174,7 @@ export function PropertyInspector() {
   const setEnableHaptics = useDesignStore((state: DesignState) => state.setEnableHaptics);
   const resizeBay = useDesignStore((state: DesignState) => state.resizeBay);
   const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
+  const splitItem = useDesignStore((state: DesignState) => state.splitItem);
   const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
   const duplicateShelf = useDesignStore((state: DesignState) => state.duplicateShelf);
   const removeDrawer = useDesignStore((state: DesignState) => state.removeDrawer);
@@ -262,15 +263,24 @@ export function PropertyInspector() {
         {selectedObjectType === 'bay' && selectedBay && (
           <>
             <AccordionItem title="Dimensions" icon={BoxSelect}>
-        <LevaSlider
-          label="Width"
-          value={Math.round(selectedBay.config.width ?? 0)}
+            <div className="flex items-center gap-2">
+              <LevaSlider
+                label="Width"
+                value={Math.round(typeof selectedBay.config.width === 'number' ? (selectedBay.config.width ?? 0) : 400)}
                 min={100}
                 max={2000}
                 step={10}
                 onChange={(v) => resizeBay(selectedBay.id, v)}
                 unit="mm"
               />
+              <button
+                onClick={() => resizeBay(selectedBay.id, selectedBay.config.width === 'auto' ? 400 : 'auto')}
+                className={`px-2 py-1 rounded text-xs border ${selectedBay.config.width === 'auto' ? 'bg-blue-600 text-white border-blue-500' : 'bg-muted text-muted-foreground'}`}
+                title={selectedBay.config.width === 'auto' ? 'Auto width enabled' : 'Set Auto width'}
+              >
+                Auto
+              </button>
+            </div>
             </AccordionItem>
 
             {selectedDoor && (
@@ -329,6 +339,23 @@ export function PropertyInspector() {
                 )}
               </AccordionItem>
             )}
+
+            <div className="pt-2 border-t border-border/30">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => splitItem(selectedBay.id, 'horizontal')}
+                  className="px-2 py-1 bg-muted rounded text-xs border border-border hover:bg-muted/80"
+                >
+                  Split Horizontally
+                </button>
+                <button
+                  onClick={() => splitItem(selectedBay.id, 'vertical')}
+                  className="px-2 py-1 bg-muted rounded text-xs border border-border hover:bg-muted/80"
+                >
+                  Split Vertically
+                </button>
+              </div>
+            </div>
           </>
         )}
 

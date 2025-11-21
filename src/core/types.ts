@@ -144,7 +144,7 @@ export interface ItemNode extends LayoutNodeBase {
     contentType: 'generic_bay' | 'wardrobe_section' | 'empty';
     // Config contains the former bay fields
     config: {
-        width?: number; // used for legacy reasons when migrating or rendering
+        width?: number | 'auto'; // used for legacy reasons when migrating or rendering. 'auto' means flexible
         shelves?: Shelf[];
         drawers?: Drawer[];
         door?: BayDoorConfig;

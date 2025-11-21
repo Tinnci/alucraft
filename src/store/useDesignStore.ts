@@ -15,6 +15,7 @@ import {
   LayoutBay,
   LayoutDivider,
   isBayNode,
+  ContainerNode,
   LayoutNode,
   MaterialType
 } from '@/core/types';
@@ -99,7 +100,7 @@ export interface DesignState {
   // Layout Actions
   addBay: () => void;
   removeBay: (id: string) => void;
-  resizeBay: (id: string, width: number) => void;
+  resizeBay: (id: string, width: number | 'auto') => void;
 
   // Shelf/Drawer Actions (Updated to require bayId)
   addShelf: (bayId: string, y: number) => void;
@@ -110,6 +111,7 @@ export interface DesignState {
   removeDrawer: (bayId: string, id: string) => void;
   updateDrawer: (bayId: string, id: string, y: number, height: number) => void;
   duplicateDrawer: (bayId: string, id: string) => void;
+  splitItem: (itemId: string, orientation: 'horizontal' | 'vertical') => void;
 
   getDerived: () => { innerWidth: number; doorWidth: number };
   getCollisions: () => { left: boolean; right: boolean };
@@ -158,8 +160,13 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const newLayout = [...state.layout];
   const firstBay = newLayout.find(n => isBayNode(n)) as LayoutBay | undefined;
     if (firstBay) {
-      const newWidth = (firstBay.config?.width ?? 0) + diff;
-      firstBay.config = { ...firstBay.config, width: newWidth };
+      const current = firstBay.config?.width;
+      if (typeof current === 'number') {
+        const newWidth = current + diff;
+        firstBay.config = { ...firstBay.config, width: newWidth };
+      } else {
+        // If width is 'auto', leave it as 'auto' and rely on computed widths when rendering
+      }
     }
     return { width: v, layout: newLayout };
   }),
@@ -259,7 +266,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   }),
   removeBay: (id: string) => set((state) => {
     const index = state.layout.findIndex(n => n.id === id);
-    if (index === -1) return {};
+  if (index === -1) return {};
 
   const bayCount = state.layout.filter(n => isBayNode(n)).length;
     if (bayCount <= 1) return {};
@@ -268,7 +275,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     let widthReduction = 0;
 
   const node = newLayout[index] as LayoutBay;
-  widthReduction += (node.config?.width ?? 0);
+  const nodeWidth = node.config?.width; 
+  widthReduction += (typeof nodeWidth === 'number' ? nodeWidth : 0);
 
     if (index > 0 && newLayout[index - 1].type === 'divider') {
       widthReduction += (newLayout[index - 1] as LayoutDivider).thickness;
@@ -289,16 +297,16 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       doorStates: Object.fromEntries(newDoorStatesEntries)
     };
   }),
-  resizeBay: (id: string, width: number) => set((state) => {
+  resizeBay: (id: string, width: number | 'auto') => set((state) => {
     const newLayout = state.layout.map(node => {
   if (node.id === id && isBayNode(node)) {
-        const newConfig = { ...node.config, width };
+  const newConfig = { ...node.config, width };
         return { ...node, config: newConfig } as LayoutBay;
       }
       return node;
     });
     const newTotalWidth = newLayout.reduce((acc, node) => {
-      if (node.type === 'item') return acc + (node.config?.width ?? 0);
+      if (node.type === 'item') return acc + (typeof node.config?.width === 'number' ? (node.config?.width ?? 0) : 0);
       if (node.type === 'divider') return acc + (node.thickness ?? 0);
       return acc;
     }, 0) + (PROFILES[state.profileType].size * 2);
@@ -402,6 +410,73 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
         return node;
       })
     };
+  }),
+  splitItem: (itemId: string, orientation: 'horizontal' | 'vertical') => set((state) => {
+    let newBayId: string | null = null;
+    // Helper to recursively find and replace the target node
+    const replaceNode = (nodes: LayoutNode[]): LayoutNode[] => {
+      return nodes.map((n) => {
+        if (n.id === itemId && n.type === 'item') {
+          const orig = n as LayoutBay;
+          const dividerThickness = PROFILES[state.profileType].size;
+          let origWidth = orig.config?.width ?? 0;
+          // If the width is not numeric (i.e., 'auto'), approximate using top-level auto width
+          if (typeof origWidth !== 'number') {
+            const s = PROFILES[state.profileType].size;
+            const totalDividerWidth = state.layout.reduce((acc, n) => acc + (n.type === 'divider' ? ((n as LayoutDivider).thickness ?? 0) : 0), 0);
+            const topLevelItemCount = state.layout.filter(n => n.type === 'item').length || 1;
+            const available = Math.max(0, state.width - (s * 2) - totalDividerWidth);
+            origWidth = Math.floor(available / topLevelItemCount);
+          }
+          const firstWidth = Math.floor((origWidth - dividerThickness) / 2);
+          const secondWidth = origWidth - dividerThickness - firstWidth;
+
+          const firstBay: LayoutBay = { ...orig, id: orig.id, config: { ...orig.config, width: firstWidth } } as LayoutBay;
+          const secondId = uid();
+          newBayId = secondId;
+          const secondBay: LayoutBay = { ...orig, id: secondId, config: { ...orig.config, width: secondWidth } } as LayoutBay;
+          const newDivider: LayoutDivider = { type: 'divider', id: uid(), thickness: dividerThickness };
+
+          const containerNode = {
+            type: 'container',
+            id: uid(),
+            orientation: orientation === 'horizontal' ? 'horizontal' : 'vertical',
+            children: [firstBay, newDivider, secondBay]
+          } as ContainerNode;
+          return containerNode;
+        }
+        if (n.type === 'container') {
+          return { ...n, children: replaceNode(n.children) } as ContainerNode;
+        }
+        return n;
+      });
+    };
+
+  const newLayout = replaceNode(state.layout);
+
+    const newDoorStates = { ...state.doorStates };
+    // Add door state for the new second bay if applicable (first bay keeps original id/state)
+    if (newBayId) {
+      // Find the newly inserted second bay within the new layout
+      const newBay = (function find(nodes: LayoutNode[]): LayoutBay | undefined {
+        for (const n of nodes) {
+          if (n.type === 'item' && n.id === newBayId) return n as LayoutBay;
+          if (n.type === 'container') {
+            const found = find(n.children);
+            if (found) return found;
+          }
+        }
+        return undefined;
+      })(newLayout);
+
+      if (newBay && newBay.config?.door) {
+        getDoorSides(newBay.config.door).forEach((side) => {
+          newDoorStates[getDoorStateKey(newBay.id, side)] = state.isDoorOpen;
+        });
+      }
+    }
+
+    return { layout: newLayout, doorStates: newDoorStates };
   }),
 
   getCollisions: () => {

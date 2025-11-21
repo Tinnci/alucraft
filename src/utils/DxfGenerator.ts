@@ -1,6 +1,6 @@
 import DxfWriter from 'dxf-writer';
 import { DesignState } from '@/store/useDesignStore';
-import { PROFILES, isBayNode } from '@/core/types';
+import { PROFILES, isBayNode, LayoutNode, ContainerNode, DividerNode, ItemNode } from '@/core/types';
 
 export class DxfGenerator {
     private writer: DxfWriter;
@@ -38,12 +38,47 @@ export class DxfGenerator {
         // Bottom Beam
         this.drawRect(-width / 2 + s, -height / 2, width - 2 * s, s, 'FRAME');
 
+        // --- Helper to compute numeric widths (handles 'auto' by distributing remaining space evenly) ---
+        const computeWidths = (nodes: LayoutNode[], containerInnerWidth: number, widths: Map<string, number>) => {
+            const totalDividerWidth = nodes.reduce((acc, n) => acc + (n.type === 'divider' ? (n.thickness ?? 0) : 0), 0);
+            let fixedSum = 0;
+            let autoCount = 0;
+            for (const n of nodes) {
+                if (n.type === 'divider') continue;
+                if (n.type === 'item') {
+                    const wconf = n.config?.width;
+                    if (typeof wconf === 'number') fixedSum += wconf;
+                    else autoCount += 1;
+                } else if (n.type === 'container') {
+                    const size = n.size;
+                    if (typeof size === 'number') fixedSum += size;
+                    else autoCount += 1;
+                }
+            }
+            const remaining = Math.max(0, containerInnerWidth - totalDividerWidth - fixedSum);
+            const perAuto = autoCount > 0 ? Math.floor(remaining / autoCount) : 0;
+            for (const n of nodes) {
+                if (n.type === 'divider') continue;
+                if (n.type === 'item') {
+                    const wconf = n.config?.width;
+                    const cw = typeof wconf === 'number' ? wconf : perAuto;
+                    widths.set(n.id, cw);
+                } else if (n.type === 'container') {
+                    const size = typeof n.size === 'number' ? n.size : perAuto;
+                    computeWidths((n as ContainerNode).children, size, widths);
+                }
+            }
+        };
+
         // Draw Layout (Bays & Dividers)
         let currentX = -width / 2 + s;
 
+        const widths = new Map<string, number>();
+        computeWidths(layout, width - s * 2, widths);
+
         layout.forEach(node => {
             if (isBayNode(node)) {
-                const bayWidth = node.config?.width ?? 0;
+                const bayWidth = widths.get(node.id) ?? (typeof node.config?.width === 'number' ? node.config?.width : 0);
 
                 // Draw Shelves in this Bay
                 (node.config?.shelves ?? []).forEach(shelf => {
