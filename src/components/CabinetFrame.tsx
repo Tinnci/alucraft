@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useThree, ThreeEvent } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { Line, TransformControls, Html } from '@react-three/drei';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
@@ -407,10 +407,10 @@ function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth
 function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf }: DraggableShelfProps) {
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    const { camera, raycaster } = useThree();
-    const planeRef = useRef(new THREE.Plane());
-    const intersectPoint = useRef(new THREE.Vector3());
+    const { controls } = useThree();
     const groupRef = useRef<THREE.Group>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const transformRef = useRef<any>(null);
     const currentYRef = useRef(shelf.y);
     const totalWidth = useDesignStore((state: DesignState) => state.width);
     const layout = useDesignStore((state: DesignState) => state.layout);
@@ -432,44 +432,27 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
         }
     }, [shelf.y, height, isDragging]);
 
-    const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation();
-        selectShelf(bayId, shelf.id); // Select on click/drag start
-        setIsDragging(true);
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    // When using TransformControls we disable orbit controls on drag and
+    // use TransformControls's onObjectChange to update shelf position and snapping.
+    // Listen for dragging-changed events from TransformControls and manage orbit controls
+    useEffect(() => {
+        const tc = transformRef.current as unknown as { addEventListener?: (type: string, handler: (e: { value: boolean }) => void) => void; removeEventListener?: (type: string, handler: (e: { value: boolean }) => void) => void } | null;
+        if (!tc) return;
+        const handler = (e: { value: boolean }) => {
+            const isNowDragging = !!e.value;
+            setIsDragging(isNowDragging);
+            const orbit = controls as unknown as { enabled?: boolean } | undefined;
+            if (orbit) orbit.enabled = !isNowDragging;
+            if (!isNowDragging) {
+                setActiveSnap(null);
+                updateShelf(bayId, shelf.id, currentYRef.current);
+            }
+        };
+        tc.addEventListener?.('dragging-changed', handler);
+        return () => tc.removeEventListener?.('dragging-changed', handler);
+    }, [controls, updateShelf, bayId, shelf.id]);
 
-        // Initialize drag plane
-        const normal = new THREE.Vector3();
-        camera.getWorldDirection(normal);
-        normal.y = 0; // Keep it vertical
-        normal.normalize();
-        if (normal.lengthSq() < 0.1) normal.set(0, 0, 1);
-
-        planeRef.current.setFromNormalAndCoplanarPoint(normal, e.point);
-    };
-
-    const onPointerUp = (e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation();
-        setIsDragging(false);
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-
-        // Commit the change
-        updateShelf(bayId, shelf.id, currentYRef.current);
-        setActiveSnap(null);
-    };
-
-    const onPointerMove = (e: ThreeEvent<PointerEvent>) => {
-        if (!isDragging) return;
-        e.stopPropagation();
-
-        // Raycast against our virtual plane
-        raycaster.ray.intersectPlane(planeRef.current, intersectPoint.current);
-
-        const newWorldY = intersectPoint.current.y;
-        let newShelfY = newWorldY + height / 2;
-
-        // Apply snapping (smart shelf snap first, then grid snap)
-        const computeSnap = (rawY: number): { value: number; type: 'smart' | 'grid' | null } => {
+    const computeSnap = (rawY: number): { value: number; type: 'smart' | 'grid' | null } => {
             const SNAP_THRESHOLD = 15; // mm
             let bestY = rawY;
             let snapType: 'smart' | 'grid' | null = null;
@@ -507,74 +490,31 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
             return { value: bestY, type: snapType };
         };
 
-        const snapResult = computeSnap(newShelfY);
-        newShelfY = snapResult.value;
-        setActiveSnap(snapResult.type ? { y: snapResult.value, type: snapResult.type } : null);
-
-        // Update visual only
-        if (groupRef.current) {
-            groupRef.current.position.y = newShelfY - height / 2;
-        }
-        currentYRef.current = newShelfY;
-    };
+        // no pointer-based dragging in this transform control implementation
 
     return (
         <>
             {isSelected && (
                 <TransformControls
+                    ref={(node) => { transformRef.current = node; }}
                     object={groupRef as unknown as React.MutableRefObject<THREE.Object3D>}
                     mode="translate"
                     showX={false}
                     showZ={false}
                     size={0.8}
+                    // onDragStart/onDragEnd are handled via the dragging-changed event listener on the ref
                     onObjectChange={() => {
                         if (groupRef.current) {
                             const newY = groupRef.current.position.y + height / 2;
-                            // Snap logic for gizmo: use same applySnapping logic
-                            const applySnappingGizmo = (rawY: number): { value: number; type: 'smart' | 'grid' | null } => {
-                                const SNAP_THRESHOLD = 15;
-                                let bestY = rawY;
-                                let snapType: 'smart' | 'grid' | null = null;
-                                let minDiff = Infinity;
-                                for (const node of layout) {
-                                    if (node.type === 'bay') {
-                                        for (const s of node.shelves) {
-                                            if (node.id === bayId && s.id === shelf.id) continue;
-                                            const diff = Math.abs(rawY - s.y);
-                                            if (diff < SNAP_THRESHOLD && diff < minDiff) {
-                                                minDiff = diff;
-                                                bestY = s.y;
-                                                snapType = 'smart';
-                                            }
-                                        }
-                                    }
-                                }
-                                if (snapType === null) {
-                                    const GRID_SIZE = 32;
-                                    const snappedGrid = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
-                                    if (Math.abs(rawY - snappedGrid) < 10) {
-                                        bestY = snappedGrid;
-                                        snapType = 'grid';
-                                    }
-                                }
-                                const limit = 40;
-                                return { value: Math.max(limit, Math.min(height - limit, bestY)), type: snapType };
-                            };
-                            const snappedYRes = applySnappingGizmo(newY);
-                            const snappedY = snappedYRes.value;
-                            const snappedType = snappedYRes.type;
-                            // Clamp
-                            const limit = 40;
-                            const clampedSnappedY = Math.max(limit, Math.min(height - limit, snappedY));
+                            const snapResult = computeSnap(newY);
+                            const snappedValue = snapResult.value;
+                            const snappedType = snapResult.type;
 
-                            currentYRef.current = clampedSnappedY;
-                            setActiveSnap(snappedType ? { y: clampedSnappedY, type: snappedType } : null);
+                            // Update visual position
+                            groupRef.current.position.y = snappedValue - height / 2;
+                            currentYRef.current = snappedValue;
+                            setActiveSnap(snappedType ? { y: snappedValue, type: snappedType } : null);
                         }
-                    }}
-                    onMouseUp={() => {
-                        setActiveSnap(null);
-                        updateShelf(bayId, shelf.id, currentYRef.current);
-                        if (groupRef.current) groupRef.current.position.y = currentYRef.current - height / 2;
                     }}
                 />
             )}
@@ -584,9 +524,7 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                 onClick={(e) => { e.stopPropagation(); selectShelf(bayId, shelf.id); }}
                 onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
                 onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
-                onPointerDown={onPointerDown}
-                onPointerUp={onPointerUp}
-                onPointerMove={onPointerMove}
+                onPointerDown={(e) => { e.stopPropagation(); selectShelf(bayId, shelf.id); }}
             >
                 {/* Hit Box for easier selection */}
                 <mesh visible={false}>
