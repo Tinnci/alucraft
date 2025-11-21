@@ -150,6 +150,9 @@ export function FloatingControls() {
   const width = useDesignStore((state: DesignState) => state.width);
   const height = useDesignStore((state: DesignState) => state.height);
   const depth = useDesignStore((state: DesignState) => state.depth);
+  const panelThickness = useDesignStore((state: DesignState) => state.panelThickness);
+  const tolerance = useDesignStore((state: DesignState) => state.tolerance);
+  const drawerStyle = useDesignStore((state: DesignState) => state.drawerStyle);
   const layout = useDesignStore((state: DesignState) => state.layout);
   const hasLeftWall = useDesignStore((state: DesignState) => state.hasLeftWall);
   const hasRightWall = useDesignStore((state: DesignState) => state.hasRightWall);
@@ -183,6 +186,9 @@ export function FloatingControls() {
   const setHasTopPanel = useDesignStore((state: DesignState) => state.setHasTopPanel);
   const setHasBottomPanel = useDesignStore((state: DesignState) => state.setHasBottomPanel);
   const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
+  const setPanelThickness = useDesignStore((state: DesignState) => state.setPanelThickness);
+  const setTolerance = useDesignStore((state: DesignState) => state.setTolerance);
+  const setDrawerStyle = useDesignStore((state: DesignState) => state.setDrawerStyle);
   const setShowDimensions = useDesignStore((state: DesignState) => state.setShowDimensions);
   const setShowWireframe = useDesignStore((state: DesignState) => state.setShowWireframe);
   const setMaterial = useDesignStore((state: DesignState) => state.setMaterial);
@@ -563,6 +569,39 @@ export function FloatingControls() {
               >
                 <option value="angle">Angle Bracket (L-Bracket)</option>
                 <option value="internal">Internal Lock</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Panel Thickness (mm)</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="number"
+                  min={3}
+                  max={50}
+                  value={panelThickness}
+                  onChange={(e) => setPanelThickness(Number(e.target.value))}
+                  className="w-24 bg-muted text-foreground rounded px-2 py-1 text-xs"
+                />
+                <label className="text-xs text-muted-foreground">Tolerance (mm)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={tolerance}
+                  onChange={(e) => setTolerance(Number(e.target.value))}
+                  className="w-20 bg-muted text-foreground rounded px-2 py-1 text-xs"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Drawer Style</label>
+              <select
+                value={drawerStyle}
+                onChange={(e) => setDrawerStyle(e.target.value as 'inset' | 'overlay')}
+                className="w-full bg-muted border border-transparent text-foreground text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+              >
+                <option value="inset">Inset (Recessed)</option>
+                <option value="overlay">Overlay (Cover)</option>
               </select>
             </div>
           </CollapsibleSection>

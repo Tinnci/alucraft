@@ -83,7 +83,7 @@ export default function Home() {
         return;
       }
 
-      const buildDoor = (hingeSide: 'left' | 'right', doorWidth: number, hingeX: number, highlight: boolean) => {
+  const buildDoor = (hingeSide: 'left' | 'right', doorWidth: number, hingeX: number, highlight: boolean) => {
         const doorId = getDoorStateKey(bay.id, hingeSide);
         const isOpen = doorStates[doorId] ?? isDoorOpen;
         doorElements.push(
@@ -103,8 +103,21 @@ export default function Home() {
               highlightError={highlight}
               overlay={overlay}
             />
-            <mesh position={[hingeX, -height / 2 + 1, doorDepthOffset]} rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[0, Math.max(width, depth) * 1.05, 32, 1, 0, Math.PI / 2]} />
+            {/* Door swing arc (visual aid). Start angle depends on hinge side */}
+            <mesh position={[hingeX, -height / 2 + 1, doorDepthOffset]} rotation={[Math.PI / 2, 0, 0]} raycast={null}>
+              {/* use doorWidth to set radius */}
+              {(() => {
+                const arcRadius = Math.max(doorWidth, 200); // ensure some minimum radius
+                const thetaLength = Math.PI / 2; // 90 degrees
+                let thetaStart = 0;
+                if (hingeSide === 'left') {
+                  thetaStart = 0;
+                } else {
+                  // Right hinge: arc from 90deg to 180deg
+                  thetaStart = Math.PI / 2;
+                }
+                return <ringGeometry args={[0, arcRadius, 32, 1, thetaStart, thetaLength]} />;
+              })()}
               <meshStandardMaterial color={highlight ? '#ff4d4d' : '#60a5fa'} opacity={0.08} transparent />
             </mesh>
           </Fragment>

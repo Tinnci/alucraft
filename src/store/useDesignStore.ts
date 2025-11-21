@@ -96,6 +96,8 @@ export interface DesignState {
   isDarkMode: boolean;
   material: MaterialType;
   panelThickness: number;
+  tolerance: number;
+  drawerStyle: 'inset' | 'overlay';
   doorStates: Record<string, boolean>;
 
   setProfileType: (p: ProfileType) => void;
@@ -118,6 +120,9 @@ export interface DesignState {
   triggerCameraReset: () => void;
   toggleTheme: () => void;
   setMaterial: (material: MaterialType) => void;
+  setPanelThickness: (mm: number) => void;
+  setTolerance: (mm: number) => void;
+  setDrawerStyle: (style: 'inset' | 'overlay') => void;
   setDoorState: (doorId: string, isOpen: boolean) => void;
   toggleDoorState: (doorId: string) => void;
   setBayDoorConfig: (bayId: string, config: Partial<BayDoorConfig>) => void;
@@ -169,6 +174,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   isDarkMode: true,
   material: 'silver',
   panelThickness: 18,
+  tolerance: 1,
+  drawerStyle: 'inset',
   doorStates: {},
 
   setProfileType: (p: ProfileType) => set({ profileType: p }),
@@ -210,6 +217,9 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   setMaterial: (material) => set({ material }),
+  setPanelThickness: (mm) => set({ panelThickness: mm }),
+  setTolerance: (mm) => set({ tolerance: mm }),
+  setDrawerStyle: (style) => set({ drawerStyle: style }),
   setDoorState: (doorId, isOpen) => set((state) => ({ doorStates: { ...state.doorStates, [doorId]: isOpen } })),
   toggleDoorState: (doorId) => set((state) => ({ doorStates: { ...state.doorStates, [doorId]: !state.doorStates[doorId] } })),
   setBayDoorConfig: (bayId, config) => set((state) => {
@@ -445,7 +455,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const profile = PROFILES[profileType];
     const s = profile.size;
   const slotDepth = profile.slotDepth || 6;
-  const tolerance = 1; // 1mm assembly gap/tolerance
+  const tolerance = state.tolerance || 1; // 1mm assembly gap/tolerance
     const innerWidth = width - (s * 2);
     const hLength = Math.round(height);
     const wLength = Math.round(innerWidth);
@@ -548,9 +558,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
             });
 
       bay.drawers.forEach(d => {
-        // Drawer face width: default to inset (bay.width - 10) for inset style
-        // If overlay is used globally (>0), treat drawers as overlay and expand width by overlay*2
-        const faceWidth = overlay > 0 ? Math.round(bay.width + overlay * 2) : Math.round(bay.width - 10); // mm
+                // Drawer face width: default to inset unless drawerStyle is 'overlay'
+                const faceWidth = state.drawerStyle === 'overlay' ? Math.round(bay.width + overlay * 2) : Math.round(bay.width - 10); // mm
                 panelItems.push({
                     id: uid(),
                     name: `Drawer Face`,
