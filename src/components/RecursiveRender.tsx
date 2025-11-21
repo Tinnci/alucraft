@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { TransformControls } from '@react-three/drei';
+import { TransformControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { LayoutNode, ContainerNode, DividerNode, ItemNode, PROFILES } from '@/core/types';
 import computeLayoutSizes from '@/core/layout-utils';
@@ -20,9 +20,11 @@ interface RecursiveRenderProps {
   depth: number; // cabinet total depth
   isShiftDown?: boolean;
   parentOrientation?: 'horizontal' | 'vertical';
+  prevWidth?: number;
+  nextWidth?: number;
 }
 
-export function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, ...groupProps }: RecursiveRenderProps) {
+export function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, prevWidth = 0, nextWidth = 0, ...groupProps }: RecursiveRenderProps) {
   const [w, h, d] = dims;
   const [x, y, z] = origin;
 
@@ -32,7 +34,7 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
     const offset = s / 2;
     const vertLength = height - (s * 2);
     // Render two vertical pillars at center of this divider
-  return <DividerVisual key={node.id} id={node.id} position={[x, y, z]} profileType={profileType} height={height} depth={cabDepth} vertLength={vertLength} offset={offset} isVertical={parentOrientation === 'vertical'} />;
+    return <DividerVisual key={node.id} id={node.id} position={[x, y, z]} profileType={profileType} height={height} depth={cabDepth} vertLength={vertLength} offset={offset} isVertical={parentOrientation === 'vertical'} prevWidth={prevWidth} nextWidth={nextWidth} />;
   }
 
   // Render item node (bay)
@@ -54,17 +56,17 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
 
     // Count items participating in size distribution
 
-  const availableSpace = (isVert ? h : w);
+    const availableSpace = (isVert ? h : w);
 
-  // Compute fixed widths vs auto (kept briefly for reference when using the shared utility)
+    // Compute fixed widths vs auto (kept briefly for reference when using the shared utility)
     // children sizing handled by computeLayoutSizes
 
-  // Use computeLayoutSizes for consistent sizing
-  const sizes = computeLayoutSizes(children, availableSpace, isVert ? 'vertical' : 'horizontal', new Map<string, number>());
+    // Use computeLayoutSizes for consistent sizing
+    const sizes = computeLayoutSizes(children, availableSpace, isVert ? 'vertical' : 'horizontal', new Map<string, number>());
 
     // cursor starts at left or bottom edge
     const start = isVert ? y - h / 2 : x - w / 2;
-  const childSizes = children.map((child) => (sizes.get(child.id) ?? (child.type === 'divider' ? ((child as DividerNode).thickness ?? 0) : 0)));
+    const childSizes = children.map((child) => (sizes.get(child.id) ?? (child.type === 'divider' ? ((child as DividerNode).thickness ?? 0) : 0)));
 
     // Compute child centers and dims without mutating during render
     const childInfos: { center: [number, number, number]; dims: [number, number, number] }[] = [];
@@ -81,6 +83,17 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
       <group position={[x, y, z]} {...groupProps}>
         {children.map((child, idx) => {
           const info = childInfos[idx];
+
+          // For dividers, calculate neighbor sizes
+          let prevWidth = 0;
+          let nextWidth = 0;
+          if (child.type === 'divider') {
+            const prevId = children[idx - 1]?.id;
+            const nextId = children[idx + 1]?.id;
+            prevWidth = prevId ? (sizes.get(prevId) ?? 0) : 0;
+            nextWidth = nextId ? (sizes.get(nextId) ?? 0) : 0;
+          }
+
           return (
             <RecursiveRender
               key={child.id}
@@ -92,6 +105,8 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
               depth={cabDepth}
               isShiftDown={isShiftDown}
               parentOrientation={container.orientation}
+              prevWidth={prevWidth}
+              nextWidth={nextWidth}
             />
           );
         })}
@@ -111,9 +126,11 @@ interface DividerVisualProps {
   vertLength: number;
   offset: number;
   isVertical: boolean;
+  prevWidth: number;
+  nextWidth: number;
 }
 
-function DividerVisual({ id, position, profileType, height, depth, vertLength, offset, isVertical }: DividerVisualProps) {
+function DividerVisual({ id, position, profileType, height, depth, vertLength, offset, isVertical, prevWidth, nextWidth }: DividerVisualProps) {
   type TransformControlRef = { addEventListener?: (t: string, h: (e: { value: boolean }) => void) => void; removeEventListener?: (t: string, h: (e: { value: boolean }) => void) => void };
   const transformRef = useRef<TransformControlRef | null>(null);
   const groupRef = useRef<THREE.Group | null>(null);
@@ -122,12 +139,43 @@ function DividerVisual({ id, position, profileType, height, depth, vertLength, o
   const startRef = useRef<number>(0);
   const axis: 'x' | 'y' = isVertical ? 'y' : 'x';
 
+  // State for the floating label
+  const [displayValues, setDisplayValues] = useState<{ left: number; right: number } | null>(null);
+
   useEffect(() => {
     const tc = transformRef.current;
     if (!tc) return;
-  const handler = (e: { value: boolean }) => {
-  const dragging = !!e.value;
-  if (!dragging) {
+
+    // Listen to 'change' event for smooth updates during drag
+    const changeHandler = () => {
+      if (groupRef.current) {
+        // Calculate delta based on visual position (not store position)
+        const currentPos = axis === 'x' ? groupRef.current.position.x : groupRef.current.position.y;
+        const delta = currentPos - startRef.current;
+
+        // Calculate predicted widths
+        // Logic: Moving Right/Down (+) increases Prev, decreases Next
+        const p = Math.round(prevWidth + delta);
+        const n = Math.round(nextWidth - delta);
+
+        setDisplayValues({ left: p, right: n });
+      }
+    };
+
+    const draggingChangedHandler = (e: { value: boolean }) => {
+      const dragging = !!e.value;
+      if (dragging) {
+        // Start Drag: Disable Orbit, Init Start Pos, Show Label
+        if (controls) (controls as unknown as { enabled?: boolean }).enabled = false;
+        if (groupRef.current) {
+          startRef.current = axis === 'x' ? groupRef.current.position.x : groupRef.current.position.y;
+        }
+        setDisplayValues({ left: prevWidth, right: nextWidth }); // Init label
+      } else {
+        // End Drag: Enable Orbit, Hide Label
+        if (controls) (controls as unknown as { enabled?: boolean }).enabled = true;
+        setDisplayValues(null);
+
         // On drag end, compute delta relative to start
         if (groupRef.current) {
           const newPos = axis === 'x' ? (groupRef.current.position.x) : (groupRef.current.position.y);
@@ -138,24 +186,43 @@ function DividerVisual({ id, position, profileType, height, depth, vertLength, o
           // reset visual position - store will re-render
           if (axis === 'x') groupRef.current.position.x = 0; else groupRef.current.position.y = 0;
         }
-  if (controls) (controls as unknown as { enabled?: boolean }).enabled = true;
-  } else {
-  if (controls) (controls as unknown as { enabled?: boolean }).enabled = false;
-        if (groupRef.current) {
-          startRef.current = axis === 'x' ? groupRef.current.position.x : groupRef.current.position.y;
-        }
       }
     };
-    tc.addEventListener?.('dragging-changed', handler);
-    return () => tc.removeEventListener?.('dragging-changed', handler);
-  }, [controls, moveDivider, id, axis]);
+
+    // @ts-ignore - TransformControls types are tricky
+    tc.addEventListener?.('change', changeHandler);
+    tc.addEventListener?.('dragging-changed', draggingChangedHandler);
+
+    return () => {
+      // @ts-ignore
+      tc.removeEventListener?.('change', changeHandler);
+      tc.removeEventListener?.('dragging-changed', draggingChangedHandler);
+    };
+  }, [controls, moveDivider, id, axis, prevWidth, nextWidth]);
 
   return (
     <group position={position} ref={groupRef}>
-  <TransformControls ref={(node) => { transformRef.current = node as unknown as TransformControlRef; }} object={groupRef as unknown as React.MutableRefObject<THREE.Object3D>} mode="translate" size={0.8} showY={isVertical} showZ={false} showX={!isVertical}>
+      <TransformControls ref={(node) => { transformRef.current = node as unknown as TransformControlRef; }} object={groupRef as unknown as React.MutableRefObject<THREE.Object3D>} mode="translate" size={0.8} showY={isVertical} showZ={false} showX={!isVertical}>
         <group>
           <ProfileInstance length={vertLength} position={[0, -height / 2 + (profileType ? (PROFILES[profileType].size) : 0), depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
           <ProfileInstance length={vertLength} position={[0, -height / 2 + (profileType ? (PROFILES[profileType].size) : 0), -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
+
+          {/* Tooltip */}
+          {displayValues && (
+            <Html position={[0, isVertical ? 0 : height / 2 + 50, 0]} center zIndexRange={[100, 0]}>
+              <div className="flex gap-2 bg-black/80 text-white text-xs px-2 py-1 rounded backdrop-blur-md whitespace-nowrap pointer-events-none select-none shadow-xl border border-white/20">
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] text-gray-400">Prev</span>
+                  <span className="font-mono font-bold text-blue-400">{displayValues.left}</span>
+                </div>
+                <div className="w-px bg-white/20 mx-1"></div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] text-gray-400">Next</span>
+                  <span className="font-mono font-bold text-emerald-400">{displayValues.right}</span>
+                </div>
+              </div>
+            </Html>
+          )}
         </group>
       </TransformControls>
     </group>
