@@ -25,6 +25,7 @@ export function useAppState() {
   const setHasRightWall = useDesignStore((state: DesignState) => state.setHasRightWall);
   const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
   const setResult = useDesignStore((state: DesignState) => state.setResult);
+  const setShowSnapGuides = useDesignStore((state: DesignState) => state.setShowSnapGuides);
 
   // ===== 状态 Getters =====
   const width = useDesignStore((state: DesignState) => state.width);
@@ -37,6 +38,7 @@ export function useAppState() {
   const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
   const result = useDesignStore((state: DesignState) => state.result);
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
+  const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
 
   // ===== 效果 1: 初始化 - 从 localStorage 读取数据 =====
   useEffect(() => {
@@ -56,21 +58,22 @@ export function useAppState() {
       if (parsed.hasRightWall !== undefined) setHasRightWall(parsed.hasRightWall);
       if (parsed.isDoorOpen !== undefined) setIsDoorOpen(parsed.isDoorOpen);
       if (parsed.result) setResult(parsed.result);
+  if (parsed.showSnapGuides !== undefined) setShowSnapGuides(parsed.showSnapGuides);
     } catch (err) {
       console.warn('Failed to load saved design from localStorage', err);
     }
-  }, [setWidth, setHeight, setDepth, setProfileType, setOverlay, setHasLeftWall, setHasRightWall, setIsDoorOpen, setResult]);
+  }, [setWidth, setHeight, setDepth, setProfileType, setOverlay, setHasLeftWall, setHasRightWall, setIsDoorOpen, setResult, setShowSnapGuides]);
 
   // ===== 效果 2: 持久化 - 数据变化时保存到 localStorage =====
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result };
+    const state = { width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result, showSnapGuides };
     try {
       localStorage.setItem('alucraft-design', JSON.stringify(state));
     } catch (err) {
       console.warn('Failed to save design to localStorage', err);
     }
-  }, [width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result]);
+  }, [width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result, showSnapGuides]);
 
   // ===== 效果 3: 主题同步 - 将 isDarkMode 状态同步到 HTML class =====
   // 这样 Tailwind 的 dark: 伪类选择器才能生效
