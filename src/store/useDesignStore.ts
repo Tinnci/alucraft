@@ -10,6 +10,8 @@ import {
     ProfileBOMItem,
     PanelBOMItem,
     HardwareBOMItem,
+    ConnectorType,
+    CONNECTORS,
 } from '@/core/types';
 import { calculateHinge } from '@/core/hinge-rules';
 import { nanoid } from 'nanoid';
@@ -85,7 +87,7 @@ export interface DesignState {
   hasTopPanel: boolean;
   hasBottomPanel: boolean;
   isDoorOpen: boolean;
-  connectorType: 'angle' | 'internal';
+  connectorType: ConnectorType;
   showDimensions: boolean;
   showWireframe: boolean;
   cameraResetTrigger: number;
@@ -110,7 +112,7 @@ export interface DesignState {
   setHasTopPanel: (v: boolean) => void;
   setHasBottomPanel: (v: boolean) => void;
   setIsDoorOpen: (v: boolean) => void;
-  setConnectorType: (v: 'angle' | 'internal') => void;
+  setConnectorType: (v: ConnectorType) => void;
   setShowDimensions: (v: boolean) => void;
   setShowWireframe: (v: boolean) => void;
   triggerCameraReset: () => void;
@@ -163,7 +165,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   hasTopPanel: false,
   hasBottomPanel: false,
   isDoorOpen: false,
-  connectorType: 'angle',
+  connectorType: 'angle_bracket' as ConnectorType,
   showDimensions: true,
   showWireframe: false,
   cameraResetTrigger: 0,
@@ -207,7 +209,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     });
     return { isDoorOpen: v, doorStates: nextDoorStates };
   }),
-  setConnectorType: (v: 'angle' | 'internal') => set({ connectorType: v }),
+  setConnectorType: (v: ConnectorType) => set({ connectorType: v }),
   setShowDimensions: (v: boolean) => set({ showDimensions: v }),
   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
@@ -457,13 +459,22 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const wLength = Math.round(innerWidth);
     const dLength = Math.round(depth - (s * 2));
 
+    // 获取连接件扣减量
+    const connectorSpec = CONNECTORS[connectorType];
+    const connectorDeduction = connectorSpec.deduction;
+
+    // 计算实际的下料长度（应用连接件扣减）
+    // 横梁长度 = 内宽 - (连接件扣减 * 2)
+    const beamDeductedLength = Math.round(wLength - (connectorDeduction * 2));
+    const frameBeamDeductedLength = Math.round(innerWidth - (connectorDeduction * 2));
+
     const profileItems: ProfileBOMItem[] = [];
     const panelItems: PanelBOMItem[] = [];
     const hardwareItems: HardwareBOMItem[] = [];
 
     // --- 1. Frame Profiles ---
     profileItems.push({ id: uid(), name: `${profileType} Vertical (Pillar)`, lengthMm: hLength, qty: 4, category: 'profile' });
-    profileItems.push({ id: uid(), name: `${profileType} Width Beam`, lengthMm: wLength, qty: 4, category: 'profile' });
+    profileItems.push({ id: uid(), name: `${profileType} Width Beam (Deducted)`, lengthMm: frameBeamDeductedLength, qty: 4, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
     profileItems.push({ id: uid(), name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4, category: 'profile' });
 
     // --- 2. Layout Dividers ---
@@ -537,8 +548,9 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
 
         // Shelves
         if (bay.shelves.length > 0) {
-            const bayWLength = bay.width - (s * 2);
-            profileItems.push({ id: uid(), name: `${profileType} Shelf Width Beam (Bay ${bayWLength}mm)`, lengthMm: bayWLength, qty: bay.shelves.length * 2, category: 'profile' });
+            const bayInnerWidth = bay.width - (s * 2);
+            const bayBeamDeductedLength = Math.round(bayInnerWidth - (connectorDeduction * 2));
+            profileItems.push({ id: uid(), name: `${profileType} Shelf Width Beam (Bay ${bayBeamDeductedLength}mm)`, lengthMm: bayBeamDeductedLength, qty: bay.shelves.length * 2, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
             profileItems.push({ id: uid(), name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: bay.shelves.length * 2, category: 'profile' });
         }
 
@@ -603,8 +615,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
         const totalConnectors = baseConnectors + shelfConnectors + dividerConnectors;
 
         if (totalConnectors > 0) {
-          const connectorName = connectorType === 'angle' ? 'Angle Bracket (L)' : 'Internal Lock';
-          hardwareItems.push({ id: uid(), name: connectorName, qty: totalConnectors, category: 'hardware', unit: 'piece' });
+          hardwareItems.push({ id: uid(), name: connectorSpec.name, qty: totalConnectors, category: 'hardware', unit: 'piece', note: connectorSpec.description });
         }
 
     // Combine all

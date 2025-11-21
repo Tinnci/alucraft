@@ -1,6 +1,7 @@
 'use client';
 
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import useUIStore from '@/store/useUIStore';
 import { Canvas } from '@react-three/fiber';
 import { TopBar } from '@/components/TopBar';
 import { PropertyInspector } from '@/components/PropertyInspector';
@@ -20,12 +21,28 @@ export default function Home() {
   const result = useDesignStore((state: DesignState) => state.result);
   const bgColor = isDarkMode ? '#0f172a' : '#f8fafc';
 
+  // 获取清除选中状态的方法
+  const clearSelection = useUIStore((state) => state.clearSelection);
+
+  // 使用 onPointerMissed 处理点击空白处的交互
+  // R3F 自动检测"点击了 Canvas 但没点中任何 3D 物体"的情况
+  const handlePointerMissed = (e: MouseEvent) => {
+    // 仅在主要点击（click）时触发，避免拖拽旋转结束时误触
+    if (e.type === 'click') {
+      clearSelection();
+    }
+  };
+
   return (
     <main className="relative w-screen h-screen bg-background overflow-hidden">
       
       {/* ===== Layer 1: 3D Scene (Full-screen background) ===== */}
       <div className="absolute inset-0 z-0">
-        <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
+        <Canvas 
+          shadows 
+          camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}
+          onPointerMissed={handlePointerMissed}
+        >
           <color attach="background" args={[bgColor]} />
           <fog attach="fog" args={[bgColor, 2000, 5000]} />
           <Workspace />

@@ -5,7 +5,7 @@ import { useThree, ThreeEvent } from '@react-three/fiber';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
-import { PROFILES, ProfileType } from '@/core/types';
+import { PROFILES, ProfileType, ConnectorType } from '@/core/types';
 import { Shelf, useDesignStore, DesignState, LayoutBay } from '@/store/useDesignStore';
 import * as THREE from 'three';
 
@@ -110,7 +110,8 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
             </ProfileInstances>
 
             {/* --- Connectors (Outer Frame) --- */}
-            {connectorType === 'angle' && (
+            {/* 仅在使用 angle_bracket 时渲染外部连接件 */}
+            {connectorType === 'angle_bracket' && (
                 <group>
                     {/* Simplified: Just corners for now. Internal bay connectors handled by Bay? */}
                     {/* Width Beam Connectors (8) */}
@@ -136,6 +137,12 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                     <Connector size={s} position={[width / 2 - s / 2, height / 2 - s, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
                 </group>
             )}
+
+            {/* internal_lock: 不渲染外部角码，内部通过打孔实现连接 */}
+            {connectorType === 'internal_lock' && null}
+
+            {/* 3way_corner: 后续可扩展为渲染三维角码 */}
+            {connectorType === '3way_corner' && null}
 
             {/* --- Panels --- */}
             {hasLeftPanel && (

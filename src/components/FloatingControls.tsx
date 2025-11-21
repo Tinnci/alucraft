@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import useDesignStore, { DesignState, LayoutBay, createDefaultDoorConfig, MaterialType } from '@/store/useDesignStore';
 import { calculateHinge } from '@/core/hinge-rules';
-import { ProfileType } from '@/core/types';
+import { ProfileType, CONNECTORS, ConnectorType } from '@/core/types';
 import { DxfGenerator } from '@/utils/DxfGenerator';
 
 // Helper Component for Leva-style Slider
@@ -564,11 +564,12 @@ export function FloatingControls() {
               <label className="text-xs text-muted-foreground">Connector</label>
               <select
                 value={connectorType}
-                onChange={(e) => setConnectorType(e.target.value as 'angle' | 'internal')}
+                onChange={(e) => setConnectorType(e.target.value as ConnectorType)}
                 className="w-full bg-muted border border-transparent text-foreground text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
               >
-                <option value="angle">Angle Bracket (L-Bracket)</option>
-                <option value="internal">Internal Lock</option>
+                {Object.entries(CONNECTORS).map(([key, spec]) => (
+                  <option key={key} value={key}>{spec.name}</option>
+                ))}
               </select>
             </div>
             <div className="space-y-1">

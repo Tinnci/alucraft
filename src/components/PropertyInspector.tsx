@@ -5,6 +5,7 @@ import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2 } from 'lucide-re
 import useDesignStore, { DesignState, LayoutBay, createDefaultDoorConfig } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
 import { calculateHinge } from '@/core/hinge-rules';
+import { CONNECTORS, ConnectorType } from '@/core/types';
 
 /**
  * LevaSlider - 范围滑块组件
@@ -514,11 +515,12 @@ export function PropertyInspector() {
               <label className="text-xs text-muted-foreground font-semibold">Connector Type</label>
               <select
                 value={connectorType}
-                onChange={(e) => setConnectorType(e.target.value as 'angle' | 'internal')}
+                onChange={(e) => setConnectorType(e.target.value as ConnectorType)}
                 className="w-full bg-muted border border-transparent text-foreground text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
               >
-                <option value="angle">Angle Bracket (L-Bracket)</option>
-                <option value="internal">Internal Lock</option>
+                {Object.entries(CONNECTORS).map(([key, spec]) => (
+                  <option key={key} value={key}>{spec.name}</option>
+                ))}
               </select>
             </div>
           </div>
