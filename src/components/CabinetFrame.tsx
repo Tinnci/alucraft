@@ -16,6 +16,71 @@ interface CabinetFrameProps {
     profileType: ProfileType;
 }
 
+// ==========================================
+// 内置锁可视组件 (Internal Lock)
+// 模拟在型材表面打的工艺孔（黑色圆点）
+// ==========================================
+interface InternalLockProps {
+    size: number;
+    position: [number, number, number];
+    rotation: [number, number, number];
+    axis: 'x' | 'z'; // 用于判断孔的方向
+}
+
+function InternalLock({ size, position, rotation, axis }: InternalLockProps) {
+    // 计算孔的偏移位置（从角落向型材中心移动）
+    const offset = size;
+    const adjustedPos = [...position] as [number, number, number];
+    
+    if (axis === 'x') {
+        // 横梁（X轴）孔位向中心收缩
+        adjustedPos[0] += position[0] < 0 ? offset : -offset;
+    } else {
+        // 深梁（Z轴）孔位向中心收缩
+        adjustedPos[2] += position[2] < 0 ? offset : -offset;
+    }
+
+    return (
+        <group position={adjustedPos} rotation={rotation}>
+            {/* 打孔点：黑色圆柱浮出表面 */}
+            <mesh position={[0, size / 2, 0]}>
+                <cylinderGeometry args={[3, 3, 2, 16]} />
+                <meshStandardMaterial color="#1a1a1a" roughness={1} />
+            </mesh>
+            {/* 锁扣金属头 */}
+            <mesh position={[0, 0, 0]}>
+                <cylinderGeometry args={[4, 4, 1, 16]} />
+                <meshStandardMaterial color="#888" />
+            </mesh>
+        </group>
+    );
+}
+
+// ==========================================
+// 三维角码可视组件 (3-Way Corner)
+// 渲染在8个角位置的黑色立方体
+// ==========================================
+interface ThreeWayCornerProps {
+    size: number;
+    position: [number, number, number];
+}
+
+function ThreeWayCorner({ size, position }: ThreeWayCornerProps) {
+    return (
+        <mesh position={position}>
+            {/* 黑色塑料角码立方体 */}
+            <boxGeometry args={[size, size, size]} />
+            <meshStandardMaterial color="#222" roughness={0.5} metalness={0.2} />
+            
+            {/* 装饰线条，增加视觉细节 */}
+            <mesh position={[size / 2 + 0.1, 0, 0]}>
+                <planeGeometry args={[0.1, size * 0.6]} />
+                <meshBasicMaterial color="#444" />
+            </mesh>
+        </mesh>
+    );
+}
+
 export function CabinetFrame({ width, height, depth, profileType }: CabinetFrameProps) {
     const profile = PROFILES[profileType];
     const s = profile.size;
@@ -138,11 +203,49 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                 </group>
             )}
 
-            {/* internal_lock: 不渲染外部角码，内部通过打孔实现连接 */}
-            {connectorType === 'internal_lock' && null}
+            {/* internal_lock: 渲染打孔点而不是物理角码 */}
+            {connectorType === 'internal_lock' && (
+                <group>
+                    {/* Width Beams (X-axis) - 8个角的横梁孔 */}
+                    <InternalLock axis="x" size={s} position={[-width / 2 + s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, 0]} />
+                    <InternalLock axis="x" size={s} position={[width / 2 - s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, 0]} />
+                    <InternalLock axis="x" size={s} position={[-width / 2 + s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
+                    <InternalLock axis="x" size={s} position={[width / 2 - s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
+                    
+                    <InternalLock axis="x" size={s} position={[-width / 2 + s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, 0]} />
+                    <InternalLock axis="x" size={s} position={[width / 2 - s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, 0]} />
+                    <InternalLock axis="x" size={s} position={[-width / 2 + s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
+                    <InternalLock axis="x" size={s} position={[width / 2 - s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
 
-            {/* 3way_corner: 后续可扩展为渲染三维角码 */}
-            {connectorType === '3way_corner' && null}
+                    {/* Depth Beams (Z-axis) - 深梁的孔 */}
+                    <InternalLock axis="z" size={s} position={[-width / 2 + s / 2, -height / 2 + s, depth / 2 - s]} rotation={[0, Math.PI / 2, 0]} />
+                    <InternalLock axis="z" size={s} position={[-width / 2 + s / 2, -height / 2 + s, -depth / 2 + s]} rotation={[0, -Math.PI / 2, 0]} />
+                    <InternalLock axis="z" size={s} position={[-width / 2 + s / 2, height / 2 - s, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
+                    <InternalLock axis="z" size={s} position={[-width / 2 + s / 2, height / 2 - s, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
+
+                    <InternalLock axis="z" size={s} position={[width / 2 - s / 2, -height / 2 + s, depth / 2 - s]} rotation={[0, Math.PI / 2, 0]} />
+                    <InternalLock axis="z" size={s} position={[width / 2 - s / 2, -height / 2 + s, -depth / 2 + s]} rotation={[0, -Math.PI / 2, 0]} />
+                    <InternalLock axis="z" size={s} position={[width / 2 - s / 2, height / 2 - s, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
+                    <InternalLock axis="z" size={s} position={[width / 2 - s / 2, height / 2 - s, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
+                </group>
+            )}
+
+            {/* 3way_corner: 渲染8个角位置的黑色立方体 */}
+            {connectorType === '3way_corner' && (
+                <group>
+                    {/* Top 4 Corners (上方4个角) */}
+                    <ThreeWayCorner size={s} position={[-width / 2 + s / 2, height / 2 - s / 2, depth / 2 - s / 2]} />
+                    <ThreeWayCorner size={s} position={[width / 2 - s / 2, height / 2 - s / 2, depth / 2 - s / 2]} />
+                    <ThreeWayCorner size={s} position={[-width / 2 + s / 2, height / 2 - s / 2, -depth / 2 + s / 2]} />
+                    <ThreeWayCorner size={s} position={[width / 2 - s / 2, height / 2 - s / 2, -depth / 2 + s / 2]} />
+
+                    {/* Bottom 4 Corners (下方4个角) */}
+                    <ThreeWayCorner size={s} position={[-width / 2 + s / 2, -height / 2 + s / 2, depth / 2 - s / 2]} />
+                    <ThreeWayCorner size={s} position={[width / 2 - s / 2, -height / 2 + s / 2, depth / 2 - s / 2]} />
+                    <ThreeWayCorner size={s} position={[-width / 2 + s / 2, -height / 2 + s / 2, -depth / 2 + s / 2]} />
+                    <ThreeWayCorner size={s} position={[width / 2 - s / 2, -height / 2 + s / 2, -depth / 2 + s / 2]} />
+                </group>
+            )}
 
             {/* --- Panels --- */}
             {hasLeftPanel && (
