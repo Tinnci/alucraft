@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Draggable from 'react-draggable';
 import { useStore } from 'zustand';
 import {
@@ -39,7 +39,7 @@ const LevaSlider = ({ label, value, min, max, step, onChange, unit = '' }: {
   const [localValue, setLocalValue] = useState(value.toString());
 
   // Sync local value when prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     setLocalValue(value.toString());
   }, [value]);
 
@@ -125,8 +125,9 @@ export function FloatingControls() {
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedBayId, setSelectedBayId] = useState<string | null>(null);
+  const [selectedDrawerId, setSelectedDrawerId] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -135,7 +136,7 @@ export function FloatingControls() {
 
   // Sync Theme with DOM
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -201,24 +202,28 @@ export function FloatingControls() {
   const addDrawer = useDesignStore((state: DesignState) => state.addDrawer);
   const removeDrawer = useDesignStore((state: DesignState) => state.removeDrawer);
   const updateDrawer = useDesignStore((state: DesignState) => state.updateDrawer);
+  const duplicateDrawer = useDesignStore((state: DesignState) => state.duplicateDrawer);
 
   // Derived State
-  const bays = layout.filter(n => n.type === 'bay') as LayoutBay[];
-
-  // Auto-select first bay if none selected or selected is invalid
-  useEffect(() => {
-    const isValidSelection = selectedBayId && bays.some(b => b.id === selectedBayId);
-    if (!isValidSelection && bays.length > 0) {
-      setSelectedBayId(bays[0].id);
-    } else if (bays.length === 0) {
-      setSelectedBayId(null);
+  const bays = useMemo(() => (layout.filter(n => n.type === 'bay') as LayoutBay[]), [layout]);
+  const activeBayId = useMemo(() => {
+    if (selectedBayId && bays.some(b => b.id === selectedBayId)) {
+      return selectedBayId;
     }
-  }, [bays, selectedBayId, setSelectedBayId]);
-
-  const selectedBay = bays.find(b => b.id === selectedBayId);
+    return bays[0]?.id ?? null;
+  }, [selectedBayId, bays]);
+  const selectedBay = useMemo(
+    () => bays.find(b => b.id === activeBayId),
+    [bays, activeBayId]
+  );
   const shelves = selectedBay?.shelves || [];
-  const drawers = selectedBay?.drawers || [];
+  const drawers = useMemo(() => selectedBay?.drawers || [], [selectedBay]);
+  const drawerIds = useMemo(() => drawers.map((drawer) => drawer.id), [drawers]);
   const selectedDoor = selectedBay ? (selectedBay.door ?? createDefaultDoorConfig()) : null;
+  const activeDrawerId = useMemo(
+    () => (selectedDrawerId && drawerIds.includes(selectedDrawerId) ? selectedDrawerId : null),
+    [selectedDrawerId, drawerIds]
+  );
 
   const handleCalculate = () => {
     let currentOverlay = overlay;
@@ -483,7 +488,7 @@ export function FloatingControls() {
                 <button
                   key={bay.id}
                   onClick={() => setSelectedBayId(bay.id)}
-                  className={`flex-shrink-0 px-3 py-2 rounded border text-xs font-medium transition-all ${selectedBayId === bay.id
+                  className={`flex-shrink-0 px-3 py-2 rounded border text-xs font-medium transition-all ${activeBayId === bay.id
                     ? 'bg-blue-600 text-white border-blue-500 shadow-md'
                     : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
                     }`}
@@ -568,31 +573,31 @@ export function FloatingControls() {
             icon={Box}
             action={
               <button
-                onClick={(e) => { e.stopPropagation(); if (selectedBayId) addShelf(selectedBayId, height / 2); }}
-                className={`hover:text-blue-400 transition-colors p-1 hover:bg-muted rounded ${!selectedBayId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!selectedBayId}
+                onClick={(e) => { e.stopPropagation(); if (activeBayId) addShelf(activeBayId, height / 2); }}
+                className={`hover:text-blue-400 transition-colors p-1 hover:bg-muted rounded ${!activeBayId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!activeBayId}
               >
                 <Plus size={14} />
               </button>
             }
           >
             <div className="space-y-2">
-              {!selectedBayId && <div className="text-xs text-muted-foreground italic text-center py-2">Select a bay to add shelves</div>}
-              {selectedBayId && shelves.length === 0 && <div className="text-xs text-muted-foreground italic text-center py-2">No shelves in this bay</div>}
-              {selectedBayId && shelves.map(shelf => (
+              {!activeBayId && <div className="text-xs text-muted-foreground italic text-center py-2">Select a bay to add shelves</div>}
+              {activeBayId && shelves.length === 0 && <div className="text-xs text-muted-foreground italic text-center py-2">No shelves in this bay</div>}
+              {activeBayId && shelves.map(shelf => (
                 <div key={shelf.id} className="flex items-center gap-2 bg-muted/50 p-2 rounded border border-border">
                   <div className="flex-1">
                     <LevaSlider
                       label="Y-Pos"
                       value={Math.round(shelf.y)}
                       min={0} max={height} step={10}
-                      onChange={(v) => updateShelf(selectedBayId, shelf.id, v)}
+                      onChange={(v) => updateShelf(activeBayId, shelf.id, v)}
                     />
                   </div>
-                  <button onClick={() => duplicateShelf(selectedBayId, shelf.id)} className="text-muted-foreground hover:text-blue-400 transition-colors" title="Duplicate">
+                  <button onClick={() => duplicateShelf(activeBayId, shelf.id)} className="text-muted-foreground hover:text-blue-400 transition-colors" title="Duplicate">
                     <Copy size={12} />
                   </button>
-                  <button onClick={() => removeShelf(selectedBayId, shelf.id)} className="text-muted-foreground hover:text-red-400 transition-colors" title="Remove">
+                  <button onClick={() => removeShelf(activeBayId, shelf.id)} className="text-muted-foreground hover:text-red-400 transition-colors" title="Remove">
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -606,38 +611,48 @@ export function FloatingControls() {
             icon={Box}
             action={
               <button
-                onClick={(e) => { e.stopPropagation(); if (selectedBayId) addDrawer(selectedBayId, height / 3, 200); }}
-                className={`hover:text-blue-400 transition-colors p-1 hover:bg-muted rounded ${!selectedBayId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!selectedBayId}
+                onClick={(e) => { e.stopPropagation(); if (activeBayId) addDrawer(activeBayId, height / 3, 200); }}
+                className={`hover:text-blue-400 transition-colors p-1 hover:bg-muted rounded ${!activeBayId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!activeBayId}
               >
                 <Plus size={14} />
               </button>
             }
           >
             <div className="space-y-2">
-              {!selectedBayId && <div className="text-xs text-muted-foreground italic text-center py-2">Select a bay to add drawers</div>}
-              {selectedBayId && drawers.length === 0 && <div className="text-xs text-muted-foreground italic text-center py-2">No drawers in this bay</div>}
-              {selectedBayId && drawers.map(drawer => (
-                <div key={drawer.id} className="flex flex-col gap-2 bg-muted/50 p-2 rounded border border-border">
+              {!activeBayId && <div className="text-xs text-muted-foreground italic text-center py-2">Select a bay to add drawers</div>}
+              {activeBayId && drawers.length === 0 && <div className="text-xs text-muted-foreground italic text-center py-2">No drawers in this bay</div>}
+              {activeBayId && drawers.map((drawer, index) => (
+                <div
+                  key={drawer.id}
+                  onClick={() => setSelectedDrawerId(drawer.id)}
+                  className={`flex flex-col gap-2 p-2 rounded border transition-all cursor-pointer ${activeDrawerId === drawer.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-muted/50 border-border hover:border-border/80'}`}
+                >
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
+                      <div className="text-xs font-semibold text-foreground">Drawer {index + 1}</div>
                       <LevaSlider
                         label="Y-Pos"
                         value={Math.round(drawer.y)}
                         min={0} max={height} step={10}
-                        onChange={(v) => updateDrawer(selectedBayId, drawer.id, v, drawer.height)}
+                        onChange={(v) => updateDrawer(activeBayId, drawer.id, v, drawer.height)}
                       />
                     </div>
-                    <button onClick={() => removeDrawer(selectedBayId, drawer.id)} className="text-muted-foreground hover:text-red-400 transition-colors" title="Remove">
-                      <Trash2 size={12} />
-                    </button>
+                    <div className="flex flex-col gap-1">
+                      <button onClick={(e) => { e.stopPropagation(); duplicateDrawer(activeBayId, drawer.id); }} className="text-muted-foreground hover:text-blue-400 transition-colors p-1 rounded hover:bg-background" title="Duplicate Drawer">
+                        <Copy size={12} />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); removeDrawer(activeBayId, drawer.id); }} className="text-muted-foreground hover:text-red-400 transition-colors p-1 rounded hover:bg-background" title="Remove Drawer">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex-1">
                     <LevaSlider
                       label="Height"
                       value={Math.round(drawer.height)}
                       min={100} max={500} step={10}
-                      onChange={(v) => updateDrawer(selectedBayId, drawer.id, drawer.y, v)}
+                      onChange={(v) => updateDrawer(activeBayId, drawer.id, drawer.y, v)}
                     />
                   </div>
                 </div>

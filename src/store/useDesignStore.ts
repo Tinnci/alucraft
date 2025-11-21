@@ -125,6 +125,7 @@ export interface DesignState {
   addDrawer: (bayId: string, y: number, height: number) => void;
   removeDrawer: (bayId: string, id: string) => void;
   updateDrawer: (bayId: string, id: string, y: number, height: number) => void;
+  duplicateDrawer: (bayId: string, id: string) => void;
 
   getDerived: () => { innerWidth: number; doorWidth: number };
   getCollisions: () => { left: boolean; right: boolean };
@@ -370,6 +371,32 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       return node;
     })
   })),
+  duplicateDrawer: (bayId: string, id: string) => set((state) => {
+    const bay = state.layout.find(n => n.id === bayId && n.type === 'bay') as LayoutBay | undefined;
+    if (!bay) return {};
+    const drawer = bay.drawers.find(d => d.id === id);
+    if (!drawer) return {};
+
+    const newDrawer: Drawer = {
+      id: Math.random().toString(36).substr(2, 9),
+      y: drawer.y + drawer.height + 10, // Place new drawer above with a 10mm gap
+      height: drawer.height
+    };
+
+    // Prevent new drawer from going out of bounds
+    if (newDrawer.y + newDrawer.height > state.height) {
+      newDrawer.y = drawer.y - drawer.height - 10;
+    }
+
+    return {
+      layout: state.layout.map(node => {
+        if (node.id === bayId && node.type === 'bay') {
+          return { ...node, drawers: [...node.drawers, newDrawer] };
+        }
+        return node;
+      })
+    };
+  }),
 
   getCollisions: () => {
     const { hasLeftWall, hasRightWall, result } = get();
