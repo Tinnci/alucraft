@@ -75,7 +75,10 @@ export function Workspace() {
   const collisionLeft = hasLeftWall && isCollision;
   const collisionRight = hasRightWall && isCollision;
 
-  const gridColor = isDarkMode ? '#1e293b' : '#e2e8f0';
+  // Grid colors: use higher contrast colors depending on theme
+  // Center line should be slightly more visible than the regular grid
+  const gridCenterColor = isDarkMode ? '#94a3b8' : '#64748b';
+  const gridLineColor = isDarkMode ? '#475569' : '#cbd5e1';
 
   // ===== 生成门板元素 =====
   const doorElements: JSX.Element[] = [];
@@ -205,8 +208,8 @@ export function Workspace() {
       {/* 交互控制 */}
       <OrbitControls makeDefault maxDistance={10000} />
 
-      {/* 网格帮助线 */}
-      <gridHelper args={[3000, 60, gridColor, gridColor]} />
+  {/* 网格帮助线 (center line color, regular grid color) */}
+  <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} />
 
       {/* 环境预设 */}
       <Environment preset="warehouse" />
