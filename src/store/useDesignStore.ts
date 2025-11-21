@@ -53,6 +53,7 @@ export interface DesignState {
   connectorType: ConnectorType;
   showDimensions: boolean;
   showWireframe: boolean;
+  showSnapGuides: boolean;
   cameraResetTrigger: number;
   isDarkMode: boolean;
   material: MaterialType;
@@ -78,6 +79,7 @@ export interface DesignState {
   setConnectorType: (v: ConnectorType) => void;
   setShowDimensions: (v: boolean) => void;
   setShowWireframe: (v: boolean) => void;
+  setShowSnapGuides: (v: boolean) => void;
   triggerCameraReset: () => void;
   toggleTheme: () => void;
   setMaterial: (material: MaterialType) => void;
@@ -131,6 +133,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   connectorType: 'angle_bracket' as ConnectorType,
   showDimensions: true,
   showWireframe: false,
+  showSnapGuides: true,
   cameraResetTrigger: 0,
   isDarkMode: true,
   material: 'silver',
@@ -175,6 +178,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setConnectorType: (v: ConnectorType) => set({ connectorType: v }),
   setShowDimensions: (v: boolean) => set({ showDimensions: v }),
   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
+  setShowSnapGuides: (v: boolean) => set({ showSnapGuides: v }),
   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   setMaterial: (material) => set({ material }),

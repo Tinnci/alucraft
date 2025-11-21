@@ -422,6 +422,7 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
 
     const profile = PROFILES[profileType];
     const s = profile.size;
+    const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
 
     // Sync ref with prop when not dragging
     useEffect(() => {
@@ -603,8 +604,8 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                 {/* Snapping Guides (Static relative to Bay) */}
                 {(isDragging || isSelected) && (
                     <group position={[0, -(shelf.y - height / 2), 0]}>
-                        <SnappingGuides height={height} width={width} depth={depth} />
-                        {activeSnap !== null && (
+                        {showSnapGuides && <SnappingGuides height={height} width={width} depth={depth} />}
+                        {showSnapGuides && activeSnap !== null && (
                             <SnapLine
                                 y={activeSnap.y - height / 2}
                                 depth={depth}

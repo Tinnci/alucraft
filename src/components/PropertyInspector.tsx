@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, DoorOpen, BoxSelect, Layers } from 'lucide-react';
+import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, DoorOpen, BoxSelect, Layers, Eye } from 'lucide-react';
 import useDesignStore, { DesignState, createDefaultDoorConfig } from '@/store/useDesignStore';
 import { LayoutBay } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
@@ -168,6 +168,8 @@ export function PropertyInspector() {
   const setTolerance = useDesignStore((state: DesignState) => state.setTolerance);
   const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
   const setBayDoorConfig = useDesignStore((state: DesignState) => state.setBayDoorConfig);
+  const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
+  const setShowSnapGuides = useDesignStore((state: DesignState) => state.setShowSnapGuides);
   const resizeBay = useDesignStore((state: DesignState) => state.resizeBay);
   const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
   const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
@@ -454,6 +456,21 @@ export function PropertyInspector() {
                   <div className="opacity-90 leading-relaxed">{result.message}</div>
                 </div>
               )}
+            </AccordionItem>
+
+            <AccordionItem title="View Options" icon={Eye}>
+              <div className="space-y-2">
+                <label className="flex items-center justify-between p-2 hover:bg-white/5 rounded cursor-pointer group">
+                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Show Snap Guides</span>
+                  <div
+                    className={`w-8 h-4 rounded-full relative transition-colors ${showSnapGuides ? 'bg-blue-600' : 'bg-muted'}`}
+                    onClick={(e) => { e.preventDefault(); setShowSnapGuides(!showSnapGuides); }}
+                  >
+                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${showSnapGuides ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </label>
+                <p className="text-[10px] text-muted-foreground px-2">显示吸附辅助线和数值标签</p>
+              </div>
             </AccordionItem>
 
             <AccordionItem title="Panels" icon={Layers}>
