@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
-import { AluProfile } from './AluProfile';
+import { ProfileInstances, ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
 import { PROFILES, ProfileType } from '@/core/types';
@@ -50,24 +50,42 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
 
     return (
         <group>
-            {/* --- Frame --- */}
-            {/* Verticals */}
-            <AluProfile type={profileType} length={hLength} position={[-width / 2 + offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
-            <AluProfile type={profileType} length={hLength} position={[width / 2 - offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
-            <AluProfile type={profileType} length={hLength} position={[-width / 2 + offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
-            <AluProfile type={profileType} length={hLength} position={[width / 2 - offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
+            <ProfileInstances type={profileType}>
+                {/* --- Frame --- */}
+                {/* Verticals */}
+                <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
+                <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
+                <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
+                <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
 
-            {/* Width Beams */}
-            <AluProfile type={profileType} length={wLength} position={[-wLength / 2, height / 2 - offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
-            <AluProfile type={profileType} length={wLength} position={[-wLength / 2, -height / 2 + offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
-            <AluProfile type={profileType} length={wLength} position={[-wLength / 2, height / 2 - offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
-            <AluProfile type={profileType} length={wLength} position={[-wLength / 2, -height / 2 + offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
+                {/* Width Beams */}
+                <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
+                <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
+                <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
+                <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
 
-            {/* Depth Beams */}
-            <AluProfile type={profileType} length={dLength} position={[-width / 2 + offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} />
-            <AluProfile type={profileType} length={dLength} position={[-width / 2 + offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
-            <AluProfile type={profileType} length={dLength} position={[width / 2 - offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} />
-            <AluProfile type={profileType} length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
+                {/* Depth Beams */}
+                <ProfileInstance length={dLength} position={[-width / 2 + offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} />
+                <ProfileInstance length={dLength} position={[-width / 2 + offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
+                <ProfileInstance length={dLength} position={[width / 2 - offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} />
+                <ProfileInstance length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
+
+                {/* --- Shelves --- */}
+                {shelves.map((shelf) => (
+                    <DraggableShelf
+                        key={shelf.id}
+                        shelf={shelf}
+                        width={width}
+                        height={height}
+                        depth={depth}
+                        profileType={profileType}
+                        wLength={wLength}
+                        dLength={dLength}
+                        offset={offset}
+                        updateShelf={updateShelf}
+                    />
+                ))}
+            </ProfileInstances>
 
             {/* --- Connectors --- */}
             {connectorType === 'angle' && (
@@ -137,22 +155,6 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
                     <planeGeometry args={[width - (s * 2) + (slotDepth * 2), depth - (s * 2) + (slotDepth * 2)]} />
                 </mesh>
             )}
-
-            {/* --- Shelves --- */}
-            {shelves.map((shelf) => (
-                <DraggableShelf
-                    key={shelf.id}
-                    shelf={shelf}
-                    width={width}
-                    height={height}
-                    depth={depth}
-                    profileType={profileType}
-                    wLength={wLength}
-                    dLength={dLength}
-                    offset={offset}
-                    updateShelf={updateShelf}
-                />
-            ))}
         </group>
     );
 }
@@ -248,10 +250,10 @@ function DraggableShelf({ shelf, width, height, depth, profileType, wLength, dLe
             )}
 
             {/* Shelf Beams */}
-            <AluProfile type={profileType} length={wLength} position={[-wLength / 2, 0, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
-            <AluProfile type={profileType} length={wLength} position={[-wLength / 2, 0, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
-            <AluProfile type={profileType} length={dLength} position={[-width / 2 + offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
-            <AluProfile type={profileType} length={dLength} position={[width / 2 - offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
+            <ProfileInstance length={wLength} position={[-wLength / 2, 0, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
+            <ProfileInstance length={wLength} position={[-wLength / 2, 0, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
+            <ProfileInstance length={dLength} position={[-width / 2 + offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
+            <ProfileInstance length={dLength} position={[width / 2 - offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
 
             {/* Connectors (Below the shelf beams) */}
             <group>

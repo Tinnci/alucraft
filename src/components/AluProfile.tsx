@@ -66,43 +66,78 @@ function createProfileShape(profileType: '2020' | '3030' | '4040'): THREE.Shape 
     return shape;
 }
 
-export function AluProfile({ type, length, position = [0, 0, 0], rotation = [0, 0, 0] }: AluProfileProps) {
+import { Instances, Instance } from '@react-three/drei';
+
+// ... (createProfileShape function remains the same)
+
+// Unit geometry cache
+const geometryCache: Record<string, THREE.ExtrudeGeometry> = {};
+
+function getProfileGeometry(type: '2020' | '3030' | '4040') {
+    if (!geometryCache[type]) {
+        const shape = createProfileShape(type);
+        const extrudeSettings = {
+            depth: 1, // Unit length
+            bevelEnabled: false,
+            steps: 1,
+        };
+        geometryCache[type] = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    }
+    return geometryCache[type];
+}
+
+interface ProfileInstancesProps {
+    type: '2020' | '3030' | '4040';
+    children: React.ReactNode;
+}
+
+export function ProfileInstances({ type, children }: ProfileInstancesProps) {
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
-
-    // Debug: Simple Square Shape
-    const shape = useMemo(() => {
-        return createProfileShape(type);
-    }, [type]);
-
-    const extrudeSettings = useMemo(() => ({
-        depth: length,
-        bevelEnabled: false,
-        steps: 1,
-    }), [length]);
-
-    const [hovered, setHovered] = useState(false);
-    const [selected, setSelected] = useState(false);
+    const geometry = useMemo(() => getProfileGeometry(type), [type]);
 
     return (
-        <group
+        <Instances range={100} geometry={geometry} castShadow receiveShadow>
+            <meshStandardMaterial
+                color="#e2e8f0"
+                roughness={0.5}
+                metalness={0.6}
+                wireframe={showWireframe}
+            />
+            {children}
+        </Instances>
+    );
+}
+
+interface ProfileInstanceProps {
+    length: number;
+    position?: [number, number, number];
+    rotation?: [number, number, number];
+}
+
+export function ProfileInstance({ length, position = [0, 0, 0], rotation = [0, 0, 0] }: ProfileInstanceProps) {
+    const [hovered, setHovered] = useState(false);
+    // const [selected, setSelected] = useState(false); // Selection on instances can be tricky with color updates
+
+    return (
+        <Instance
             position={position}
             rotation={rotation}
+            scale={[1, 1, length]}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
-            onClick={(e) => { e.stopPropagation(); setSelected(!selected); }}
-        >
-            <Extrude args={[shape, extrudeSettings]} castShadow receiveShadow>
-                {/* 铝材材质：金属质感，银灰色 */}
-                <meshStandardMaterial
-                    color={selected ? '#60a5fa' : (hovered ? '#cbd5e1' : '#e2e8f0')}
-                    roughness={0.5}
-                    metalness={0.6}
-                    emissive={selected ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000')}
-                    emissiveIntensity={selected ? 0.3 : (hovered ? 0.1 : 0)}
-                    wireframe={showWireframe}
-                />
-                <Edges color="#333" threshold={15} />
-            </Extrude>
-        </group>
+            color={hovered ? '#cbd5e1' : '#e2e8f0'}
+        />
+    );
+}
+
+// Legacy component for backward compatibility if needed (optional)
+export function AluProfile(props: AluProfileProps) {
+    // This is a fallback that renders a single Instance inside its own Instances group
+    // Not efficient but keeps API compatible if we wanted to.
+    // But for this refactor, we will update CabinetFrame to use ProfileInstances directly.
+    return (
+        <ProfileInstances type={props.type}>
+            <ProfileInstance {...props} />
+        </ProfileInstances>
     );
 }
