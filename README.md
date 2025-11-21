@@ -3,6 +3,9 @@
 
 # 🛠️ AluCraft
 
+![AluCraft banner](public/banner.jpg)
+![AluCraft experimental verison screenshot](dark_mode_glow_1763696336342.png)
+
 **AluCraft** 是一个基于 Web 的 3D 参数化设计工具，专为全铝家居（铝型材橱柜）DIY 爱好者开发。
 
 **核心目标**：解决铝型材柜体设计中复杂的\*\*“铰链遮盖计算”**与**“型材下料算量”\*\*痛点。不再需要在那张纸上手画草图算加减法，拒绝“买错铰链”或“锯短型材”。

@@ -265,9 +265,10 @@ export function FloatingControls() {
     >
       <div ref={nodeRef} className={`
         fixed z-50
-        bg-card/90
-        backdrop-blur-md
-        border-border
+        bg-card/80
+        backdrop-blur-xl
+        glass-shine
+        border-white/10
         shadow-2xl
         transition-all duration-300 ease-in-out
         font-sans
@@ -282,11 +283,11 @@ export function FloatingControls() {
 
         {/* Header */}
         <div
-          className={`drag-handle flex items-center justify-between p-3 select-none border-b border-border shrink-0 ${isMobile ? '' : 'cursor-move hover:bg-muted/50'}`}
+          className={`drag-handle flex items-center justify-between p-3 select-none border-b border-white/10 shrink-0 ${isMobile ? '' : 'cursor-move hover:bg-white/5'}`}
         >
-          <div className="flex items-center gap-2 text-foreground font-bold">
-            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
-            ALUCRAFT <span className="text-muted-foreground font-normal">CONTROLS</span>
+          <div className="flex items-center gap-2 text-foreground font-bold text-glow tracking-wide">
+            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
+            ALUCRAFT <span className="text-muted-foreground font-normal opacity-80">CONTROLS</span>
           </div>
 
           <div className="flex items-center gap-2">
