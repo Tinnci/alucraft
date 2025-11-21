@@ -6,7 +6,7 @@ import { ProfileInstances, ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
 import { PROFILES, ProfileType } from '@/core/types';
-import { Shelf, Drawer, useDesignStore, DesignState } from '@/store/useDesignStore';
+import { Shelf, Drawer, useDesignStore, DesignState, LayoutBay, LayoutDivider } from '@/store/useDesignStore';
 import * as THREE from 'three';
 
 interface CabinetFrameProps {
@@ -14,11 +14,9 @@ interface CabinetFrameProps {
     height: number;
     depth: number;
     profileType: ProfileType;
-    shelves?: Shelf[];
-    drawers?: Drawer[];
 }
 
-export function CabinetFrame({ width, height, depth, profileType, shelves = [], drawers = [] }: CabinetFrameProps) {
+export function CabinetFrame({ width, height, depth, profileType }: CabinetFrameProps) {
     const profile = PROFILES[profileType];
     const s = profile.size;
     const slotDepth = profile.slotDepth || 6;
@@ -28,18 +26,17 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
     const dLength = depth - (s * 2);
     const offset = s / 2;
 
-    // Store access for panels
+    // Store access
+    const layout = useDesignStore((state: DesignState) => state.layout);
     const hasLeftPanel = useDesignStore((state: DesignState) => state.hasLeftPanel);
     const hasRightPanel = useDesignStore((state: DesignState) => state.hasRightPanel);
     const hasBackPanel = useDesignStore((state: DesignState) => state.hasBackPanel);
     const hasTopPanel = useDesignStore((state: DesignState) => state.hasTopPanel);
     const hasBottomPanel = useDesignStore((state: DesignState) => state.hasBottomPanel);
     const connectorType = useDesignStore((state: DesignState) => state.connectorType);
-    const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
-    const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
 
-    // Panel Material (PBR-ish)
+    // Panel Material
     const panelMaterial = new THREE.MeshStandardMaterial({
         color: '#f1f5f9',
         roughness: 0.2,
@@ -48,48 +45,72 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
         wireframe: showWireframe
     });
 
+    // Calculate positions for layout nodes
+    let currentX = -width / 2 + s; // Start after left pillar
+
     return (
         <group>
             <ProfileInstances type={profileType}>
-                {/* --- Frame --- */}
-                {/* Verticals */}
+                {/* --- Outer Frame --- */}
+                {/* Verticals (4 Pillars) */}
                 <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
                 <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
                 <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
                 <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
 
-                {/* Width Beams */}
+                {/* Width Beams (Top/Bottom, Front/Back) */}
                 <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
                 <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
                 <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
                 <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
 
-                {/* Depth Beams */}
+                {/* Depth Beams (Left/Right, Top/Bottom) */}
                 <ProfileInstance length={dLength} position={[-width / 2 + offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} />
                 <ProfileInstance length={dLength} position={[-width / 2 + offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
                 <ProfileInstance length={dLength} position={[width / 2 - offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} />
                 <ProfileInstance length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
 
-                {/* --- Shelves --- */}
-                {shelves.map((shelf) => (
-                    <DraggableShelf
-                        key={shelf.id}
-                        shelf={shelf}
-                        width={width}
-                        height={height}
-                        depth={depth}
-                        profileType={profileType}
-                        wLength={wLength}
-                        dLength={dLength}
-                        offset={offset}
-                        updateShelf={updateShelf}
-                    />
-                ))}
+                {/* --- Layout Nodes (Bays & Dividers) --- */}
+                {layout.map((node, index) => {
+                    if (node.type === 'bay') {
+                        const bayWidth = node.width;
+                        const centerX = currentX + bayWidth / 2;
+                        currentX += bayWidth;
+
+                        return (
+                            <Bay
+                                key={node.id}
+                                bay={node}
+                                position={[centerX, 0, 0]}
+                                height={height}
+                                depth={depth}
+                                profileType={profileType}
+                            />
+                        );
+                    } else if (node.type === 'divider') {
+                        const divWidth = node.width;
+                        const centerX = currentX + divWidth / 2;
+                        currentX += divWidth;
+
+                        // Render Divider (Vertical Profile)
+                        // Assuming divider is a single vertical profile at front and back? Or just one?
+                        // Usually a divider in this system implies a full vertical separation.
+                        // So we need Front and Back verticals.
+                        return (
+                            <group key={node.id} position={[centerX, 0, 0]}>
+                                <ProfileInstance length={hLength - (s * 2)} position={[0, -height / 2 + s, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
+                                <ProfileInstance length={hLength - (s * 2)} position={[0, -height / 2 + s, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
+                            </group>
+                        );
+                    }
+                    return null;
+                })}
             </ProfileInstances>
 
-            {/* --- Connectors --- */}
+            {/* --- Connectors (Outer Frame) --- */}
             {connectorType === 'angle' && (
                 <group>
+                    {/* Simplified: Just corners for now. Internal bay connectors handled by Bay? */}
                     {/* Width Beam Connectors (8) */}
                     <Connector size={s} position={[-width / 2 + s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, 0]} />
                     <Connector size={s} position={[width / 2 - s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI / 2]} />
@@ -113,21 +134,6 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
                     <Connector size={s} position={[width / 2 - s / 2, height / 2 - s, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
                 </group>
             )}
-
-            {/* --- Drawers --- */}
-            {drawers.map(drawer => {
-                const isColliding = checkDrawerCollision(drawer);
-                return (
-                    <DrawerUnit
-                        key={drawer.id}
-                        width={width - (s * 2) - 2} // Internal width minus clearance
-                        height={drawer.height}
-                        depth={depth - (s * 2)} // Internal depth
-                        position={[0, -height / 2 + drawer.y + drawer.height / 2 + s, 0]}
-                        isColliding={isColliding}
-                    />
-                );
-            })}
 
             {/* --- Panels --- */}
             {hasLeftPanel && (
@@ -159,7 +165,66 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
     );
 }
 
+interface BayProps {
+    bay: LayoutBay;
+    position: [number, number, number];
+    height: number;
+    depth: number;
+    profileType: ProfileType;
+}
+
+function Bay({ bay, position, height, depth, profileType }: BayProps) {
+    const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
+    const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
+
+    const profile = PROFILES[profileType];
+    const s = profile.size;
+    const offset = s / 2;
+
+    const bayWidth = bay.width;
+
+    const wLength = bayWidth;
+    const dLength = depth - (s * 2);
+
+    return (
+        <group position={position}>
+            {/* Shelves */}
+            {bay.shelves.map((shelf) => (
+                <DraggableShelf
+                    key={shelf.id}
+                    bayId={bay.id}
+                    shelf={shelf}
+                    width={bayWidth} // This is the width of the shelf itself
+                    height={height}
+                    depth={depth}
+                    profileType={profileType}
+                    wLength={wLength}
+                    dLength={dLength}
+                    offset={offset}
+                    updateShelf={updateShelf}
+                />
+            ))}
+
+            {/* Drawers */}
+            {bay.drawers.map(drawer => {
+                const isColliding = checkDrawerCollision(bay.id, drawer);
+                return (
+                    <DrawerUnit
+                        key={drawer.id}
+                        width={bayWidth - 2} // Clearance
+                        height={drawer.height}
+                        depth={depth - (s * 2)}
+                        position={[0, -height / 2 + drawer.y + drawer.height / 2 + s, 0]}
+                        isColliding={isColliding}
+                    />
+                );
+            })}
+        </group>
+    );
+}
+
 interface DraggableShelfProps {
+    bayId: string;
     shelf: Shelf;
     width: number;
     height: number;
@@ -168,10 +233,10 @@ interface DraggableShelfProps {
     wLength: number;
     dLength: number;
     offset: number;
-    updateShelf: (id: string, y: number) => void;
+    updateShelf: (bayId: string, id: string, y: number) => void;
 }
 
-function DraggableShelf({ shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf }: DraggableShelfProps) {
+function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf }: DraggableShelfProps) {
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const { camera, raycaster } = useThree();
@@ -224,7 +289,7 @@ function DraggableShelf({ shelf, width, height, depth, profileType, wLength, dLe
             newShelfY = Math.round(newShelfY / snap) * snap;
         }
 
-        updateShelf(shelf.id, newShelfY);
+        updateShelf(bayId, shelf.id, newShelfY);
     };
 
     return (

@@ -41,8 +41,7 @@ export default function Home() {
   const hasRightWall = useDesignStore((state: DesignState) => state.hasRightWall);
   const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
   const doorCount = useDesignStore((state: DesignState) => state.doorCount);
-  const shelves = useDesignStore((state: DesignState) => state.shelves);
-  const drawers = useDesignStore((state: DesignState) => state.drawers);
+
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
 
   const frameRef = useRef<THREE.Group | null>(null);
@@ -219,8 +218,7 @@ export default function Home() {
                 height={height}
                 depth={depth}
                 profileType={profileType}
-                shelves={shelves}
-                drawers={drawers}
+
               />
             </group>
 

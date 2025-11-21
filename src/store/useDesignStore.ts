@@ -23,13 +23,30 @@ export interface Drawer {
   height: number; // Height of the drawer
 }
 
+export interface LayoutBay {
+  type: 'bay';
+  id: string;
+  width: number;
+  shelves: Shelf[];
+  drawers: Drawer[];
+}
+
+export interface LayoutDivider {
+  type: 'divider';
+  id: string;
+  width: number;
+}
+
+export type LayoutNode = LayoutBay | LayoutDivider;
+
 export interface DesignState {
   profileType: ProfileType;
   overlay: number;
   result: SimulationResult | null;
-  width: number;
+  width: number; // Total width (calculated or fixed)
   height: number;
   depth: number;
+  layout: LayoutNode[]; // New layout structure
   hasLeftWall: boolean;
   hasRightWall: boolean;
   hasLeftPanel: boolean;
@@ -40,8 +57,8 @@ export interface DesignState {
   isDoorOpen: boolean;
   doorCount: number;
   connectorType: 'angle' | 'internal';
-  shelves: Shelf[];
-  drawers: Drawer[];
+  // shelves: Shelf[]; // Deprecated: moved to LayoutBay
+  // drawers: Drawer[]; // Deprecated: moved to LayoutBay
   showDimensions: boolean;
   showWireframe: boolean;
   cameraResetTrigger: number;
@@ -66,16 +83,24 @@ export interface DesignState {
   setShowWireframe: (v: boolean) => void;
   triggerCameraReset: () => void;
   toggleTheme: () => void;
-  addShelf: (y: number) => void;
-  removeShelf: (id: string) => void;
-  updateShelf: (id: string, y: number) => void;
-  duplicateShelf: (id: string) => void;
-  addDrawer: (y: number, height: number) => void;
-  removeDrawer: (id: string) => void;
-  updateDrawer: (id: string, y: number, height: number) => void;
+
+  // Layout Actions
+  addBay: () => void;
+  removeBay: (id: string) => void;
+  resizeBay: (id: string, width: number) => void;
+
+  // Shelf/Drawer Actions (Updated to require bayId)
+  addShelf: (bayId: string, y: number) => void;
+  removeShelf: (bayId: string, id: string) => void;
+  updateShelf: (bayId: string, id: string, y: number) => void;
+  duplicateShelf: (bayId: string, id: string) => void;
+  addDrawer: (bayId: string, y: number, height: number) => void;
+  removeDrawer: (bayId: string, id: string) => void;
+  updateDrawer: (bayId: string, id: string, y: number, height: number) => void;
+
   getDerived: () => { innerWidth: number; doorWidth: number };
   getCollisions: () => { left: boolean; right: boolean };
-  checkDrawerCollision: (drawer: Drawer) => boolean;
+  checkDrawerCollision: (bayId: string, drawer: Drawer) => boolean;
   getBOM: () => BOMItem[];
 }
 
@@ -86,6 +111,10 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   width: 600,
   height: 800,
   depth: 400,
+  // Initial Layout: One Bay
+  layout: [
+    { type: 'bay', id: 'bay-initial', width: 560, shelves: [], drawers: [] } // 600 - 40 (20*2)
+  ],
   hasLeftWall: false,
   hasRightWall: false,
   hasLeftPanel: false,
@@ -96,8 +125,6 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   isDoorOpen: false,
   doorCount: 1,
   connectorType: 'angle',
-  shelves: [],
-  drawers: [],
   showDimensions: true,
   showWireframe: false,
   cameraResetTrigger: 0,
@@ -105,7 +132,18 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setProfileType: (p: ProfileType) => set({ profileType: p }),
   setOverlay: (v: number) => set({ overlay: v }),
   setResult: (r: SimulationResult | null) => set({ result: r }),
-  setWidth: (v: number) => set({ width: v }),
+  setWidth: (v: number) => set((state) => {
+    // When total width changes, resize the first bay (simplified logic for now)
+    // In a real multi-bay system, we'd need a strategy (e.g., proportional resize)
+    const profileSize = PROFILES[state.profileType].size;
+    const diff = v - state.width;
+    const newLayout = [...state.layout];
+    const firstBay = newLayout.find(n => n.type === 'bay') as LayoutBay;
+    if (firstBay) {
+      firstBay.width += diff;
+    }
+    return { width: v, layout: newLayout };
+  }),
   setHeight: (v: number) => set({ height: v }),
   setDepth: (v: number) => set({ depth: v }),
   setHasLeftWall: (v: boolean) => set({ hasLeftWall: v }),
@@ -122,31 +160,141 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
-  addShelf: (y: number) => set((state) => ({
-    shelves: [...state.shelves, { id: Math.random().toString(36).substr(2, 9), y }]
-  })),
-  removeShelf: (id: string) => set((state) => ({
-    shelves: state.shelves.filter(s => s.id !== id)
-  })),
-  updateShelf: (id: string, y: number) => set((state) => ({
-    shelves: state.shelves.map(s => s.id === id ? { ...s, y } : s)
-  })),
-  duplicateShelf: (id: string) => set((state) => {
-    const shelf = state.shelves.find(s => s.id === id);
-    if (!shelf) return {};
+
+  // --- Layout Actions ---
+  addBay: () => set((state) => {
+    const profileSize = PROFILES[state.profileType].size;
+    const newBayWidth = 400; // Default new bay width
+    const dividerWidth = profileSize;
+
+    const newBay: LayoutBay = {
+      type: 'bay',
+      id: Math.random().toString(36).substr(2, 9),
+      width: newBayWidth,
+      shelves: [],
+      drawers: []
+    };
+    const newDivider: LayoutDivider = {
+      type: 'divider',
+      id: Math.random().toString(36).substr(2, 9),
+      width: dividerWidth
+    };
+
     return {
-      shelves: [...state.shelves, { id: Math.random().toString(36).substr(2, 9), y: shelf.y + 50 }]
+      layout: [...state.layout, newDivider, newBay],
+      width: state.width + dividerWidth + newBayWidth
     };
   }),
-  addDrawer: (y: number, height: number) => set((state) => ({
-    drawers: [...state.drawers, { id: Math.random().toString(36).substr(2, 9), y, height }]
+  removeBay: (id: string) => set((state) => {
+    // Logic to remove bay and adjacent divider
+    // Simplified: Filter out
+    const index = state.layout.findIndex(n => n.id === id);
+    if (index === -1) return {};
+
+    // If it's the only bay, don't remove? Or reset?
+    const bayCount = state.layout.filter(n => n.type === 'bay').length;
+    if (bayCount <= 1) return {};
+
+    // Remove bay and preceding divider (if exists) or following divider
+    let newLayout = [...state.layout];
+    let widthReduction = 0;
+
+    const node = newLayout[index] as LayoutBay;
+    widthReduction += node.width;
+
+    // Try remove preceding divider
+    if (index > 0 && newLayout[index - 1].type === 'divider') {
+      widthReduction += (newLayout[index - 1] as LayoutDivider).width;
+      newLayout.splice(index - 1, 2); // Remove divider and bay
+    } else if (index < newLayout.length - 1 && newLayout[index + 1].type === 'divider') {
+      widthReduction += (newLayout[index + 1] as LayoutDivider).width;
+      newLayout.splice(index, 2); // Remove bay and next divider
+    } else {
+      newLayout.splice(index, 1);
+    }
+
+    return {
+      layout: newLayout,
+      width: state.width - widthReduction
+    };
+  }),
+  resizeBay: (id: string, width: number) => set((state) => {
+    const newLayout = state.layout.map(node => {
+      if (node.id === id && node.type === 'bay') {
+        return { ...node, width };
+      }
+      return node;
+    });
+    // Recalculate total width
+    const newTotalWidth = newLayout.reduce((acc, node) => acc + node.width, 0) + (PROFILES[state.profileType].size * 2); // + outer frame
+    return { layout: newLayout, width: newTotalWidth };
+  }),
+
+  // --- Shelf/Drawer Actions ---
+  addShelf: (bayId: string, y: number) => set((state) => ({
+    layout: state.layout.map(node => {
+      if (node.id === bayId && node.type === 'bay') {
+        return { ...node, shelves: [...node.shelves, { id: Math.random().toString(36).substr(2, 9), y }] };
+      }
+      return node;
+    })
   })),
-  removeDrawer: (id: string) => set((state) => ({
-    drawers: state.drawers.filter(d => d.id !== id)
+  removeShelf: (bayId: string, id: string) => set((state) => ({
+    layout: state.layout.map(node => {
+      if (node.id === bayId && node.type === 'bay') {
+        return { ...node, shelves: node.shelves.filter(s => s.id !== id) };
+      }
+      return node;
+    })
   })),
-  updateDrawer: (id: string, y: number, height: number) => set((state) => ({
-    drawers: state.drawers.map(d => d.id === id ? { ...d, y, height } : d)
+  updateShelf: (bayId: string, id: string, y: number) => set((state) => ({
+    layout: state.layout.map(node => {
+      if (node.id === bayId && node.type === 'bay') {
+        return { ...node, shelves: node.shelves.map(s => s.id === id ? { ...s, y } : s) };
+      }
+      return node;
+    })
   })),
+  duplicateShelf: (bayId: string, id: string) => set((state) => {
+    const bay = state.layout.find(n => n.id === bayId && n.type === 'bay') as LayoutBay | undefined;
+    if (!bay) return {};
+    const shelf = bay.shelves.find(s => s.id === id);
+    if (!shelf) return {};
+
+    return {
+      layout: state.layout.map(node => {
+        if (node.id === bayId && node.type === 'bay') {
+          return { ...node, shelves: [...node.shelves, { id: Math.random().toString(36).substr(2, 9), y: shelf.y + 50 }] };
+        }
+        return node;
+      })
+    };
+  }),
+  addDrawer: (bayId: string, y: number, height: number) => set((state) => ({
+    layout: state.layout.map(node => {
+      if (node.id === bayId && node.type === 'bay') {
+        return { ...node, drawers: [...node.drawers, { id: Math.random().toString(36).substr(2, 9), y, height }] };
+      }
+      return node;
+    })
+  })),
+  removeDrawer: (bayId: string, id: string) => set((state) => ({
+    layout: state.layout.map(node => {
+      if (node.id === bayId && node.type === 'bay') {
+        return { ...node, drawers: node.drawers.filter(d => d.id !== id) };
+      }
+      return node;
+    })
+  })),
+  updateDrawer: (bayId: string, id: string, y: number, height: number) => set((state) => ({
+    layout: state.layout.map(node => {
+      if (node.id === bayId && node.type === 'bay') {
+        return { ...node, drawers: node.drawers.map(d => d.id === id ? { ...d, y, height } : d) };
+      }
+      return node;
+    })
+  })),
+
   getCollisions: () => {
     const { hasLeftWall, hasRightWall, result } = get();
     const isCollision = (result && !result.success) || false;
@@ -155,12 +303,15 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       right: hasRightWall && isCollision
     };
   },
-  checkDrawerCollision: (drawer: Drawer) => {
-    const { shelves } = get();
+  checkDrawerCollision: (bayId: string, drawer: Drawer) => {
+    const { layout } = get();
+    const bay = layout.find(n => n.id === bayId && n.type === 'bay') as LayoutBay | undefined;
+    if (!bay) return false;
+
     const drawerBottom = drawer.y;
     const drawerTop = drawer.y + drawer.height;
 
-    for (const shelf of shelves) {
+    for (const shelf of bay.shelves) {
       const shelfY = shelf.y;
       if (shelfY > drawerBottom && shelfY < drawerTop) return true;
     }
@@ -176,7 +327,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   },
   getBOM: () => {
     const state = get() as DesignState;
-    const { width, height, depth, profileType, result, connectorType, doorCount, hasLeftPanel, hasRightPanel, hasBackPanel, hasTopPanel, hasBottomPanel } = state;
+    const { width, height, depth, profileType, result, connectorType, doorCount, hasLeftPanel, hasRightPanel, hasBackPanel, hasTopPanel, hasBottomPanel, layout } = state;
     const profile = PROFILES[profileType];
     const s = profile.size;
     const slotDepth = profile.slotDepth || 6;
@@ -188,12 +339,20 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const dLength = Math.round(depth - (s * 2));
 
     const profileItems: BOMItem[] = [];
-    // 4 vertical pillars
+    // 4 vertical pillars (Outer frame)
     profileItems.push({ name: `${profileType} Vertical (Pillar)`, lengthMm: hLength, qty: 4, category: 'profile' });
-    // 4 horizontal width beams
+    // 4 horizontal width beams (Outer frame)
     profileItems.push({ name: `${profileType} Width Beam`, lengthMm: wLength, qty: 4, category: 'profile' });
-    // 4 depth beams
+    // 4 depth beams (Outer frame)
     profileItems.push({ name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4, category: 'profile' });
+
+    // Dividers
+    const dividers = layout.filter(n => n.type === 'divider') as LayoutDivider[];
+    dividers.forEach(d => {
+      // Divider usually consists of a vertical profile? Or just a panel?
+      // For now assume it's a vertical profile
+      profileItems.push({ name: `${profileType} Vertical (Divider)`, lengthMm: hLength - (s * 2), qty: 1, category: 'profile' });
+    });
 
     // Panels (Enclosure)
     const panelItems: BOMItem[] = [];
@@ -237,46 +396,50 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       doorItems.push({ name: 'Door Panel', qty: doorCount, note: `${eachWidth} x ${height} mm each`, category: 'panel' });
     }
 
-    // Shelves
-    const shelves = state.shelves || [];
-    if (shelves.length > 0) {
-      profileItems.push({ name: `${profileType} Shelf Width Beam`, lengthMm: wLength, qty: shelves.length * 2, category: 'profile' });
-      profileItems.push({ name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: shelves.length * 2, category: 'profile' });
-    }
+    // Iterate Bays for Shelves and Drawers
+    let totalShelves = 0;
+    let totalDrawers = 0;
+    const bays = layout.filter(n => n.type === 'bay') as LayoutBay[];
 
-    // Drawers
-    const drawers = state.drawers || [];
-    if (drawers.length > 0) {
-      // 1. Drawer Slides (Pair per drawer)
-      // Assuming slide length is depth - 50mm, rounded down to nearest 50mm
-      const slideLength = Math.floor((depth - 50) / 50) * 50;
-      panelItems.push({
-        name: `Drawer Slides (${slideLength}mm)`,
-        qty: drawers.length,
-        note: 'Pair (L+R)',
-        category: 'hardware'
-      });
+    bays.forEach(bay => {
+      const bayWLength = Math.round(bay.width);
 
-      // 2. Drawer Faces & Boxes
-      drawers.forEach((d, idx) => {
-        const faceWidth = Math.round(innerWidth + (get().overlay * 2));
+      // Shelves
+      if (bay.shelves.length > 0) {
+        profileItems.push({ name: `${profileType} Shelf Width Beam (Bay ${bayWLength}mm)`, lengthMm: bayWLength, qty: bay.shelves.length * 2, category: 'profile' });
+        profileItems.push({ name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: bay.shelves.length * 2, category: 'profile' });
+        totalShelves += bay.shelves.length;
+      }
+
+      // Drawers
+      if (bay.drawers.length > 0) {
+        const slideLength = Math.floor((depth - 50) / 50) * 50;
         panelItems.push({
-          name: `Drawer Face #${idx + 1}`,
-          qty: 1,
-          note: `${faceWidth} x ${Math.round(d.height)} mm`,
-          category: 'panel'
-        });
-
-        panelItems.push({
-          name: `Drawer Box/Body #${idx + 1}`,
-          qty: 1,
-          note: `Fits inside ${Math.round(innerWidth)}mm width`,
+          name: `Drawer Slides (${slideLength}mm)`,
+          qty: bay.drawers.length,
+          note: 'Pair (L+R)',
           category: 'hardware'
         });
 
-        panelItems.push({ name: 'Handle', qty: 1, category: 'hardware' });
-      });
-    }
+        bay.drawers.forEach((d, idx) => {
+          const faceWidth = Math.round(bay.width + (s * 2) + (get().overlay * 2)); // Approx
+          panelItems.push({
+            name: `Drawer Face`,
+            qty: 1,
+            note: `${faceWidth} x ${Math.round(d.height)} mm`,
+            category: 'panel'
+          });
+          panelItems.push({
+            name: `Drawer Box/Body`,
+            qty: 1,
+            note: `Fits inside ${Math.round(bay.width)}mm width`,
+            category: 'hardware'
+          });
+          panelItems.push({ name: 'Handle', qty: 1, category: 'hardware' });
+        });
+        totalDrawers += bay.drawers.length;
+      }
+    });
 
     // Hinges
     const hinges: BOMItem[] = [];
@@ -286,12 +449,9 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       hinges.push({ name: hingeName, qty: hingeQty, category: 'hardware' });
     }
 
-    // Connectors (angle brackets or internal locks)
-    // Base frame connectors (simplified estimation)
-    const baseConnectors = connectorType === 'angle' ? 16 : 16; // 8 corners * 2 connections
-    // Shelf connectors: 4 beams * 2 ends = 8 connections per shelf
-    const shelfConnectors = shelves.length * 8;
-
+    // Connectors
+    const baseConnectors = connectorType === 'angle' ? 16 : 16;
+    const shelfConnectors = totalShelves * 8;
     const totalConnectors = baseConnectors + shelfConnectors;
 
     if (connectorType === 'angle') {
