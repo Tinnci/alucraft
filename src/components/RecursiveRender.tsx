@@ -151,7 +151,25 @@ function DividerVisual({ id, position, profileType, height, depth, vertLength, o
       if (groupRef.current) {
         // Calculate delta based on visual position (not store position)
         const currentPos = axis === 'x' ? groupRef.current.position.x : groupRef.current.position.y;
-        const delta = currentPos - startRef.current;
+        let delta = currentPos - startRef.current;
+
+        // Visual Clamping
+        const MIN_WIDTH = 40;
+        // Check left/top limit
+        if (prevWidth + delta < MIN_WIDTH) {
+          delta = MIN_WIDTH - prevWidth;
+        }
+        // Check right/bottom limit
+        if (nextWidth - delta < MIN_WIDTH) {
+          delta = nextWidth - MIN_WIDTH;
+        }
+
+        // Apply clamped position back to the object
+        if (axis === 'x') {
+          groupRef.current.position.x = startRef.current + delta;
+        } else {
+          groupRef.current.position.y = startRef.current + delta;
+        }
 
         // Calculate predicted widths
         // Logic: Moving Right/Down (+) increases Prev, decreases Next
