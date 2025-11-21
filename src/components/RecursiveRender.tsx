@@ -1,9 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
+import { useThree } from '@react-three/fiber';
+import { TransformControls } from '@react-three/drei';
+import * as THREE from 'three';
 import { LayoutNode, ContainerNode, DividerNode, ItemNode, PROFILES } from '@/core/types';
 import computeLayoutSizes from '@/core/layout-utils';
 import { Bay } from './CabinetFrame';
+import useDesignStore from '@/store/useDesignStore';
 import { ProfileInstance } from './AluProfile';
 import { ProfileType } from '@/core/types';
 
@@ -15,9 +19,10 @@ interface RecursiveRenderProps {
   height: number; // cabinet total height, passed for context
   depth: number; // cabinet total depth
   isShiftDown?: boolean;
+  parentOrientation?: 'horizontal' | 'vertical';
 }
 
-export function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, ...groupProps }: RecursiveRenderProps) {
+export function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, ...groupProps }: RecursiveRenderProps) {
   const [w, h, d] = dims;
   const [x, y, z] = origin;
 
@@ -27,12 +32,7 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
     const offset = s / 2;
     const vertLength = height - (s * 2);
     // Render two vertical pillars at center of this divider
-    return (
-      <group position={[x, y, z]}>
-        <ProfileInstance length={vertLength} position={[0, -height / 2 + s, cabDepth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
-        <ProfileInstance length={vertLength} position={[0, -height / 2 + s, -cabDepth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
-      </group>
-    );
+  return <DividerVisual key={node.id} id={node.id} position={[x, y, z]} profileType={profileType} height={height} depth={cabDepth} vertLength={vertLength} offset={offset} isVertical={parentOrientation === 'vertical'} />;
   }
 
   // Render item node (bay)
@@ -91,6 +91,7 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
               height={height}
               depth={cabDepth}
               isShiftDown={isShiftDown}
+              parentOrientation={container.orientation}
             />
           );
         })}
@@ -99,6 +100,66 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
   }
 
   return null;
+}
+
+interface DividerVisualProps {
+  id: string;
+  position: [number, number, number];
+  profileType: ProfileType;
+  height: number;
+  depth: number;
+  vertLength: number;
+  offset: number;
+  isVertical: boolean;
+}
+
+function DividerVisual({ id, position, profileType, height, depth, vertLength, offset, isVertical }: DividerVisualProps) {
+  type TransformControlRef = { addEventListener?: (t: string, h: (e: { value: boolean }) => void) => void; removeEventListener?: (t: string, h: (e: { value: boolean }) => void) => void };
+  const transformRef = useRef<TransformControlRef | null>(null);
+  const groupRef = useRef<THREE.Group | null>(null);
+  const { controls } = useThree();
+  const moveDivider = useDesignStore((s) => s.moveDivider);
+  const startRef = useRef<number>(0);
+  const axis: 'x' | 'y' = isVertical ? 'y' : 'x';
+
+  useEffect(() => {
+    const tc = transformRef.current;
+    if (!tc) return;
+  const handler = (e: { value: boolean }) => {
+  const dragging = !!e.value;
+  if (!dragging) {
+        // On drag end, compute delta relative to start
+        if (groupRef.current) {
+          const newPos = axis === 'x' ? (groupRef.current.position.x) : (groupRef.current.position.y);
+          const delta = newPos - startRef.current;
+          if (Math.abs(delta) >= 1) {
+            moveDivider(id, delta);
+          }
+          // reset visual position - store will re-render
+          if (axis === 'x') groupRef.current.position.x = 0; else groupRef.current.position.y = 0;
+        }
+  if (controls) (controls as unknown as { enabled?: boolean }).enabled = true;
+  } else {
+  if (controls) (controls as unknown as { enabled?: boolean }).enabled = false;
+        if (groupRef.current) {
+          startRef.current = axis === 'x' ? groupRef.current.position.x : groupRef.current.position.y;
+        }
+      }
+    };
+    tc.addEventListener?.('dragging-changed', handler);
+    return () => tc.removeEventListener?.('dragging-changed', handler);
+  }, [controls, moveDivider, id, axis]);
+
+  return (
+    <group position={position} ref={groupRef}>
+  <TransformControls ref={(node) => { transformRef.current = node as unknown as TransformControlRef; }} object={groupRef as unknown as React.MutableRefObject<THREE.Object3D>} mode="translate" size={0.8} showY={isVertical} showZ={false} showX={!isVertical}>
+        <group>
+          <ProfileInstance length={vertLength} position={[0, -height / 2 + (profileType ? (PROFILES[profileType].size) : 0), depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
+          <ProfileInstance length={vertLength} position={[0, -height / 2 + (profileType ? (PROFILES[profileType].size) : 0), -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
+        </group>
+      </TransformControls>
+    </group>
+  );
 }
 
 export default RecursiveRender;

@@ -159,7 +159,8 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                   profileType={profileType}
                   height={height}
                   depth={depth}
-                  isShiftDown={isShiftDown}
+                                                    isShiftDown={isShiftDown}
+                                                    parentOrientation={'horizontal'}
                 />
                 
             </ProfileInstances>
