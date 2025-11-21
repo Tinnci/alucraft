@@ -3,41 +3,26 @@
 import { create } from 'zustand';
 import { temporal } from 'zundo';
 import {
-    ProfileType,
-    PROFILES,
-    SimulationResult,
-    BOMItem,
-    ProfileBOMItem,
-    PanelBOMItem,
-    HardwareBOMItem,
-    ConnectorType,
-    CONNECTORS,
+  ProfileType,
+  PROFILES,
+  SimulationResult,
+  BOMItem,
+  ConnectorType,
+  Shelf,
+  Drawer,
+  DoorType,
+  HingeSide,
+  BayDoorConfig,
+  LayoutBay,
+  LayoutDivider,
+  LayoutNode,
+  MaterialType
 } from '@/core/types';
-import { calculateHinge } from '@/core/hinge-rules';
+import { calculateBOM } from '@/core/bom-calculator';
 import { nanoid } from 'nanoid';
 
 // Helper function to generate unique IDs
 const uid = (len = 8) => nanoid(len);
-
-export interface Shelf {
-  id: string;
-  y: number; // Height from bottom in mm
-}
-
-export interface Drawer {
-  id: string;
-  y: number; // Height from bottom in mm
-  height: number; // Height of the drawer
-}
-
-export type DoorType = 'single' | 'double';
-export type HingeSide = 'left' | 'right';
-
-export interface BayDoorConfig {
-  enabled: boolean;
-  type: DoorType;
-  hingeSide: HingeSide; // Used when type === 'single'
-}
 
 export const createDefaultDoorConfig = (): BayDoorConfig => ({
   enabled: true,
@@ -51,26 +36,6 @@ export const getDoorSides = (door?: BayDoorConfig): HingeSide[] => {
   if (!door || !door.enabled) return [];
   return door.type === 'double' ? ['left', 'right'] : [door.hingeSide];
 };
-
-export interface LayoutBay {
-  type: 'bay';
-  id: string;
-  width: number;
-  shelves: Shelf[];
-  drawers: Drawer[];
-  door?: BayDoorConfig;
-}
-
-export interface LayoutDivider {
-  type: 'divider';
-  id: string;
-  width: number;
-}
-
-export type LayoutNode = LayoutBay | LayoutDivider;
-
-export type MaterialType = 'silver' | 'dark_metal' | 'wood';
-
 export interface DesignState {
   profileType: ProfileType;
   overlay: number;
@@ -258,17 +223,17 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const newBayWidth = 400; // Default new bay width
     const dividerWidth = profileSize;
 
-  const newBay: LayoutBay = {
+    const newBay: LayoutBay = {
       type: 'bay',
-  id: uid(),
+      id: uid(),
       width: newBayWidth,
       shelves: [],
       drawers: [],
       door: createDefaultDoorConfig()
     };
-  const newDivider: LayoutDivider = {
+    const newDivider: LayoutDivider = {
       type: 'divider',
-  id: uid(),
+      id: uid(),
       width: dividerWidth
     };
 
@@ -330,7 +295,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   addShelf: (bayId: string, y: number) => set((state) => ({
     layout: state.layout.map(node => {
       if (node.id === bayId && node.type === 'bay') {
-          return { ...node, shelves: [...node.shelves, { id: uid(), y }] };
+        return { ...node, shelves: [...node.shelves, { id: uid(), y }] };
       }
       return node;
     })
@@ -369,7 +334,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   addDrawer: (bayId: string, y: number, height: number) => set((state) => ({
     layout: state.layout.map(node => {
       if (node.id === bayId && node.type === 'bay') {
-  return { ...node, drawers: [...node.drawers, { id: uid(), y, height }] };
+        return { ...node, drawers: [...node.drawers, { id: uid(), y, height }] };
       }
       return node;
     })
@@ -397,7 +362,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     if (!drawer) return {};
 
     const newDrawer: Drawer = {
-  id: uid(),
+      id: uid(),
       y: drawer.y + drawer.height + 10, // Place new drawer above with a 10mm gap
       height: drawer.height
     };
@@ -449,181 +414,10 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   },
   getBOM: () => {
     const state = get() as DesignState;
-  const { width, height, depth, profileType, connectorType, hasLeftPanel, hasRightPanel, hasBackPanel, hasTopPanel, hasBottomPanel, layout, overlay, panelThickness } = state;
-    const profile = PROFILES[profileType];
-    const s = profile.size;
-  const slotDepth = profile.slotDepth || 6;
-  const tolerance = state.tolerance || 1; // 1mm assembly gap/tolerance
-    const innerWidth = width - (s * 2);
-    const hLength = Math.round(height);
-    const wLength = Math.round(innerWidth);
-    const dLength = Math.round(depth - (s * 2));
-
-    // 获取连接件扣减量
-    const connectorSpec = CONNECTORS[connectorType];
-    const connectorDeduction = connectorSpec.deduction;
-
-    // 计算实际的下料长度（应用连接件扣减）
-    // 横梁长度 = 内宽 - (连接件扣减 * 2)
-    const beamDeductedLength = Math.round(wLength - (connectorDeduction * 2));
-    const frameBeamDeductedLength = Math.round(innerWidth - (connectorDeduction * 2));
-
-    const profileItems: ProfileBOMItem[] = [];
-    const panelItems: PanelBOMItem[] = [];
-    const hardwareItems: HardwareBOMItem[] = [];
-
-    // --- 1. Frame Profiles ---
-    profileItems.push({ id: uid(), name: `${profileType} Vertical (Pillar)`, lengthMm: hLength, qty: 4, category: 'profile' });
-    profileItems.push({ id: uid(), name: `${profileType} Width Beam (Deducted)`, lengthMm: frameBeamDeductedLength, qty: 4, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
-    profileItems.push({ id: uid(), name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4, category: 'profile' });
-
-    // --- 2. Layout Dividers ---
-    layout.forEach(node => {
-        if (node.type === 'divider') {
-            profileItems.push({ id: uid(), name: `${profileType} Vertical (Divider)`, lengthMm: hLength - (s * 2), qty: 1, category: 'profile' });
-        }
-    });
-
-  // --- 3. Panels (Sides, Back, Top, Bottom) ---
-  // Panel thickness comes from state and can be adjusted by user (default set in initial state)
-  if (hasLeftPanel) {
-    const sidePanelHeight = Math.round(height - s * 2 + (slotDepth * 2) - tolerance);
-    const sidePanelWidth = Math.round(depth - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Side Panel (Left)', qty: 1, widthMm: sidePanelWidth, heightMm: sidePanelHeight, thicknessMm: panelThickness, category: 'panel' });
-    }
-    if (hasRightPanel) {
-    const sidePanelHeight = Math.round(height - s * 2 + (slotDepth * 2) - tolerance);
-    const sidePanelWidth = Math.round(depth - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Side Panel (Right)', qty: 1, widthMm: sidePanelWidth, heightMm: sidePanelHeight, thicknessMm: panelThickness, category: 'panel' });
-    }
-    if (hasBackPanel) {
-    const backPanelHeight = Math.round(height - s * 2 + (slotDepth * 2) - tolerance);
-    const backPanelWidth = Math.round(width - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Back Panel', qty: 1, widthMm: backPanelWidth, heightMm: backPanelHeight, thicknessMm: panelThickness, category: 'panel' });
-    }
-    if (hasTopPanel) {
-    const tbPanelWidth = Math.round(width - s * 2 + (slotDepth * 2) - tolerance);
-    const tbPanelDepth = Math.round(depth - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Top Panel', qty: 1, widthMm: tbPanelWidth, heightMm: tbPanelDepth, thicknessMm: panelThickness, category: 'panel' });
-    }
-    if (hasBottomPanel) {
-    const tbPanelWidth = Math.round(width - s * 2 + (slotDepth * 2) - tolerance);
-    const tbPanelDepth = Math.round(depth - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Bottom Panel', qty: 1, widthMm: tbPanelWidth, heightMm: tbPanelDepth, thicknessMm: panelThickness, category: 'panel' });
-    }
-
-
-    // --- 4. Bay Components (Doors, Shelves, Drawers) ---
-    layout.forEach((bay, bayIndex) => {
-        if (bay.type !== 'bay') return;
-
-        const bayLabel = `Bay #${bayIndex + 1}`;
-
-        // Doors
-        if (bay.door?.enabled) {
-            if (bay.door.type === 'single') {
-                const singleWidth = bay.width - 4; // 2mm gap on each side
-                panelItems.push({
-                    id: uid(),
-                    name: `${bayLabel} Door Panel (Single)`,
-                    qty: 1,
-                    widthMm: singleWidth,
-                    heightMm: height,
-                    thicknessMm: panelThickness,
-                    category: 'panel'
-                });
-            } else { // Double
-                const leafWidth = (bay.width / 2) - 3; // 2mm outer gap, 2mm inner gap
-                panelItems.push({
-                    id: uid(),
-                    name: `${bayLabel} Door Panel (Pair)`,
-                    qty: 2,
-                    widthMm: leafWidth,
-                    heightMm: height,
-                    thicknessMm: panelThickness,
-                    category: 'panel'
-                });
-            }
-        }
-
-        // Shelves
-        if (bay.shelves.length > 0) {
-            const bayInnerWidth = bay.width - (s * 2);
-            const bayBeamDeductedLength = Math.round(bayInnerWidth - (connectorDeduction * 2));
-            profileItems.push({ id: uid(), name: `${profileType} Shelf Width Beam (Bay ${bayBeamDeductedLength}mm)`, lengthMm: bayBeamDeductedLength, qty: bay.shelves.length * 2, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
-            profileItems.push({ id: uid(), name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: bay.shelves.length * 2, category: 'profile' });
-        }
-
-        // Drawers
-        if (bay.drawers.length > 0) {
-            const slideLength = depth - 50; // Simplified
-            hardwareItems.push({
-                id: uid(),
-                name: `Drawer Slides (${slideLength}mm)`,
-                qty: bay.drawers.length,
-                unit: 'pair',
-                category: 'hardware'
-            });
-
-      bay.drawers.forEach(d => {
-                // Drawer face width: default to inset unless drawerStyle is 'overlay'
-                const faceWidth = state.drawerStyle === 'overlay' ? Math.round(bay.width + overlay * 2) : Math.round(bay.width - 10); // mm
-                panelItems.push({
-                    id: uid(),
-                    name: `Drawer Face`,
-                    qty: 1,
-                    widthMm: faceWidth,
-                    heightMm: Math.round(d.height),
-                    thicknessMm: panelThickness,
-                    category: 'panel'
-                });
-                hardwareItems.push({
-                    id: uid(),
-                    name: `Drawer Box/Body`,
-                    qty: 1,
-                    unit: 'set',
-                    note: `Fits inside ${Math.round(bay.width)}mm width`,
-                    category: 'hardware'
-                });
-                hardwareItems.push({ id: uid(), name: 'Handle', qty: 1, category: 'hardware', unit: 'piece' });
-            });
-        }
-    });
-
-  // --- 5. Hardware (Hinges, Connectors) ---
-    const hingeResult = calculateHinge(profileType, overlay);
-    if (hingeResult.success && hingeResult.recommendedHinge) {
-        const hingeName = hingeResult.recommendedHinge.name;
-        const hingeQty = layout.reduce((acc, bay) => {
-            if (bay.type === 'bay' && bay.door?.enabled) {
-                const numDoors = bay.door.type === 'double' ? 2 : 1;
-                return acc + (numDoors * 2); // Assuming 2 hinges per door
-            }
-            return acc;
-        }, 0);
-        if (hingeQty > 0) {
-            hardwareItems.push({ id: uid(), name: hingeName, qty: hingeQty, category: 'hardware', unit: 'piece' });
-        }
-        }
-
-        // --- Connectors (angle brackets or internal locks) ---
-        const totalShelves = layout.reduce((acc, n) => n.type === 'bay' ? acc + (n.shelves?.length || 0) : acc, 0);
-        const numDividers = layout.reduce((acc, n) => n.type === 'divider' ? acc + 1 : acc, 0);
-        const baseConnectors = 16; // 8 corners * 2 connections (simplified estimation)
-        const shelfConnectors = totalShelves * 8; // 4 beams * 2 ends per shelf
-        const dividerConnectors = numDividers * 4; // simplified estimate
-        const totalConnectors = baseConnectors + shelfConnectors + dividerConnectors;
-
-        if (totalConnectors > 0) {
-          hardwareItems.push({ id: uid(), name: connectorSpec.name, qty: totalConnectors, category: 'hardware', unit: 'piece', note: connectorSpec.description });
-        }
-
-    // Combine all
-    const bom: BOMItem[] = [...profileItems, ...panelItems, ...hardwareItems];
-    return bom;
+    return calculateBOM(state);
   }
 }), {
-  partialize: (state) => {
+  partialize: (state: DesignState) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { cameraResetTrigger, ...rest } = state;
     return rest;

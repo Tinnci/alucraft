@@ -5,8 +5,8 @@ import { useThree, ThreeEvent } from '@react-three/fiber';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
-import { PROFILES, ProfileType, ConnectorType } from '@/core/types';
-import { Shelf, useDesignStore, DesignState, LayoutBay } from '@/store/useDesignStore';
+import { PROFILES, ProfileType, ConnectorType, Shelf, LayoutBay } from '@/core/types';
+import { useDesignStore, DesignState } from '@/store/useDesignStore';
 import * as THREE from 'three';
 
 interface CabinetFrameProps {
@@ -31,7 +31,7 @@ function InternalLock({ size, position, rotation, axis }: InternalLockProps) {
     // 计算孔的偏移位置（从角落向型材中心移动）
     const offset = size;
     const adjustedPos = [...position] as [number, number, number];
-    
+
     if (axis === 'x') {
         // 横梁（X轴）孔位向中心收缩
         adjustedPos[0] += position[0] < 0 ? offset : -offset;
@@ -71,7 +71,7 @@ function ThreeWayCorner({ size, position }: ThreeWayCornerProps) {
             {/* 黑色塑料角码立方体 */}
             <boxGeometry args={[size, size, size]} />
             <meshStandardMaterial color="#222" roughness={0.5} metalness={0.2} />
-            
+
             {/* 装饰线条，增加视觉细节 */}
             <mesh position={[size / 2 + 0.1, 0, 0]}>
                 <planeGeometry args={[0.1, size * 0.6]} />
@@ -211,7 +211,7 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                     <InternalLock axis="x" size={s} position={[width / 2 - s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, 0]} />
                     <InternalLock axis="x" size={s} position={[-width / 2 + s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
                     <InternalLock axis="x" size={s} position={[width / 2 - s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
-                    
+
                     <InternalLock axis="x" size={s} position={[-width / 2 + s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, 0]} />
                     <InternalLock axis="x" size={s} position={[width / 2 - s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, 0]} />
                     <InternalLock axis="x" size={s} position={[-width / 2 + s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
@@ -354,11 +354,21 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
     const { camera, raycaster } = useThree();
     const planeRef = useRef(new THREE.Plane());
     const intersectPoint = useRef(new THREE.Vector3());
+    const groupRef = useRef<THREE.Group>(null);
+    const currentYRef = useRef(shelf.y);
 
     const profile = PROFILES[profileType];
     const s = profile.size;
 
-    const y = shelf.y - height / 2;
+    // Sync ref with prop when not dragging
+    React.useEffect(() => {
+        if (!isDragging) {
+            currentYRef.current = shelf.y;
+            if (groupRef.current) {
+                groupRef.current.position.y = shelf.y - height / 2;
+            }
+        }
+    }, [shelf.y, height, isDragging]);
 
     const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
         e.stopPropagation();
@@ -379,6 +389,9 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
         e.stopPropagation();
         setIsDragging(false);
         (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+
+        // Commit the change
+        updateShelf(bayId, shelf.id, currentYRef.current);
     };
 
     const onPointerMove = (e: ThreeEvent<PointerEvent>) => {
@@ -401,12 +414,17 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
             newShelfY = Math.round(newShelfY / snap) * snap;
         }
 
-        updateShelf(bayId, shelf.id, newShelfY);
+        // Update visual only
+        if (groupRef.current) {
+            groupRef.current.position.y = newShelfY - height / 2;
+        }
+        currentYRef.current = newShelfY;
     };
 
     return (
         <group
-            position={[0, y, 0]}
+            ref={groupRef}
+            position={[0, shelf.y - height / 2, 0]}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
             onPointerDown={onPointerDown}

@@ -109,3 +109,36 @@ export interface HardwareBOMItem extends BOMItemBase {
 }
 
 export type BOMItem = ProfileBOMItem | PanelBOMItem | HardwareBOMItem;
+
+export interface Shelf {
+    id: string;
+    y: number; // Height from bottom in mm
+}
+
+export type DoorType = 'single' | 'double';
+export type HingeSide = 'left' | 'right';
+
+export interface BayDoorConfig {
+    enabled: boolean;
+    type: DoorType;
+    hingeSide: HingeSide; // Used when type === 'single'
+}
+
+export interface LayoutBay {
+    type: 'bay';
+    id: string;
+    width: number;
+    shelves: Shelf[];
+    drawers: Drawer[];
+    door?: BayDoorConfig;
+}
+
+export interface LayoutDivider {
+    type: 'divider';
+    id: string;
+    width: number;
+}
+
+export type LayoutNode = LayoutBay | LayoutDivider;
+
+export type MaterialType = 'silver' | 'dark_metal' | 'wood';

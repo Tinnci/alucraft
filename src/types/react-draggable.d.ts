@@ -9,6 +9,18 @@ declare module 'react-draggable' {
         bottom?: number;
     }
 
+    export type DraggableEvent = MouseEvent | TouchEvent;
+
+    export interface DraggableData {
+        node: HTMLElement;
+        x: number;
+        y: number;
+        deltaX: number;
+        deltaY: number;
+        lastX: number;
+        lastY: number;
+    }
+
     export interface DraggableProps {
         allowAnyClick?: boolean;
         allowMobileScroll?: boolean;
@@ -27,13 +39,13 @@ declare module 'react-draggable' {
         nodeRef?: React.RefObject<HTMLElement>;
         offsetParent?: HTMLElement;
         onMouseDown?: (e: MouseEvent) => void;
-        onStart?: (e: any, data: any) => void | false;
-        onDrag?: (e: any, data: any) => void | false;
-        onStop?: (e: any, data: any) => void | false;
+        onStart?: (e: DraggableEvent, data: DraggableData) => void | false;
+        onDrag?: (e: DraggableEvent, data: DraggableData) => void | false;
+        onStop?: (e: DraggableEvent, data: DraggableData) => void | false;
         position?: { x: number; y: number };
         positionOffset?: { x: number | string; y: number | string };
         scale?: number;
     }
 
-    export default class Draggable extends React.Component<DraggableProps, any> {}
+    export default class Draggable extends React.Component<DraggableProps, object> { }
 }
