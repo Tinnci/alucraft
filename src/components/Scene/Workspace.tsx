@@ -116,7 +116,7 @@ export function Workspace() {
               overlay={overlay}
             />
             {/* Door swing arc (visual aid) */}
-            <mesh position={[hingeX, -height / 2 + 1, doorDepthOffset]} rotation={[Math.PI / 2, 0, 0]} raycast={() => {}}>
+            <mesh position={[hingeX, -height / 2 + s / 2 + 1, doorDepthOffset]} rotation={[Math.PI / 2, 0, 0]} raycast={() => { }}>
               {(() => {
                 const arcRadius = Math.max(doorWidth, 200);
                 const thetaLength = Math.PI / 2;
@@ -163,29 +163,28 @@ export function Workspace() {
   return (
     <>
       {/* 相机控制 */}
-      {/* Camera target is set to the mid-height of the cabinet so rotation feels natural */}
       <CameraHandler targetY={height / 2} />
 
       {/* 基础环境光和直射光 */}
       <ambientLight intensity={1.5} />
       <directionalLight position={[1000, 1000, 500]} intensity={1} castShadow />
 
-      {/* 主场景舞台 */}
-      <Stage environment="city" intensity={0.6} adjustCamera={false} center={false}>
-        {/* 将整个家具向上偏移 height/2，使其底部对齐网格（地面） */}
-        <group position={[0, height / 2, 0]}>
-          {/* 柜体框架 */}
-          <group ref={frameRef}>
-            <CabinetFrame width={width} height={height} depth={depth} profileType={profileType} />
-          </group>
+      {/* 主场景内容 (No Stage wrapper to avoid auto-centering) */}
 
-          {/* 门板 */}
-          {doorElements}
+      {/* 将整个家具向上偏移 height/2，使其底部对齐网格（地面） */}
+      <group position={[0, height / 2, 0]}>
+        {/* 柜体框架 */}
+        <group ref={frameRef}>
+          <CabinetFrame width={width} height={height} depth={depth} profileType={profileType} />
+        </group>
 
-          {/* 尺寸标注 */}
-          <DimensionLines width={width} height={height} depth={depth} offset={80} />
+        {/* 门板 */}
+        {doorElements}
 
-          {/* 碰撞检测可视化 - 左墙 */}
+        {/* 尺寸标注 */}
+        <DimensionLines width={width} height={height} depth={depth} offset={80} />
+
+        {/* 碰撞检测可视化 - 左墙 */}
         {hasLeftWall && (
           <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
             <meshStandardMaterial
@@ -206,17 +205,16 @@ export function Workspace() {
             />
           </Box>
         )}
-        </group>
-      </Stage>
+      </group>
 
       {/* 交互控制 */}
-  <OrbitControls makeDefault maxDistance={10000} target={[0, height / 2, 0]} />
+      <OrbitControls makeDefault maxDistance={10000} target={[0, height / 2, 0]} />
 
-  {/* 网格帮助线 (center line color, regular grid color) */}
-  <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} />
+      {/* 网格帮助线 (center line color, regular grid color) */}
+      <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} />
 
-      {/* 环境预设 */}
-      <Environment preset="warehouse" />
+      {/* 环境预设 - Manually added since Stage is removed */}
+      <Environment preset="city" />
     </>
   );
 }
