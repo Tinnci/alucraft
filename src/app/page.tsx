@@ -43,6 +43,7 @@ export default function Home() {
   const doorCount = useDesignStore((state: DesignState) => state.doorCount);
   const shelves = useDesignStore((state: DesignState) => state.shelves);
   const drawers = useDesignStore((state: DesignState) => state.drawers);
+  const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
 
   const frameRef = useRef<THREE.Group | null>(null);
   // setters
@@ -179,8 +180,11 @@ export default function Home() {
     }
   }, [width, height, depth, profileType, overlay, hasLeftWall, hasRightWall, isDoorOpen, result]);
 
+  const bgColor = isDarkMode ? '#0f172a' : '#f8fafc';
+  const gridColor = isDarkMode ? '#1e293b' : '#e2e8f0';
+
   return (
-    <main className="w-screen h-screen bg-slate-900 relative overflow-hidden">
+    <main className="w-screen h-screen bg-background relative overflow-hidden">
       <FloatingControls />
       <Toolbar />
       <BOMPanel />
@@ -201,8 +205,8 @@ export default function Home() {
       <div className="w-full h-full">
         <Canvas shadows camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}>
           <CameraHandler />
-          <color attach="background" args={['#0f172a']} />
-          <fog attach="fog" args={['#0f172a', 2000, 5000]} />
+          <color attach="background" args={[bgColor]} />
+          <fog attach="fog" args={[bgColor, 2000, 5000]} />
 
           {/* 添加基础环境光和直射光，防止材质全黑 */}
           <ambientLight intensity={1.5} />
@@ -237,7 +241,7 @@ export default function Home() {
 
           </Stage>
           <OrbitControls makeDefault maxDistance={10000} />
-          <gridHelper args={[3000, 60, '#1e293b', '#1e293b']} />
+          <gridHelper args={[3000, 60, gridColor, gridColor]} />
           <Environment preset="warehouse" />
         </Canvas>
       </div>

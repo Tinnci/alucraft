@@ -130,6 +130,16 @@ export function FloatingControls() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Sync Theme with DOM
+  const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
+  React.useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
   // Store State
   const profileType = useDesignStore((state: DesignState) => state.profileType);
   const overlay = useDesignStore((state: DesignState) => state.overlay);
@@ -150,6 +160,7 @@ export function FloatingControls() {
   const result = useDesignStore((state: DesignState) => state.result);
   const showDimensions = useDesignStore((state: DesignState) => state.showDimensions);
   const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+  const toggleTheme = useDesignStore((state: DesignState) => state.toggleTheme);
 
   // Temporal State
   const { undo, redo, pastStates, futureStates } = useStore(useDesignStore.temporal);
@@ -305,7 +316,7 @@ export function FloatingControls() {
 
             {/* Dark Mode Toggle */}
             <button
-              onClick={() => document.documentElement.classList.toggle('dark')}
+              onClick={() => toggleTheme()}
               className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
               title="Toggle Dark Mode"
             >

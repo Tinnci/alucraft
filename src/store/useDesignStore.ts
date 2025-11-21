@@ -45,6 +45,7 @@ export interface DesignState {
   showDimensions: boolean;
   showWireframe: boolean;
   cameraResetTrigger: number;
+  isDarkMode: boolean;
   setProfileType: (p: ProfileType) => void;
   setOverlay: (v: number) => void;
   setResult: (r: SimulationResult | null) => void;
@@ -64,6 +65,7 @@ export interface DesignState {
   setShowDimensions: (v: boolean) => void;
   setShowWireframe: (v: boolean) => void;
   triggerCameraReset: () => void;
+  toggleTheme: () => void;
   addShelf: (y: number) => void;
   removeShelf: (id: string) => void;
   updateShelf: (id: string, y: number) => void;
@@ -97,6 +99,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   showDimensions: true,
   showWireframe: false,
   cameraResetTrigger: 0,
+  isDarkMode: true,
   setProfileType: (p: ProfileType) => set({ profileType: p }),
   setOverlay: (v: number) => set({ overlay: v }),
   setResult: (r: SimulationResult | null) => set({ result: r }),
@@ -116,6 +119,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setShowDimensions: (v: boolean) => set({ showDimensions: v }),
   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
+  toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   addShelf: (y: number) => set((state) => ({
     shelves: [...state.shelves, { id: Math.random().toString(36).substr(2, 9), y }]
   })),
@@ -177,19 +181,19 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     // Side Panels (Left/Right)
     const sidePanelWidth = Math.round((depth - (s * 2)) + (slotDepth * 2) - tolerance);
     const sidePanelHeight = Math.round((height - (s * 2)) + (slotDepth * 2) - tolerance);
-    
+
     if (hasLeftPanel) {
-        panelItems.push({ name: 'Side Panel (Left)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm`, category: 'panel' });
+      panelItems.push({ name: 'Side Panel (Left)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm`, category: 'panel' });
     }
     if (hasRightPanel) {
-        panelItems.push({ name: 'Side Panel (Right)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm`, category: 'panel' });
+      panelItems.push({ name: 'Side Panel (Right)', qty: 1, note: `${sidePanelWidth} x ${sidePanelHeight} mm`, category: 'panel' });
     }
 
     // Back Panel
     if (hasBackPanel) {
-        const backPanelWidth = Math.round((width - (s * 2)) + (slotDepth * 2) - tolerance);
-        const backPanelHeight = Math.round((height - (s * 2)) + (slotDepth * 2) - tolerance);
-        panelItems.push({ name: 'Back Panel', qty: 1, note: `${backPanelWidth} x ${backPanelHeight} mm`, category: 'panel' });
+      const backPanelWidth = Math.round((width - (s * 2)) + (slotDepth * 2) - tolerance);
+      const backPanelHeight = Math.round((height - (s * 2)) + (slotDepth * 2) - tolerance);
+      panelItems.push({ name: 'Back Panel', qty: 1, note: `${backPanelWidth} x ${backPanelHeight} mm`, category: 'panel' });
     }
 
     // Top/Bottom Panels
@@ -197,10 +201,10 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const tbPanelDepth = Math.round((depth - (s * 2)) + (slotDepth * 2) - tolerance);
 
     if (hasTopPanel) {
-        panelItems.push({ name: 'Top Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm`, category: 'panel' });
+      panelItems.push({ name: 'Top Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm`, category: 'panel' });
     }
     if (hasBottomPanel) {
-        panelItems.push({ name: 'Bottom Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm`, category: 'panel' });
+      panelItems.push({ name: 'Bottom Panel', qty: 1, note: `${tbPanelWidth} x ${tbPanelDepth} mm`, category: 'panel' });
     }
 
     // Door panels
@@ -222,35 +226,35 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     // Drawers
     const drawers = state.drawers || [];
     if (drawers.length > 0) {
-        // 1. Drawer Slides (Pair per drawer)
-        // Assuming slide length is depth - 50mm, rounded down to nearest 50mm
-        const slideLength = Math.floor((depth - 50) / 50) * 50; 
-        panelItems.push({ 
-            name: `Drawer Slides (${slideLength}mm)`, 
-            qty: drawers.length, 
-            note: 'Pair (L+R)',
-            category: 'hardware'
+      // 1. Drawer Slides (Pair per drawer)
+      // Assuming slide length is depth - 50mm, rounded down to nearest 50mm
+      const slideLength = Math.floor((depth - 50) / 50) * 50;
+      panelItems.push({
+        name: `Drawer Slides (${slideLength}mm)`,
+        qty: drawers.length,
+        note: 'Pair (L+R)',
+        category: 'hardware'
+      });
+
+      // 2. Drawer Faces & Boxes
+      drawers.forEach((d, idx) => {
+        const faceWidth = Math.round(innerWidth + (get().overlay * 2));
+        panelItems.push({
+          name: `Drawer Face #${idx + 1}`,
+          qty: 1,
+          note: `${faceWidth} x ${Math.round(d.height)} mm`,
+          category: 'panel'
         });
 
-        // 2. Drawer Faces & Boxes
-        drawers.forEach((d, idx) => {
-            const faceWidth = Math.round(innerWidth + (get().overlay * 2));
-            panelItems.push({ 
-                name: `Drawer Face #${idx+1}`, 
-                qty: 1, 
-                note: `${faceWidth} x ${Math.round(d.height)} mm`,
-                category: 'panel'
-            });
-            
-            panelItems.push({
-                name: `Drawer Box/Body #${idx+1}`,
-                qty: 1,
-                note: `Fits inside ${Math.round(innerWidth)}mm width`,
-                category: 'hardware'
-            });
-            
-            panelItems.push({ name: 'Handle', qty: 1, category: 'hardware' });
+        panelItems.push({
+          name: `Drawer Box/Body #${idx + 1}`,
+          qty: 1,
+          note: `Fits inside ${Math.round(innerWidth)}mm width`,
+          category: 'hardware'
         });
+
+        panelItems.push({ name: 'Handle', qty: 1, category: 'hardware' });
+      });
     }
 
     // Hinges
@@ -266,7 +270,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const baseConnectors = connectorType === 'angle' ? 16 : 16; // 8 corners * 2 connections
     // Shelf connectors: 4 beams * 2 ends = 8 connections per shelf
     const shelfConnectors = shelves.length * 8;
-    
+
     const totalConnectors = baseConnectors + shelfConnectors;
 
     if (connectorType === 'angle') {
