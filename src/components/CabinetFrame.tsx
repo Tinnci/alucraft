@@ -126,6 +126,16 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         return positions;
     }, [layout, width, s]);
 
+    // Global keyboard tracking for Shift key to disable snapping during TransformControls drag
+    const [isShiftDown, setIsShiftDown] = useState(false);
+    useEffect(() => {
+        const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftDown(true); };
+        const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftDown(false); };
+        window.addEventListener('keydown', down);
+        window.addEventListener('keyup', up);
+        return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+    }, []);
+
     return (
         <group>
             <ProfileInstances type={profileType} material={material}>
@@ -154,16 +164,17 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                     if (!node) return null;
 
                     if (node.type === 'bay') {
-                        return (
-                            <Bay
-                                key={node.id}
-                                bay={node as LayoutBay}
-                                position={[nodeInfo.x, 0, 0]}
-                                height={height}
-                                depth={depth}
-                                profileType={profileType}
-                            />
-                        );
+                            return (
+                                <Bay
+                                    key={node.id}
+                                    bay={node as LayoutBay}
+                                    position={[nodeInfo.x, 0, 0]}
+                                    height={height}
+                                    depth={depth}
+                                    profileType={profileType}
+                                    isShiftDown={isShiftDown}
+                                />
+                            );
                     } else if (node.type === 'divider') {
                         // Render Divider (Vertical Profile)
                         return (
@@ -286,9 +297,10 @@ interface BayProps {
     height: number;
     depth: number;
     profileType: ProfileType;
+    isShiftDown?: boolean;
 }
 
-function Bay({ bay, position, height, depth, profileType }: BayProps) {
+    function Bay({ bay, position, height, depth, profileType, isShiftDown }: BayProps) {
     const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
     const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
 
@@ -317,6 +329,7 @@ function Bay({ bay, position, height, depth, profileType }: BayProps) {
                     dLength={dLength}
                     offset={offset}
                     updateShelf={updateShelf}
+                    isShiftDown={isShiftDown}
                 />
             ))}
 
@@ -349,6 +362,7 @@ interface DraggableShelfProps {
     dLength: number;
     offset: number;
     updateShelf: (bayId: string, id: string, y: number) => void;
+    isShiftDown?: boolean;
 }
 
 function SnappingGuides({ height, width, depth }: { height: number, width: number, depth: number }) {
@@ -404,9 +418,10 @@ function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth
     );
 }
 
-function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf }: DraggableShelfProps) {
+function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf, isShiftDown }: DraggableShelfProps) {
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const wasSnappedRef = useRef<boolean>(false);
     const { controls } = useThree();
     const groupRef = useRef<THREE.Group>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -452,7 +467,8 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
         return () => tc.removeEventListener?.('dragging-changed', handler);
     }, [controls, updateShelf, bayId, shelf.id]);
 
-    const computeSnap = (rawY: number): { value: number; type: 'smart' | 'grid' | null } => {
+        const computeSnap = (rawY: number, bypass = false): { value: number; type: 'smart' | 'grid' | null } => {
+            if (bypass) return { value: rawY, type: null };
             const SNAP_THRESHOLD = 15; // mm
             let bestY = rawY;
             let snapType: 'smart' | 'grid' | null = null;
@@ -506,7 +522,7 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                     onObjectChange={() => {
                         if (groupRef.current) {
                             const newY = groupRef.current.position.y + height / 2;
-                            const snapResult = computeSnap(newY);
+                            const snapResult = computeSnap(newY, !!isShiftDown);
                             const snappedValue = snapResult.value;
                             const snappedType = snapResult.type;
 
@@ -514,6 +530,14 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                             groupRef.current.position.y = snappedValue - height / 2;
                             currentYRef.current = snappedValue;
                             setActiveSnap(snappedType ? { y: snappedValue, type: snappedType } : null);
+                            // Haptic feedback on first edge enter
+                            const isSnappedNow = !!snappedType;
+                            if (isSnappedNow && !wasSnappedRef.current) {
+                                if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                                    try { navigator.vibrate(5); } catch {}
+                                }
+                            }
+                            wasSnappedRef.current = isSnappedNow;
                         }
                     }}
                 />
