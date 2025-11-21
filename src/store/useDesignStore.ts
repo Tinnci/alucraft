@@ -2,12 +2,9 @@
 
 import { create } from 'zustand';
 import { temporal } from 'zundo';
-import { shallow } from 'zustand/shallow';
-import * as THREE from 'three';
 import {
     ProfileType,
     PROFILES,
-    Hinge,
     SimulationResult,
     BOMItem,
     ProfileBOMItem,
@@ -15,7 +12,6 @@ import {
     HardwareBOMItem,
 } from '@/core/types';
 import { calculateHinge } from '@/core/hinge-rules';
-import { calculateCuttingList } from '@/core/optimizer';
 import { nanoid } from 'nanoid';
 
 // Helper function to generate unique IDs
@@ -451,7 +447,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   },
   getBOM: () => {
     const state = get() as DesignState;
-  const { width, height, depth, profileType, result, connectorType, hasLeftPanel, hasRightPanel, hasBackPanel, hasTopPanel, hasBottomPanel, layout, overlay, panelThickness } = state;
+  const { width, height, depth, profileType, connectorType, hasLeftPanel, hasRightPanel, hasBackPanel, hasTopPanel, hasBottomPanel, layout, overlay, panelThickness } = state;
     const profile = PROFILES[profileType];
     const s = profile.size;
   const slotDepth = profile.slotDepth || 6;

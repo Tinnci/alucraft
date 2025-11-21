@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import useDesignStore, { DesignState } from '../store/useDesignStore';
 import { BOMItem, ProfileBOMItem } from '@/core/types';
 import { calculateCuttingList } from '@/core/optimizer';
-import { ChevronDown, ChevronUp, Download, FileJson, FileText, Scissors, Box, Layers, Wrench, FileSpreadsheet } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileJson, Box, Layers, Wrench, FileSpreadsheet } from 'lucide-react';
 
 export function BOMPanel() {
   const getBOM = useDesignStore((state: DesignState) => state.getBOM);
