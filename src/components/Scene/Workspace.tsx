@@ -14,7 +14,7 @@ import { PROFILES, ProfileType } from '@/core/types';
  * CameraHandler - 处理相机重置触发
  * 嵌入到 Workspace 中使用
  */
-function CameraHandler() {
+function CameraHandler({ targetY }: { targetY: number }) {
   const { camera, controls } = useThree();
   const cameraResetTrigger = useDesignStore((state: DesignState) => state.cameraResetTrigger);
 
@@ -22,11 +22,11 @@ function CameraHandler() {
     if (cameraResetTrigger > 0) {
       camera.position.set(1500, 1500, 1500);
       // @ts-expect-error -- The 'target' property exists on OrbitControls, but the type definition is not precise.
-      controls?.target.set(0, 0, 0);
+      controls?.target.set(0, targetY, 0);
       // @ts-expect-error -- The 'update' method exists on OrbitControls, but the type definition is not precise.
       controls?.update();
     }
-  }, [cameraResetTrigger, camera, controls]);
+  }, [cameraResetTrigger, camera, controls, targetY]);
   return null;
 }
 
@@ -163,26 +163,29 @@ export function Workspace() {
   return (
     <>
       {/* 相机控制 */}
-      <CameraHandler />
+      {/* Camera target is set to the mid-height of the cabinet so rotation feels natural */}
+      <CameraHandler targetY={height / 2} />
 
       {/* 基础环境光和直射光 */}
       <ambientLight intensity={1.5} />
       <directionalLight position={[1000, 1000, 500]} intensity={1} castShadow />
 
       {/* 主场景舞台 */}
-      <Stage environment="city" intensity={0.6} adjustCamera={false}>
-        {/* 柜体框架 */}
-        <group ref={frameRef}>
-          <CabinetFrame width={width} height={height} depth={depth} profileType={profileType} />
-        </group>
+      <Stage environment="city" intensity={0.6} adjustCamera={false} center={false}>
+        {/* 将整个家具向上偏移 height/2，使其底部对齐网格（地面） */}
+        <group position={[0, height / 2, 0]}>
+          {/* 柜体框架 */}
+          <group ref={frameRef}>
+            <CabinetFrame width={width} height={height} depth={depth} profileType={profileType} />
+          </group>
 
-        {/* 门板 */}
-        {doorElements}
+          {/* 门板 */}
+          {doorElements}
 
-        {/* 尺寸标注 */}
-        <DimensionLines width={width} height={height} depth={depth} offset={80} />
+          {/* 尺寸标注 */}
+          <DimensionLines width={width} height={height} depth={depth} offset={80} />
 
-        {/* 碰撞检测可视化 - 左墙 */}
+          {/* 碰撞检测可视化 - 左墙 */}
         {hasLeftWall && (
           <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
             <meshStandardMaterial
@@ -203,10 +206,11 @@ export function Workspace() {
             />
           </Box>
         )}
+        </group>
       </Stage>
 
       {/* 交互控制 */}
-      <OrbitControls makeDefault maxDistance={10000} />
+  <OrbitControls makeDefault maxDistance={10000} target={[0, height / 2, 0]} />
 
   {/* 网格帮助线 (center line color, regular grid color) */}
   <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} />
