@@ -104,7 +104,7 @@ export default function Home() {
               overlay={overlay}
             />
             {/* Door swing arc (visual aid). Start angle depends on hinge side */}
-            <mesh position={[hingeX, -height / 2 + 1, doorDepthOffset]} rotation={[Math.PI / 2, 0, 0]} raycast={null}>
+            <mesh position={[hingeX, -height / 2 + 1, doorDepthOffset]} rotation={[Math.PI / 2, 0, 0]} raycast={() => {}}>
               {/* use doorWidth to set radius */}
               {(() => {
                 const arcRadius = Math.max(doorWidth, 200); // ensure some minimum radius
