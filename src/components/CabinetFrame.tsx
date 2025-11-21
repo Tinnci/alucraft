@@ -4,7 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThree, ThreeEvent } from '@react-three/fiber';
-import { Line, TransformControls } from '@react-three/drei';
+import { Line, TransformControls, Html } from '@react-three/drei';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
@@ -377,16 +377,29 @@ function SnappingGuides({ height, width, depth }: { height: number, width: numbe
 }
 
 // SnapLine: Shows a focused snapping guide (across the full cabinet width)
-function SnapLine({ y, depth, totalWidth }: { y: number; depth: number; totalWidth: number }) {
+function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth: number; totalWidth: number; type: 'smart' | 'grid'; labelValue: number }) {
+    const color = type === 'smart' ? '#ec4899' : '#3b82f6';
+    const opacity = type === 'smart' ? 0.9 : 0.55;
+    const dashed = type === 'grid';
     return (
         <group position={[0, y, depth / 2 + 1]}>
             <Line
                 points={[[-totalWidth / 2 - 50, 0, 0], [totalWidth / 2 + 50, 0, 0]]}
-                color="#ec4899"
+                color={color}
                 lineWidth={2}
                 transparent
-                opacity={0.9}
+                opacity={opacity}
+                depthTest={false}
+                dashed={dashed}
+                dashScale={dashed ? 10 : undefined}
+                gapSize={dashed ? 5 : undefined}
             />
+            {/* Label */}
+            <Html position={[totalWidth / 2 + 60, 0, 0]} center zIndexRange={[100, 0]}>
+                <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono text-white whitespace-nowrap shadow-sm ${type === 'smart' ? 'bg-pink-500' : 'bg-blue-500'}`}>
+                    {Math.round(labelValue)} mm
+                </div>
+            </Html>
         </group>
     );
 }
@@ -401,7 +414,7 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
     const currentYRef = useRef(shelf.y);
     const totalWidth = useDesignStore((state: DesignState) => state.width);
     const layout = useDesignStore((state: DesignState) => state.layout);
-    const [snapY, setSnapY] = useState<number | null>(null);
+    const [activeSnap, setActiveSnap] = useState<{ y: number; type: 'smart' | 'grid' } | null>(null);
 
     const selectShelf = useUIStore(state => state.selectShelf);
     const selectedShelfId = useUIStore(state => state.selectedShelfId);
@@ -441,6 +454,7 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
 
         // Commit the change
         updateShelf(bayId, shelf.id, currentYRef.current);
+        setActiveSnap(null);
     };
 
     const onPointerMove = (e: ThreeEvent<PointerEvent>) => {
@@ -454,10 +468,10 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
         let newShelfY = newWorldY + height / 2;
 
         // Apply snapping (smart shelf snap first, then grid snap)
-        const applySnapping = (rawY: number): number => {
+        const computeSnap = (rawY: number): { value: number; type: 'smart' | 'grid' | null } => {
             const SNAP_THRESHOLD = 15; // mm
             let bestY = rawY;
-            let activeSnap: number | null = null;
+            let snapType: 'smart' | 'grid' | null = null;
 
             // Smart snap to other shelves
             let minDiff = Infinity;
@@ -469,18 +483,19 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                         if (diff < SNAP_THRESHOLD && diff < minDiff) {
                             minDiff = diff;
                             bestY = s.y;
-                            activeSnap = s.y;
+                            snapType = 'smart';
                         }
                     }
                 }
             }
 
             // Grid snap to 32mm if no smart snap
-            if (activeSnap === null) {
+            if (snapType === null) {
                 const GRID_SIZE = 32;
                 const snappedGrid = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
                 if (Math.abs(rawY - snappedGrid) < 10) {
                     bestY = snappedGrid;
+                    snapType = 'grid';
                 }
             }
 
@@ -488,11 +503,12 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
             const limit = 40;
             bestY = Math.max(limit, Math.min(height - limit, bestY));
 
-            setSnapY(activeSnap);
-            return bestY;
+            return { value: bestY, type: snapType };
         };
 
-        newShelfY = applySnapping(newShelfY);
+        const snapResult = computeSnap(newShelfY);
+        newShelfY = snapResult.value;
+        setActiveSnap(snapResult.type ? { y: snapResult.value, type: snapResult.type } : null);
 
         // Update visual only
         if (groupRef.current) {
@@ -514,9 +530,10 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                         if (groupRef.current) {
                             const newY = groupRef.current.position.y + height / 2;
                             // Snap logic for gizmo: use same applySnapping logic
-                            const applySnappingGizmo = (rawY: number): number => {
+                            const applySnappingGizmo = (rawY: number): { value: number; type: 'smart' | 'grid' | null } => {
                                 const SNAP_THRESHOLD = 15;
                                 let bestY = rawY;
+                                let snapType: 'smart' | 'grid' | null = null;
                                 let minDiff = Infinity;
                                 for (const node of layout) {
                                     if (node.type === 'bay') {
@@ -526,28 +543,35 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                                             if (diff < SNAP_THRESHOLD && diff < minDiff) {
                                                 minDiff = diff;
                                                 bestY = s.y;
+                                                snapType = 'smart';
                                             }
                                         }
                                     }
                                 }
-                                if (bestY === rawY) {
+                                if (snapType === null) {
                                     const GRID_SIZE = 32;
                                     const snappedGrid = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
-                                    if (Math.abs(rawY - snappedGrid) < 10) bestY = snappedGrid;
+                                    if (Math.abs(rawY - snappedGrid) < 10) {
+                                        bestY = snappedGrid;
+                                        snapType = 'grid';
+                                    }
                                 }
                                 const limit = 40;
-                                return Math.max(limit, Math.min(height - limit, bestY));
+                                return { value: Math.max(limit, Math.min(height - limit, bestY)), type: snapType };
                             };
-                            let snappedY = applySnappingGizmo(newY);
+                            const snappedYRes = applySnappingGizmo(newY);
+                            const snappedY = snappedYRes.value;
+                            const snappedType = snappedYRes.type;
                             // Clamp
                             const limit = 40;
-                            snappedY = Math.max(limit, Math.min(height - limit, snappedY));
+                            const clampedSnappedY = Math.max(limit, Math.min(height - limit, snappedY));
 
-                            currentYRef.current = snappedY;
+                            currentYRef.current = clampedSnappedY;
+                            setActiveSnap(snappedType ? { y: clampedSnappedY, type: snappedType } : null);
                         }
                     }}
                     onMouseUp={() => {
-                        setSnapY(null);
+                        setActiveSnap(null);
                         updateShelf(bayId, shelf.id, currentYRef.current);
                         if (groupRef.current) groupRef.current.position.y = currentYRef.current - height / 2;
                     }}
@@ -580,7 +604,15 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                 {(isDragging || isSelected) && (
                     <group position={[0, -(shelf.y - height / 2), 0]}>
                         <SnappingGuides height={height} width={width} depth={depth} />
-                        {snapY !== null && <SnapLine y={snapY - height / 2} depth={depth} totalWidth={totalWidth} />}
+                        {activeSnap !== null && (
+                            <SnapLine
+                                y={activeSnap.y - height / 2}
+                                depth={depth}
+                                totalWidth={totalWidth}
+                                type={activeSnap.type}
+                                labelValue={activeSnap.y}
+                            />
+                        )}
                     </group>
                 )}
 
