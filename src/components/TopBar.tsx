@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   Video,
+  Magnet,
 } from 'lucide-react';
 import { useStore } from 'zustand';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
@@ -33,6 +34,7 @@ export function TopBar() {
   const material = useDesignStore((state: DesignState) => state.material);
   const showDimensions = useDesignStore((state: DesignState) => state.showDimensions);
   const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+  const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
   const layout = useDesignStore((state: DesignState) => state.layout);
 
   // Temporal State (for undo/redo)
@@ -44,6 +46,7 @@ export function TopBar() {
   const toggleTheme = useDesignStore((state: DesignState) => state.toggleTheme);
   const setShowDimensions = useDesignStore((state: DesignState) => state.setShowDimensions);
   const setShowWireframe = useDesignStore((state: DesignState) => state.setShowWireframe);
+  const setShowSnapGuides = useDesignStore((state: DesignState) => state.setShowSnapGuides);
   const triggerCameraReset = useDesignStore((state: DesignState) => state.triggerCameraReset);
 
   // UI Store
@@ -276,6 +279,18 @@ export function TopBar() {
                 title="Toggle Dimensions"
               >
                 {showDimensions ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
+
+              <button
+                onClick={() => setShowSnapGuides(!showSnapGuides)}
+                className={`p-1.5 rounded border transition-colors ${
+                  showSnapGuides
+                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-500 hover:bg-blue-500/20'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+                title={showSnapGuides ? "Disable Snapping Guides" : "Enable Snapping Guides"}
+              >
+                <Magnet size={14} />
               </button>
 
               <button
