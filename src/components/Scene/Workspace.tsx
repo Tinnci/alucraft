@@ -3,7 +3,7 @@
 import { useRef, Fragment, JSX, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { OrbitControls, Stage, Box, Environment } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows, Box } from '@react-three/drei';
 import useDesignStore, { DesignState, LayoutBay, createDefaultDoorConfig, getDoorStateKey } from '@/store/useDesignStore';
 import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
@@ -165,56 +165,61 @@ export function Workspace() {
       {/* 相机控制 */}
       <CameraHandler targetY={height / 2} />
 
-      {/* 主场景舞台 */}
-      <Stage
-        intensity={0.6}
-        environment="city"
-        shadows={{ type: 'accumulative', color: '#d0d0d0', opacity: 2 }}
-        adjustCamera={false}
-        center={{ disableX: true, disableY: true, disableZ: true }}
-      >
-        {/* 将整个家具向上偏移 height/2，使其底部对齐网格（地面） */}
-        <group position={[0, height / 2, 0]}>
-          {/* 柜体框架 */}
-          <group ref={frameRef}>
-            <CabinetFrame width={width} height={height} depth={depth} profileType={profileType} />
-          </group>
+      {/* 1. 环境光照 (替代 Stage 的自动光照) */}
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
+      <Environment preset="city" />
 
-          {/* 门板 */}
-          {doorElements}
+      {/* 2. 阴影平面 (替代 Stage 的阴影) */}
+      <ContactShadows
+        position={[0, 0, 0]}
+        opacity={0.4}
+        scale={10000}
+        blur={2}
+        far={4.5}
+      />
 
-          {/* 尺寸标注 */}
-          <DimensionLines width={width} height={height} depth={depth} offset={80} />
-
-          {/* 碰撞检测可视化 - 左墙 */}
-          {hasLeftWall && (
-            <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
-              <meshStandardMaterial
-                color={collisionLeft ? '#ff4d4d' : '#94a3b8'}
-                opacity={0.3}
-                transparent
-              />
-            </Box>
-          )}
-
-          {/* 碰撞检测可视化 - 右墙 */}
-          {hasRightWall && (
-            <Box args={[10, height, depth]} position={[width / 2 + 5 + 2, 0, 0]}>
-              <meshStandardMaterial
-                color={collisionRight ? '#ff4d4d' : '#94a3b8'}
-                opacity={0.3}
-                transparent
-              />
-            </Box>
-          )}
+      {/* 3. 主体内容 - 将整个家具向上偏移 height/2，使其底部对齐网格（地面） */}
+      <group position={[0, height / 2, 0]}>
+        {/* 柜体框架 */}
+        <group ref={frameRef}>
+          <CabinetFrame width={width} height={height} depth={depth} profileType={profileType} />
         </group>
-      </Stage>
+
+        {/* 门板 */}
+        {doorElements}
+
+        {/* 尺寸标注 */}
+        <DimensionLines width={width} height={height} depth={depth} offset={80} />
+
+        {/* 碰撞检测可视化 - 左墙 */}
+        {hasLeftWall && (
+          <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
+            <meshStandardMaterial
+              color={collisionLeft ? '#ff4d4d' : '#94a3b8'}
+              opacity={0.3}
+              transparent
+            />
+          </Box>
+        )}
+
+        {/* 碰撞检测可视化 - 右墙 */}
+        {hasRightWall && (
+          <Box args={[10, height, depth]} position={[width / 2 + 5 + 2, 0, 0]}>
+            <meshStandardMaterial
+              color={collisionRight ? '#ff4d4d' : '#94a3b8'}
+              opacity={0.3}
+              transparent
+            />
+          </Box>
+        )}
+      </group>
 
       {/* 交互控制 */}
       <OrbitControls makeDefault maxDistance={10000} target={[0, height / 2, 0]} />
 
-      {/* 网格帮助线 (center line color, regular grid color) */}
-      <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} />
+      {/* 4. 网格帮助线 (center line color, regular grid color) */}
+      <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} position={[0, 0.01, 0]} />
     </>
   );
 }
