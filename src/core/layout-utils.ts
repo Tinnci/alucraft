@@ -64,4 +64,99 @@ export function computeLayoutSizes(
   return results;
 }
 
+
+export interface MoveDividerResult {
+  layout: LayoutNode[];
+  success: boolean;
+}
+
+export function moveDividerInLayout(
+  layout: LayoutNode[],
+  dividerId: string,
+  delta: number,
+  profileSize: number,
+  totalWidth: number,
+  minWidth: number = 40
+): MoveDividerResult {
+  // Find container holding this divider
+  let found = null as null | { container: LayoutNode; parent?: LayoutNode };
+  const find = (nodes: LayoutNode[], parent?: LayoutNode) => {
+    for (const n of nodes) {
+      if (n.type === 'container') {
+        const cn = n as ContainerNode;
+        if (cn.children.findIndex(c => c.id === dividerId) !== -1) {
+          found = { container: cn, parent };
+          return true;
+        }
+        if (find(cn.children, cn)) return true;
+      }
+    }
+    return false;
+  };
+  find(layout);
+  if (!found) return { layout, success: false };
+
+  const container = found.container as ContainerNode;
+  const idx = container.children.findIndex(c => c.id === dividerId);
+  if (idx === -1 || idx === 0 || idx === container.children.length - 1) return { layout, success: false };
+
+  const prev = container.children[idx - 1];
+  const next = container.children[idx + 1];
+
+  const s = profileSize;
+  const inner = Math.max(0, totalWidth - (s * 2));
+  const sizes = computeLayoutSizes(layout, inner, 'horizontal', new Map<string, number>());
+
+  const newLayout = JSON.parse(JSON.stringify(layout)) as LayoutNode[];
+  // helper to apply change to the same node in newLayout
+  const replaceIn = (nodes: LayoutNode[]): LayoutNode[] => nodes.map((n: LayoutNode) => {
+    if (n.type === 'container') {
+      if ((n as ContainerNode).children.findIndex(c => c.id === dividerId) !== -1) {
+        const cn = n as ContainerNode;
+        const newChildren = cn.children.map((c: LayoutNode) => {
+          if (c.id === prev.id) {
+            // get current numeric prev width
+            const prevWidthRaw = sizes.get(prev.id) ?? (prev.type === 'item' ? ((prev as ItemNode).config?.width ?? 0) : ((prev as ContainerNode).size ?? 0));
+            const prevWidth = typeof prevWidthRaw === 'number' ? prevWidthRaw : Number(prevWidthRaw);
+            const newPrevWidth = Math.max(minWidth, prevWidth + delta);
+            if (c.type === 'item') {
+              return { ...(c as ItemNode), config: { ...(c as ItemNode).config, width: newPrevWidth } } as LayoutNode;
+            }
+            if (c.type === 'container') {
+              return { ...(c as ContainerNode), size: newPrevWidth } as LayoutNode;
+            }
+          }
+          if (c.id === next.id) {
+            // if next is fixed OR auto, shrink by delta to keep container size consistent
+            // We convert auto to fixed here because dragging implies a specific size
+            if (c.type === 'item') {
+              const nextWidthRaw = sizes.get(next.id) ?? ((c as ItemNode).config?.width ?? 0);
+              const nextWidth = typeof nextWidthRaw === 'number' ? nextWidthRaw : Number(nextWidthRaw);
+              const newNextWidth = Math.max(minWidth, nextWidth - delta);
+              return { ...(c as ItemNode), config: { ...(c as ItemNode).config, width: newNextWidth } } as LayoutNode;
+            }
+            if (c.type === 'container') {
+              const nextWRaw = sizes.get(next.id) ?? (c as ContainerNode).size ?? 0;
+              const nextW = typeof nextWRaw === 'number' ? nextWRaw : Number(nextWRaw);
+              const newNextW = Math.max(minWidth, nextW - delta);
+              return { ...(c as ContainerNode), size: newNextW } as LayoutNode;
+            }
+          }
+          if (c.type === 'container') {
+            return { ...c, children: replaceIn((c as ContainerNode).children) } as LayoutNode;
+          }
+          return c;
+        });
+        return { ...(cn as ContainerNode), children: newChildren } as LayoutNode;
+      } else {
+        return { ...(n as ContainerNode), children: replaceIn((n as ContainerNode).children) } as LayoutNode;
+      }
+    }
+    return n;
+  });
+
+  const updatedLayout = replaceIn(newLayout);
+  return { layout: updatedLayout, success: true };
+}
+
 export default computeLayoutSizes;

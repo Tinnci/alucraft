@@ -21,7 +21,7 @@ import {
 } from '@/core/types';
 import { calculateBOM } from '@/core/bom-calculator';
 import { nanoid } from 'nanoid';
-import computeLayoutSizes from '@/core/layout-utils';
+import computeLayoutSizes, { moveDividerInLayout } from '@/core/layout-utils';
 
 // Helper function to generate unique IDs
 const uid = (len = 8) => nanoid(len);
@@ -160,7 +160,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     // When total width changes, resize the first bay (simplified logic for now)
     const diff = v - state.width;
     const newLayout = [...state.layout];
-  const firstBay = newLayout.find(n => isBayNode(n)) as LayoutBay | undefined;
+    const firstBay = newLayout.find(n => isBayNode(n)) as LayoutBay | undefined;
     if (firstBay) {
       const current = firstBay.config?.width;
       if (typeof current === 'number') {
@@ -256,7 +256,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     } as LayoutDivider;
 
     const newDoorStates = { ...state.doorStates };
-  getDoorSides(newBay.config.door).map((side) => getDoorStateKey(newBay.id, side)).forEach((key: string) => {
+    getDoorSides(newBay.config.door).map((side) => getDoorStateKey(newBay.id, side)).forEach((key: string) => {
       newDoorStates[key] = state.isDoorOpen;
     });
 
@@ -268,17 +268,17 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   }),
   removeBay: (id: string) => set((state) => {
     const index = state.layout.findIndex(n => n.id === id);
-  if (index === -1) return {};
+    if (index === -1) return {};
 
-  const bayCount = state.layout.filter(n => isBayNode(n)).length;
+    const bayCount = state.layout.filter(n => isBayNode(n)).length;
     if (bayCount <= 1) return {};
 
     const newLayout = [...state.layout];
     let widthReduction = 0;
 
-  const node = newLayout[index] as LayoutBay;
-  const nodeWidth = node.config?.width; 
-  widthReduction += (typeof nodeWidth === 'number' ? nodeWidth : 0);
+    const node = newLayout[index] as LayoutBay;
+    const nodeWidth = node.config?.width;
+    widthReduction += (typeof nodeWidth === 'number' ? nodeWidth : 0);
 
     if (index > 0 && newLayout[index - 1].type === 'divider') {
       widthReduction += (newLayout[index - 1] as LayoutDivider).thickness;
@@ -301,8 +301,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   }),
   resizeBay: (id: string, width: number | 'auto') => set((state) => {
     const newLayout = state.layout.map(node => {
-  if (node.id === id && isBayNode(node)) {
-  const newConfig = { ...node.config, width };
+      if (node.id === id && isBayNode(node)) {
+        const newConfig = { ...node.config, width };
         return { ...node, config: newConfig } as LayoutBay;
       }
       return node;
@@ -318,7 +318,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   // --- Shelf/Drawer Actions ---
   addShelf: (bayId: string, y: number) => set((state) => ({
     layout: state.layout.map(node => {
-  if (node.id === bayId && isBayNode(node)) {
+      if (node.id === bayId && isBayNode(node)) {
         const shelves = [...(node.config.shelves ?? [] as Shelf[]), { id: uid(), y }];
         return { ...node, config: { ...node.config, shelves } } as LayoutBay;
       }
@@ -327,8 +327,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   })),
   removeShelf: (bayId: string, id: string) => set((state) => ({
     layout: state.layout.map(node => {
-  if (node.id === bayId && isBayNode(node)) {
-  const shelves = (node.config.shelves ?? []).filter((s: Shelf) => s.id !== id);
+      if (node.id === bayId && isBayNode(node)) {
+        const shelves = (node.config.shelves ?? []).filter((s: Shelf) => s.id !== id);
         return { ...node, config: { ...node.config, shelves } } as LayoutBay;
       }
       return node;
@@ -336,22 +336,22 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   })),
   updateShelf: (bayId: string, id: string, y: number) => set((state) => ({
     layout: state.layout.map(node => {
-  if (node.id === bayId && isBayNode(node)) {
-  const shelves = (node.config.shelves ?? []).map((s: Shelf) => s.id === id ? { ...s, y } : s);
+      if (node.id === bayId && isBayNode(node)) {
+        const shelves = (node.config.shelves ?? []).map((s: Shelf) => s.id === id ? { ...s, y } : s);
         return { ...node, config: { ...node.config, shelves } } as LayoutBay;
       }
       return node;
     })
   })),
   duplicateShelf: (bayId: string, id: string) => set((state) => {
-  const bay = state.layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
+    const bay = state.layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
     if (!bay) return {};
-  const shelf = (bay.config.shelves ?? []).find((s: Shelf) => s.id === id);
+    const shelf = (bay.config.shelves ?? []).find((s: Shelf) => s.id === id);
     if (!shelf) return {};
 
     return {
       layout: state.layout.map(node => {
-          if (node.id === bayId && isBayNode(node)) {
+        if (node.id === bayId && isBayNode(node)) {
           const shelves = [...(node.config.shelves ?? [] as Shelf[]), { id: uid(), y: shelf.y + 50 }];
           return { ...node, config: { ...node.config, shelves } } as LayoutBay;
         }
@@ -361,7 +361,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   }),
   addDrawer: (bayId: string, y: number, height: number) => set((state) => ({
     layout: state.layout.map(node => {
-  if (node.id === bayId && isBayNode(node)) {
+      if (node.id === bayId && isBayNode(node)) {
         const drawers = [...(node.config.drawers ?? []), { id: uid(), y, height }];
         return { ...node, config: { ...node.config, drawers } } as LayoutBay;
       }
@@ -370,8 +370,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   })),
   removeDrawer: (bayId: string, id: string) => set((state) => ({
     layout: state.layout.map(node => {
-          if (node.id === bayId && isBayNode(node)) {
-  const drawers = (node.config.drawers ?? []).filter((d: Drawer) => d.id !== id);
+      if (node.id === bayId && isBayNode(node)) {
+        const drawers = (node.config.drawers ?? []).filter((d: Drawer) => d.id !== id);
         return { ...node, config: { ...node.config, drawers } } as LayoutBay;
       }
       return node;
@@ -379,17 +379,17 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   })),
   updateDrawer: (bayId: string, id: string, y: number, height: number) => set((state) => ({
     layout: state.layout.map(node => {
-  if (node.id === bayId && isBayNode(node)) {
-  const drawers = (node.config.drawers ?? []).map((d: Drawer) => d.id === id ? { ...d, y, height } : d);
+      if (node.id === bayId && isBayNode(node)) {
+        const drawers = (node.config.drawers ?? []).map((d: Drawer) => d.id === id ? { ...d, y, height } : d);
         return { ...node, config: { ...node.config, drawers } } as LayoutBay;
       }
       return node;
     })
   })),
   duplicateDrawer: (bayId: string, id: string) => set((state) => {
-  const bay = state.layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
+    const bay = state.layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
     if (!bay) return {};
-  const drawer = (bay.config.drawers ?? []).find((d: Drawer) => d.id === id);
+    const drawer = (bay.config.drawers ?? []).find((d: Drawer) => d.id === id);
     if (!drawer) return {};
 
     const newDrawer: Drawer = {
@@ -405,7 +405,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
 
     return {
       layout: state.layout.map(node => {
-  if (node.id === bayId && isBayNode(node)) {
+        if (node.id === bayId && isBayNode(node)) {
           const drawers = [...(node.config.drawers ?? []), newDrawer];
           return { ...node, config: { ...node.config, drawers } } as LayoutBay;
         }
@@ -452,7 +452,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       });
     };
 
-  const newLayout = replaceNode(state.layout);
+    const newLayout = replaceNode(state.layout);
 
     const newDoorStates = { ...state.doorStates };
     // Add door state for the new second bay if applicable (first bay keeps original id/state)
@@ -480,86 +480,13 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   }),
 
   moveDivider: (dividerId: string, delta: number) => set((state) => {
-    // Find container holding this divider
-    let found = null as null | { container: LayoutNode; parent?: LayoutNode };
-    const find = (nodes: LayoutNode[], parent?: LayoutNode) => {
-      for (const n of nodes) {
-        if (n.type === 'container') {
-          const cn = n as ContainerNode;
-          if (cn.children.findIndex(c => c.id === dividerId) !== -1) {
-            found = { container: cn, parent };
-            return true;
-          }
-          if (find(cn.children, cn)) return true;
-        }
-      }
-      return false;
-    };
-    find(state.layout);
-    if (!found) return {};
-
-    const container = found.container as ContainerNode;
-    const idx = container.children.findIndex(c => c.id === dividerId);
-    if (idx === -1 || idx === 0 || idx === container.children.length - 1) return {};
-
-    const prev = container.children[idx - 1];
-    const next = container.children[idx + 1];
-
     const s = PROFILES[state.profileType].size;
-    const inner = Math.max(0, state.width - (s * 2));
-    const sizes = computeLayoutSizes(state.layout, inner, 'horizontal', new Map<string, number>());
-    const minWidth = 40; // minimum bay width in mm
+    const result = moveDividerInLayout(state.layout, dividerId, delta, s, state.width);
+    if (!result.success) return {};
 
-    const newLayout = JSON.parse(JSON.stringify(state.layout)) as LayoutNode[];
-    // helper to apply change to the same node in newLayout
-  const replaceIn = (nodes: LayoutNode[]): LayoutNode[] => nodes.map((n: LayoutNode) => {
-      if (n.type === 'container') {
-        if ((n as ContainerNode).children.findIndex(c => c.id === dividerId) !== -1) {
-          const cn = n as ContainerNode;
-          const newChildren = cn.children.map((c: LayoutNode) => {
-            if (c.id === prev.id) {
-              // get current numeric prev width
-              const prevWidthRaw = sizes.get(prev.id) ?? (prev.type === 'item' ? ((prev as LayoutBay).config?.width ?? 0) : ((prev as ContainerNode).size ?? 0));
-              const prevWidth = typeof prevWidthRaw === 'number' ? prevWidthRaw : Number(prevWidthRaw);
-              const newPrevWidth = Math.max(minWidth, prevWidth + delta);
-              if (c.type === 'item') {
-                return { ...(c as LayoutBay), config: { ...(c as LayoutBay).config, width: newPrevWidth } } as LayoutNode;
-              }
-              if (c.type === 'container') {
-                return { ...(c as ContainerNode), size: newPrevWidth } as LayoutNode;
-              }
-            }
-              if (c.id === next.id) {
-              // if next is fixed, shrink by delta to keep container size consistent
-              if (c.type === 'item' && typeof (c as LayoutBay).config?.width === 'number') {
-                const nextWidthRaw = sizes.get(next.id) ?? ((c as LayoutBay).config?.width ?? 0);
-                const nextWidth = typeof nextWidthRaw === 'number' ? nextWidthRaw : Number(nextWidthRaw);
-                const newNextWidth = Math.max(minWidth, nextWidth - delta);
-                return { ...(c as LayoutBay), config: { ...(c as LayoutBay).config, width: newNextWidth } } as LayoutNode;
-              }
-              if (c.type === 'container' && typeof (c as ContainerNode).size === 'number') {
-                const nextWRaw = sizes.get(next.id) ?? (c as ContainerNode).size ?? 0;
-                const nextW = typeof nextWRaw === 'number' ? nextWRaw : Number(nextWRaw);
-                const newNextW = Math.max(minWidth, nextW - delta);
-                return { ...(c as ContainerNode), size: newNextW } as LayoutNode;
-              }
-            }
-            if (c.type === 'container') {
-              return { ...c, children: replaceIn((c as ContainerNode).children) } as LayoutNode;
-            }
-            return c;
-          });
-          return { ...(cn as ContainerNode), children: newChildren } as LayoutNode;
-        } else {
-          return { ...(n as ContainerNode), children: replaceIn((n as ContainerNode).children) } as LayoutNode;
-        }
-      }
-      return n;
-    });
-
-    const updatedLayout = replaceIn(newLayout);
+    const updatedLayout = result.layout;
     // compute new total width
-  const newTotalWidth = updatedLayout.reduce((acc: number, node: LayoutNode) => {
+    const newTotalWidth = updatedLayout.reduce((acc: number, node: LayoutNode) => {
       if (node.type === 'item') return acc + (typeof (node as LayoutBay).config?.width === 'number' ? (node as LayoutBay).config?.width as number : 0);
       if (node.type === 'divider') return acc + ((node as LayoutDivider).thickness ?? 0);
       if (node.type === 'container') return acc + (typeof (node as ContainerNode).size === 'number' ? (node as ContainerNode).size as number : 0);
@@ -579,7 +506,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   },
   checkDrawerCollision: (bayId: string, drawer: Drawer) => {
     const { layout } = get();
-  const bay = layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
+    const bay = layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
     if (!bay) return false;
 
     const drawerBottom = drawer.y;
