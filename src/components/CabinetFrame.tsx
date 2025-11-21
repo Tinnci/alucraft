@@ -11,7 +11,7 @@ import useUIStore from '@/store/useUIStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
-import { PROFILES, ProfileType, LayoutBay, Shelf } from '@/core/types';
+import { PROFILES, ProfileType, LayoutBay, Shelf, isBayNode } from '@/core/types';
 
 interface CabinetFrameProps {
     width: number;
@@ -117,12 +117,13 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
 
     // Calculate positions for layout nodes
     const nodePositions = useMemo(() => {
-        const positions: { id: string, type: 'bay' | 'divider', x: number, width: number }[] = [];
+        const positions: { id: string, type: 'item' | 'divider', x: number, width: number }[] = [];
         let currentX = -width / 2 + s;
         for (const node of layout) {
-            const centerX = currentX + node.width / 2;
-            positions.push({ id: node.id, type: node.type, x: centerX, width: node.width });
-            currentX += node.width;
+            const nodeWidth = node.type === 'item' ? (node.config?.width ?? 0) : (node.type === 'divider' ? node.thickness : 0);
+            const centerX = currentX + nodeWidth / 2;
+            positions.push({ id: node.id, type: node.type as 'item' | 'divider', x: centerX, width: nodeWidth });
+            currentX += nodeWidth;
         }
         return positions;
     }, [layout, width, s]);
@@ -164,7 +165,7 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                     const node = layout.find(n => n.id === nodeInfo.id);
                     if (!node) return null;
 
-                    if (node.type === 'bay') {
+                    if (isBayNode(node)) {
                             return (
                                 <Bay
                                     key={node.id}
@@ -309,7 +310,7 @@ interface BayProps {
     const s = profile.size;
     const offset = s / 2;
 
-    const bayWidth = bay.width;
+    const bayWidth = bay.config.width ?? 0;
 
     const wLength = bayWidth;
     const dLength = depth - (s * 2);
@@ -317,7 +318,7 @@ interface BayProps {
     return (
         <group position={position}>
             {/* Shelves */}
-            {bay.shelves.map((shelf) => (
+            {(bay.config.shelves ?? []).map((shelf) => (
                 <DraggableShelf
                     key={shelf.id}
                     bayId={bay.id}
@@ -335,7 +336,7 @@ interface BayProps {
             ))}
 
             {/* Drawers */}
-            {bay.drawers.map(drawer => {
+            {(bay.config.drawers ?? []).map(drawer => {
                 const isColliding = checkDrawerCollision(bay.id, drawer);
                 return (
                     <DrawerUnit
@@ -478,8 +479,8 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
             // Smart snap to other shelves
             let minDiff = Infinity;
             for (const node of layout) {
-                if (node.type === 'bay') {
-                    for (const s of node.shelves) {
+                if (isBayNode(node)) {
+                    for (const s of (node.config.shelves ?? [])) {
                         if (node.id === bayId && s.id === shelf.id) continue;
                         const diff = Math.abs(rawY - s.y);
                         if (diff < SNAP_THRESHOLD && diff < minDiff) {

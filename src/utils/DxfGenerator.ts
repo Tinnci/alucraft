@@ -1,6 +1,6 @@
 import DxfWriter from 'dxf-writer';
 import { DesignState } from '@/store/useDesignStore';
-import { PROFILES } from '@/core/types';
+import { PROFILES, isBayNode } from '@/core/types';
 
 export class DxfGenerator {
     private writer: DxfWriter;
@@ -42,11 +42,11 @@ export class DxfGenerator {
         let currentX = -width / 2 + s;
 
         layout.forEach(node => {
-            if (node.type === 'bay') {
-                const bayWidth = node.width;
+            if (isBayNode(node)) {
+                const bayWidth = node.config?.width ?? 0;
 
                 // Draw Shelves in this Bay
-                node.shelves.forEach(shelf => {
+                (node.config?.shelves ?? []).forEach(shelf => {
                     // Shelf Y is from center, convert to local from bottom left relative to bay start
                     // Shelf Y in store is relative to center 0
                     // Visual Y = shelf.y
@@ -55,7 +55,7 @@ export class DxfGenerator {
                 });
 
                 // Draw Drawers in this Bay (Simplified as Box)
-                node.drawers.forEach(drawer => {
+                (node.config?.drawers ?? []).forEach(drawer => {
                     // Drawer Y is center of drawer front?
                     // In store: y is center position relative to cabinet center
                     // Drawer height is total height
@@ -65,7 +65,7 @@ export class DxfGenerator {
 
                 currentX += bayWidth;
             } else if (node.type === 'divider') {
-                const divWidth = node.width; // Usually same as profile size? Or defined width
+                const divWidth = node.thickness; // Usually same as profile size? Or defined width
                 // Divider is a vertical profile
                 this.drawRect(currentX, -height / 2 + s, divWidth, height - 2 * s, 'FRAME');
                 currentX += divWidth;

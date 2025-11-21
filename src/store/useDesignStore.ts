@@ -9,10 +9,12 @@ import {
   BOMItem,
   ConnectorType,
   Drawer,
+  Shelf,
   HingeSide,
   BayDoorConfig,
   LayoutBay,
   LayoutDivider,
+  isBayNode,
   LayoutNode,
   MaterialType
 } from '@/core/types';
@@ -21,6 +23,8 @@ import { nanoid } from 'nanoid';
 
 // Helper function to generate unique IDs
 const uid = (len = 8) => nanoid(len);
+
+// Use helpers from core/types when available (imported as isBayNode / findBays)
 
 export const createDefaultDoorConfig = (): BayDoorConfig => ({
   enabled: true,
@@ -120,9 +124,9 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   width: 600,
   height: 800,
   depth: 400,
-  // Initial Layout: One Bay
+  // Initial Layout: One Bay (ItemNode with contentType 'generic_bay')
   layout: [
-    { type: 'bay', id: 'bay-initial', width: 560, shelves: [], drawers: [], door: createDefaultDoorConfig() } // 600 - 40 (20*2)
+    { type: 'item', contentType: 'generic_bay', id: 'bay-initial', config: { width: 560, shelves: [], drawers: [], door: createDefaultDoorConfig() } } as LayoutBay
   ],
   hasLeftWall: false,
   hasRightWall: false,
@@ -152,9 +156,10 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     // When total width changes, resize the first bay (simplified logic for now)
     const diff = v - state.width;
     const newLayout = [...state.layout];
-    const firstBay = newLayout.find(n => n.type === 'bay') as LayoutBay;
+  const firstBay = newLayout.find(n => isBayNode(n)) as LayoutBay | undefined;
     if (firstBay) {
-      firstBay.width += diff;
+      const newWidth = (firstBay.config?.width ?? 0) + diff;
+      firstBay.config = { ...firstBay.config, width: newWidth };
     }
     return { width: v, layout: newLayout };
   }),
@@ -170,8 +175,8 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setIsDoorOpen: (v: boolean) => set((state) => {
     const nextDoorStates = { ...state.doorStates };
     state.layout.forEach((node) => {
-      if (node.type !== 'bay') return;
-      const doorConfig = node.door ?? createDefaultDoorConfig();
+      if (!isBayNode(node)) return;
+      const doorConfig = node.config?.door ?? createDefaultDoorConfig();
       getDoorSides(doorConfig).forEach((side) => {
         nextDoorStates[getDoorStateKey(node.id, side)] = v;
       });
@@ -194,11 +199,11 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setBayDoorConfig: (bayId, config) => set((state) => {
     let targetDoor: BayDoorConfig | undefined;
     const newLayout = state.layout.map((node) => {
-      if (node.type === 'bay' && node.id === bayId) {
-        const base = node.door ?? createDefaultDoorConfig();
+      if (isBayNode(node) && node.id === bayId) {
+        const base = node.config?.door ?? createDefaultDoorConfig();
         const newDoorConfig = { ...base, ...config };
         targetDoor = newDoorConfig;
-        return { ...node, door: newDoorConfig };
+        return { ...node, config: { ...node.config, door: newDoorConfig } } as LayoutBay;
       }
       return node;
     });
@@ -230,21 +235,19 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const dividerWidth = profileSize;
 
     const newBay: LayoutBay = {
-      type: 'bay',
+      type: 'item',
       id: uid(),
-      width: newBayWidth,
-      shelves: [],
-      drawers: [],
-      door: createDefaultDoorConfig()
-    };
+      contentType: 'generic_bay',
+      config: { width: newBayWidth, shelves: [], drawers: [], door: createDefaultDoorConfig() }
+    } as LayoutBay;
     const newDivider: LayoutDivider = {
       type: 'divider',
       id: uid(),
-      width: dividerWidth
-    };
+      thickness: dividerWidth
+    } as LayoutDivider;
 
     const newDoorStates = { ...state.doorStates };
-    getDoorSides(newBay.door).map((side) => getDoorStateKey(newBay.id, side)).forEach((key: string) => {
+  getDoorSides(newBay.config.door).map((side) => getDoorStateKey(newBay.id, side)).forEach((key: string) => {
       newDoorStates[key] = state.isDoorOpen;
     });
 
@@ -258,20 +261,20 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     const index = state.layout.findIndex(n => n.id === id);
     if (index === -1) return {};
 
-    const bayCount = state.layout.filter(n => n.type === 'bay').length;
+  const bayCount = state.layout.filter(n => isBayNode(n)).length;
     if (bayCount <= 1) return {};
 
     const newLayout = [...state.layout];
     let widthReduction = 0;
 
-    const node = newLayout[index] as LayoutBay;
-    widthReduction += node.width;
+  const node = newLayout[index] as LayoutBay;
+  widthReduction += (node.config?.width ?? 0);
 
     if (index > 0 && newLayout[index - 1].type === 'divider') {
-      widthReduction += (newLayout[index - 1] as LayoutDivider).width;
+      widthReduction += (newLayout[index - 1] as LayoutDivider).thickness;
       newLayout.splice(index - 1, 2);
     } else if (index < newLayout.length - 1 && newLayout[index + 1].type === 'divider') {
-      widthReduction += (newLayout[index + 1] as LayoutDivider).width;
+      widthReduction += (newLayout[index + 1] as LayoutDivider).thickness;
       newLayout.splice(index, 2);
     } else {
       newLayout.splice(index, 1);
@@ -288,50 +291,59 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   }),
   resizeBay: (id: string, width: number) => set((state) => {
     const newLayout = state.layout.map(node => {
-      if (node.id === id && node.type === 'bay') {
-        return { ...node, width };
+  if (node.id === id && isBayNode(node)) {
+        const newConfig = { ...node.config, width };
+        return { ...node, config: newConfig } as LayoutBay;
       }
       return node;
     });
-    const newTotalWidth = newLayout.reduce((acc, node) => acc + node.width, 0) + (PROFILES[state.profileType].size * 2);
+    const newTotalWidth = newLayout.reduce((acc, node) => {
+      if (node.type === 'item') return acc + (node.config?.width ?? 0);
+      if (node.type === 'divider') return acc + (node.thickness ?? 0);
+      return acc;
+    }, 0) + (PROFILES[state.profileType].size * 2);
     return { layout: newLayout, width: newTotalWidth };
   }),
 
   // --- Shelf/Drawer Actions ---
   addShelf: (bayId: string, y: number) => set((state) => ({
     layout: state.layout.map(node => {
-      if (node.id === bayId && node.type === 'bay') {
-        return { ...node, shelves: [...node.shelves, { id: uid(), y }] };
+  if (node.id === bayId && isBayNode(node)) {
+        const shelves = [...(node.config.shelves ?? [] as Shelf[]), { id: uid(), y }];
+        return { ...node, config: { ...node.config, shelves } } as LayoutBay;
       }
       return node;
     })
   })),
   removeShelf: (bayId: string, id: string) => set((state) => ({
     layout: state.layout.map(node => {
-      if (node.id === bayId && node.type === 'bay') {
-        return { ...node, shelves: node.shelves.filter(s => s.id !== id) };
+  if (node.id === bayId && isBayNode(node)) {
+  const shelves = (node.config.shelves ?? []).filter((s: Shelf) => s.id !== id);
+        return { ...node, config: { ...node.config, shelves } } as LayoutBay;
       }
       return node;
     })
   })),
   updateShelf: (bayId: string, id: string, y: number) => set((state) => ({
     layout: state.layout.map(node => {
-      if (node.id === bayId && node.type === 'bay') {
-        return { ...node, shelves: node.shelves.map(s => s.id === id ? { ...s, y } : s) };
+  if (node.id === bayId && isBayNode(node)) {
+  const shelves = (node.config.shelves ?? []).map((s: Shelf) => s.id === id ? { ...s, y } : s);
+        return { ...node, config: { ...node.config, shelves } } as LayoutBay;
       }
       return node;
     })
   })),
   duplicateShelf: (bayId: string, id: string) => set((state) => {
-    const bay = state.layout.find(n => n.id === bayId && n.type === 'bay') as LayoutBay | undefined;
+  const bay = state.layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
     if (!bay) return {};
-    const shelf = bay.shelves.find(s => s.id === id);
+  const shelf = (bay.config.shelves ?? []).find((s: Shelf) => s.id === id);
     if (!shelf) return {};
 
     return {
       layout: state.layout.map(node => {
-        if (node.id === bayId && node.type === 'bay') {
-          return { ...node, shelves: [...node.shelves, { id: uid(), y: shelf.y + 50 }] };
+          if (node.id === bayId && isBayNode(node)) {
+          const shelves = [...(node.config.shelves ?? [] as Shelf[]), { id: uid(), y: shelf.y + 50 }];
+          return { ...node, config: { ...node.config, shelves } } as LayoutBay;
         }
         return node;
       })
@@ -339,32 +351,35 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   }),
   addDrawer: (bayId: string, y: number, height: number) => set((state) => ({
     layout: state.layout.map(node => {
-      if (node.id === bayId && node.type === 'bay') {
-        return { ...node, drawers: [...node.drawers, { id: uid(), y, height }] };
+  if (node.id === bayId && isBayNode(node)) {
+        const drawers = [...(node.config.drawers ?? []), { id: uid(), y, height }];
+        return { ...node, config: { ...node.config, drawers } } as LayoutBay;
       }
       return node;
     })
   })),
   removeDrawer: (bayId: string, id: string) => set((state) => ({
     layout: state.layout.map(node => {
-      if (node.id === bayId && node.type === 'bay') {
-        return { ...node, drawers: node.drawers.filter(d => d.id !== id) };
+          if (node.id === bayId && isBayNode(node)) {
+  const drawers = (node.config.drawers ?? []).filter((d: Drawer) => d.id !== id);
+        return { ...node, config: { ...node.config, drawers } } as LayoutBay;
       }
       return node;
     })
   })),
   updateDrawer: (bayId: string, id: string, y: number, height: number) => set((state) => ({
     layout: state.layout.map(node => {
-      if (node.id === bayId && node.type === 'bay') {
-        return { ...node, drawers: node.drawers.map(d => d.id === id ? { ...d, y, height } : d) };
+  if (node.id === bayId && isBayNode(node)) {
+  const drawers = (node.config.drawers ?? []).map((d: Drawer) => d.id === id ? { ...d, y, height } : d);
+        return { ...node, config: { ...node.config, drawers } } as LayoutBay;
       }
       return node;
     })
   })),
   duplicateDrawer: (bayId: string, id: string) => set((state) => {
-    const bay = state.layout.find(n => n.id === bayId && n.type === 'bay') as LayoutBay | undefined;
+  const bay = state.layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
     if (!bay) return {};
-    const drawer = bay.drawers.find(d => d.id === id);
+  const drawer = (bay.config.drawers ?? []).find((d: Drawer) => d.id === id);
     if (!drawer) return {};
 
     const newDrawer: Drawer = {
@@ -380,8 +395,9 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
 
     return {
       layout: state.layout.map(node => {
-        if (node.id === bayId && node.type === 'bay') {
-          return { ...node, drawers: [...node.drawers, newDrawer] };
+  if (node.id === bayId && isBayNode(node)) {
+          const drawers = [...(node.config.drawers ?? []), newDrawer];
+          return { ...node, config: { ...node.config, drawers } } as LayoutBay;
         }
         return node;
       })
@@ -398,13 +414,13 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   },
   checkDrawerCollision: (bayId: string, drawer: Drawer) => {
     const { layout } = get();
-    const bay = layout.find(n => n.id === bayId && n.type === 'bay') as LayoutBay | undefined;
+  const bay = layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
     if (!bay) return false;
 
     const drawerBottom = drawer.y;
     const drawerTop = drawer.y + drawer.height;
 
-    for (const shelf of bay.shelves) {
+    for (const shelf of (bay.config.shelves ?? [])) {
       const shelfY = shelf.y;
       if (shelfY > drawerBottom && shelfY < drawerTop) return true;
     }

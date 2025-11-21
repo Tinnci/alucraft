@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useStore } from 'zustand';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
-import { MaterialType } from '@/core/types';
+import { MaterialType, findBays } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
 import { DxfGenerator } from '@/utils/DxfGenerator';
 import { ProfileType } from '@/core/types';
@@ -109,7 +109,7 @@ export function TopBar() {
 
   const applyPreset = (preset: string) => {
     const state = useDesignStore.getState();
-    const primaryBay = layout.find(n => n.type === 'bay');
+  const primaryBay = findBays(layout)[0];
     switch (preset) {
       case 'standard':
         state.setWidth(600);

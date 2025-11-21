@@ -8,7 +8,7 @@ import useDesignStore, { DesignState, createDefaultDoorConfig, getDoorStateKey }
 import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
 import DimensionLines from '@/components/DimensionLines';
-import { PROFILES, ProfileType, LayoutBay } from '@/core/types';
+import { PROFILES, ProfileType, LayoutBay, isBayNode } from '@/core/types';
 
 /**
  * CameraHandler - 处理相机重置触发
@@ -85,12 +85,13 @@ export function Workspace() {
   let cursor = -width / 2 + s;
 
   layout.forEach((node) => {
-    if (node.type === 'bay') {
+    if (isBayNode(node)) {
       const bay = node as LayoutBay;
-      const centerX = cursor + bay.width / 2;
-      cursor += bay.width;
+      const bayWidth = bay.config?.width ?? 0;
+      const centerX = cursor + bayWidth / 2;
+      cursor += bayWidth;
 
-      const doorConfig = bay.door ?? createDefaultDoorConfig();
+  const doorConfig = bay.config.door ?? createDefaultDoorConfig();
       if (!doorConfig.enabled) {
         return;
       }
@@ -135,27 +136,28 @@ export function Workspace() {
       };
 
       if (doorConfig.type === 'single') {
-        const doorWidth = bay.width + overlay * 2;
+    const bayWidth = bay.config?.width ?? 0;
+    const doorWidth = bayWidth + overlay * 2;
         const hingeX =
           doorConfig.hingeSide === 'left'
-            ? centerX - (bay.width / 2 + overlay)
-            : centerX + (bay.width / 2 + overlay);
+            ? centerX - ((bay.config?.width ?? 0) / 2 + overlay)
+            : centerX + (bayWidth / 2 + overlay);
         const highlight =
           doorConfig.hingeSide === 'left'
             ? collisionLeft && Math.abs(hingeX - leftEdge) <= edgeTolerance
             : collisionRight && Math.abs(hingeX - rightEdge) <= edgeTolerance;
         buildDoor(doorConfig.hingeSide, doorWidth, hingeX, highlight);
       } else {
-        const leafWidth = bay.width / 2 + overlay;
-        const leftHingeX = centerX - (bay.width / 2 + overlay);
-        const rightHingeX = centerX + (bay.width / 2 + overlay);
+  const leafWidth = (bayWidth / 2) + overlay;
+  const leftHingeX = centerX - (bayWidth / 2 + overlay);
+  const rightHingeX = centerX + (bayWidth / 2 + overlay);
         const leftHighlight = collisionLeft && Math.abs(leftHingeX - leftEdge) <= edgeTolerance;
         const rightHighlight = collisionRight && Math.abs(rightHingeX - rightEdge) <= edgeTolerance;
         buildDoor('left', leafWidth, leftHingeX, leftHighlight);
         buildDoor('right', leafWidth, rightHingeX, rightHighlight);
       }
     } else {
-      cursor += node.width;
+      cursor += node.type === 'divider' ? (node.thickness ?? 0) : 0;
     }
   });
 

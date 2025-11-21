@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, DoorOpen, BoxSelect, Layers, Eye } from 'lucide-react';
 import useDesignStore, { DesignState, createDefaultDoorConfig } from '@/store/useDesignStore';
-import { LayoutBay } from '@/core/types';
+import { findBays } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
 import { calculateHinge } from '@/core/hinge-rules';
 import { CONNECTORS, ConnectorType } from '@/core/types';
@@ -181,17 +181,17 @@ export function PropertyInspector() {
   const duplicateDrawer = useDesignStore((state: DesignState) => state.duplicateDrawer);
 
   // Derived State
-  const bays = useMemo(() => layout.filter((n) => n.type === 'bay') as LayoutBay[], [layout]);
+  const bays = useMemo(() => findBays(layout), [layout]);
   const selectedBay = useMemo(() => bays.find((b) => b.id === selectedBayId), [bays, selectedBayId]);
   const selectedShelf = useMemo(
-    () => selectedBay?.shelves.find((s) => s.id === selectedShelfId),
+    () => (selectedBay?.config.shelves ?? []).find((s) => s.id === selectedShelfId),
     [selectedBay, selectedShelfId]
   );
   const selectedDrawer = useMemo(
-    () => selectedBay?.drawers.find((d) => d.id === selectedDrawerId),
+    () => (selectedBay?.config.drawers ?? []).find((d) => d.id === selectedDrawerId),
     [selectedBay, selectedDrawerId]
   );
-  const selectedDoor = selectedBay ? selectedBay.door ?? createDefaultDoorConfig() : null;
+  const selectedDoor = selectedBay ? selectedBay.config.door ?? createDefaultDoorConfig() : null;
 
   const handleCalculate = () => {
     let currentOverlay = overlay;
@@ -262,9 +262,9 @@ export function PropertyInspector() {
         {selectedObjectType === 'bay' && selectedBay && (
           <>
             <AccordionItem title="Dimensions" icon={BoxSelect}>
-              <LevaSlider
-                label="Width"
-                value={Math.round(selectedBay.width)}
+        <LevaSlider
+          label="Width"
+          value={Math.round(selectedBay.config.width ?? 0)}
                 min={100}
                 max={2000}
                 step={10}

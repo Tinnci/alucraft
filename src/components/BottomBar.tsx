@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { Plus, LayoutGrid, Box } from 'lucide-react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
-import { LayoutBay } from '@/core/types';
+import { findBays } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
 
 /**
@@ -28,7 +28,7 @@ export function BottomBar() {
   const setBOMPanelOpen = useUIStore((state) => state.setBOMPanelOpen);
 
   // Derived State
-  const bays = useMemo(() => layout.filter((n) => n.type === 'bay') as LayoutBay[], [layout]);
+  const bays = useMemo(() => findBays(layout), [layout]);
   const activeBayId = useMemo(() => {
     if (selectedBayId && bays.some((b) => b.id === selectedBayId)) {
       return selectedBayId;

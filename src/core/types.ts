@@ -124,21 +124,58 @@ export interface BayDoorConfig {
     hingeSide: HingeSide; // Used when type === 'single'
 }
 
-export interface LayoutBay {
-    type: 'bay';
+export type Orientation = 'horizontal' | 'vertical';
+
+export interface LayoutNodeBase {
     id: string;
-    width: number;
-    shelves: Shelf[];
-    drawers: Drawer[];
-    door?: BayDoorConfig;
+    type: 'container' | 'item' | 'divider';
+    size?: number | 'auto'; // mm or 'auto' to fill the remaining space
 }
 
-export interface LayoutDivider {
+export interface ContainerNode extends LayoutNodeBase {
+    type: 'container';
+    orientation: Orientation;
+    children: LayoutNode[];
+}
+
+export interface ItemNode extends LayoutNodeBase {
+    type: 'item';
+    // Keep a generic bay content type for now; this can be extended to other content types later
+    contentType: 'generic_bay' | 'wardrobe_section' | 'empty';
+    // Config contains the former bay fields
+    config: {
+        width?: number; // used for legacy reasons when migrating or rendering
+        shelves?: Shelf[];
+        drawers?: Drawer[];
+        door?: BayDoorConfig;
+    };
+}
+
+export interface DividerNode extends LayoutNodeBase {
     type: 'divider';
-    id: string;
-    width: number;
+    thickness: number; // mm
 }
 
-export type LayoutNode = LayoutBay | LayoutDivider;
+export type LayoutNode = ContainerNode | ItemNode | DividerNode;
+
+// Backwards compatibility aliases (temporary) for existing code
+export type LayoutBay = ItemNode;
+export type LayoutDivider = DividerNode;
+
+export function isBayNode(node: LayoutNode | undefined): node is LayoutBay {
+    return !!node && node.type === 'item' && (node as ItemNode).contentType === 'generic_bay';
+}
+
+export function findBays(nodes: LayoutNode[]): LayoutBay[] {
+    const result: LayoutBay[] = [];
+    for (const n of nodes) {
+        if (n.type === 'item' && (n as ItemNode).contentType === 'generic_bay') {
+            result.push(n as LayoutBay);
+        } else if (n.type === 'container') {
+            result.push(...findBays(n.children));
+        }
+    }
+    return result;
+}
 
 export type MaterialType = 'silver' | 'dark_metal' | 'wood';

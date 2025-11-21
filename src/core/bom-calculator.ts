@@ -10,6 +10,7 @@ import {
     CONNECTORS,
     LayoutNode
 } from './types';
+import { isBayNode } from './types';
 import { calculateHinge } from './hinge-rules';
 
 const uid = (len = 8) => nanoid(len);
@@ -111,14 +112,14 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
 
     // --- 4. Bay Components (Doors, Shelves, Drawers) ---
     layout.forEach((bay, bayIndex) => {
-        if (bay.type !== 'bay') return;
+        if (!isBayNode(bay)) return;
 
-        const bayLabel = `Bay #${bayIndex + 1}`;
+    const bayLabel = `Bay #${bayIndex + 1}`;
 
         // Doors
-        if (bay.door?.enabled) {
-            if (bay.door.type === 'single') {
-                const singleWidth = bay.width - 4; // 2mm gap on each side
+            if (bay.config?.door?.enabled) {
+            if (bay.config.door.type === 'single') {
+                const singleWidth = (bay.config.width ?? 0) - 4; // 2mm gap on each side
                 panelItems.push({
                     id: uid(),
                     name: `${bayLabel} Door Panel (Single)`,
@@ -129,7 +130,7 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
                     category: 'panel'
                 });
             } else { // Double
-                const leafWidth = (bay.width / 2) - 3; // 2mm outer gap, 2mm inner gap
+                const leafWidth = ((bay.config.width ?? 0) / 2) - 3; // 2mm outer gap, 2mm inner gap
                 panelItems.push({
                     id: uid(),
                     name: `${bayLabel} Door Panel (Pair)`,
@@ -143,27 +144,27 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
         }
 
         // Shelves
-        if (bay.shelves.length > 0) {
-            const bayInnerWidth = bay.width - (s * 2);
+        if ((bay.config.shelves ?? []).length > 0) {
+            const bayInnerWidth = (bay.config.width ?? 0) - (s * 2);
             const bayBeamDeductedLength = Math.round(bayInnerWidth - (connectorDeduction * 2));
-            profileItems.push({ id: uid(), name: `${profileType} Shelf Width Beam (Bay ${bayBeamDeductedLength}mm)`, lengthMm: bayBeamDeductedLength, qty: bay.shelves.length * 2, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
-            profileItems.push({ id: uid(), name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: bay.shelves.length * 2, category: 'profile' });
+            profileItems.push({ id: uid(), name: `${profileType} Shelf Width Beam (Bay ${bayBeamDeductedLength}mm)`, lengthMm: bayBeamDeductedLength, qty: (bay.config.shelves ?? []).length * 2, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
+            profileItems.push({ id: uid(), name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: (bay.config.shelves ?? []).length * 2, category: 'profile' });
         }
 
         // Drawers
-        if (bay.drawers.length > 0) {
+    if ((bay.config.drawers ?? []).length > 0) {
             const slideLength = depth - 50; // Simplified
             hardwareItems.push({
                 id: uid(),
                 name: `Drawer Slides (${slideLength}mm)`,
-                qty: bay.drawers.length,
+                qty: (bay.config.drawers ?? []).length,
                 unit: 'pair',
                 category: 'hardware'
             });
 
-            bay.drawers.forEach(d => {
+            (bay.config.drawers ?? []).forEach(d => {
                 // Drawer face width: default to inset unless drawerStyle is 'overlay'
-                const faceWidth = drawerStyle === 'overlay' ? Math.round(bay.width + overlay * 2) : Math.round(bay.width - 10); // mm
+                    const faceWidth = drawerStyle === 'overlay' ? Math.round((bay.config.width ?? 0) + overlay * 2) : Math.round((bay.config.width ?? 0) - 10); // mm
                 panelItems.push({
                     id: uid(),
                     name: `Drawer Face`,
@@ -178,7 +179,7 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
                     name: `Drawer Box/Body`,
                     qty: 1,
                     unit: 'set',
-                    note: `Fits inside ${Math.round(bay.width)}mm width`,
+                    note: `Fits inside ${Math.round(bay.config.width ?? 0)}mm width`,
                     category: 'hardware'
                 });
                 hardwareItems.push({ id: uid(), name: 'Handle', qty: 1, category: 'hardware', unit: 'piece' });
@@ -190,9 +191,9 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     const hingeResult = calculateHinge(profileType, overlay);
     if (hingeResult.success && hingeResult.recommendedHinge) {
         const hingeName = hingeResult.recommendedHinge.name;
-        const hingeQty = layout.reduce((acc, bay) => {
-            if (bay.type === 'bay' && bay.door?.enabled) {
-                const numDoors = bay.door.type === 'double' ? 2 : 1;
+            const hingeQty = layout.reduce((acc, bay) => {
+            if (isBayNode(bay) && bay.config?.door?.enabled) {
+                const numDoors = bay.config.door.type === 'double' ? 2 : 1;
                 return acc + (numDoors * 2); // Assuming 2 hinges per door
             }
             return acc;
@@ -203,7 +204,7 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     }
 
     // --- Connectors (angle brackets or internal locks) ---
-    const totalShelves = layout.reduce((acc, n) => n.type === 'bay' ? acc + (n.shelves?.length || 0) : acc, 0);
+    const totalShelves = layout.reduce((acc, n) => isBayNode(n) ? acc + ((n.config.shelves ?? []).length || 0) : acc, 0);
     const numDividers = layout.reduce((acc, n) => n.type === 'divider' ? acc + 1 : acc, 0);
     const baseConnectors = 16; // 8 corners * 2 connections (simplified estimation)
     const shelfConnectors = totalShelves * 8; // 4 beams * 2 ends per shelf
