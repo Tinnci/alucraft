@@ -104,7 +104,7 @@ const AccordionItem = ({
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
-  icon?: React.ElementType;
+  icon?: React.ComponentType<any>;
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -223,14 +223,11 @@ export function PropertyInspector() {
   return (
     <div
       className={`
-        fixed bottom-0 left-0 right-0 z-40 w-full
-        md:static md:w-96 md:z-auto
+        flex flex-col h-full w-full md:w-80
         bg-slate-900/90 backdrop-blur-xl
-        border-t md:border border-white/10 md:rounded-lg shadow-2xl
-        overflow-hidden flex flex-col
+        md:border-l border-white/10 md:rounded-none shadow-2xl
+        overflow-hidden
         transition-all duration-300
-        max-h-[60vh] md:max-h-[calc(100vh-100px)]
-        md:mr-4 md:mt-4
       `}
     >
       {/* Header */}

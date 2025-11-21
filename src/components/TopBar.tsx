@@ -13,7 +13,8 @@ import {
   Video,
 } from 'lucide-react';
 import { useStore } from 'zustand';
-import useDesignStore, { DesignState, MaterialType } from '@/store/useDesignStore';
+import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import { MaterialType } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
 import { DxfGenerator } from '@/utils/DxfGenerator';
 import { ProfileType } from '@/core/types';

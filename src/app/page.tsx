@@ -19,6 +19,7 @@ export default function Home() {
   // 获取用于渲染 Canvas 背景的状态
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
   const result = useDesignStore((state: DesignState) => state.result);
+  const isPropertyPanelOpen = useUIStore((s) => s.isPropertyPanelOpen);
   const bgColor = isDarkMode ? '#0f172a' : '#f8fafc';
 
   // 获取清除选中状态的方法
@@ -34,51 +35,48 @@ export default function Home() {
   };
 
   return (
-    <main className="relative w-screen h-screen bg-background overflow-hidden">
-      
-      {/* ===== Layer 1: 3D Scene (Full-screen background) ===== */}
-      <div className="absolute inset-0 z-0">
-        <Canvas 
-          shadows 
-          camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}
-          onPointerMissed={handlePointerMissed}
-        >
-          <color attach="background" args={[bgColor]} />
-          <fog attach="fog" args={[bgColor, 2000, 5000]} />
-          <Workspace />
-        </Canvas>
+    <main className="flex flex-col h-screen w-screen bg-background overflow-hidden">
+      {/* Top */}
+      <div className="shrink-0 z-50 relative">
+        <TopBar />
       </div>
 
-      {/* ===== Layer 2: UI Overlay (Floating UI on top) ===== */}
-      <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
-        
-        {/* Top: Global controls */}
-        <div className="pointer-events-auto">
-          <TopBar />
+      {/* Middle: left toolbar, canvas, right property inspector */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Left: Toolbar */}
+        <div className="w-16 border-r border-white/10 bg-slate-900/20 z-40 flex flex-col items-center py-4 pointer-events-auto">
+          <Toolbar />
         </div>
 
-        {/* Middle: Left toolbar + Right property inspector */}
-        <div className="flex-1 flex justify-between items-start px-4 py-4 overflow-hidden">
-          <div className="pointer-events-auto">
-            <Toolbar />
-          </div>
-          <div className="pointer-events-auto flex flex-col gap-2 h-full max-h-[calc(100vh-120px)]">
-            <PropertyInspector />
-          </div>
-        </div>
+        {/* Center: Canvas (adaptive) */}
+        <div className="flex-1 relative bg-slate-900/20 min-w-0">
+          <Canvas 
+            shadows 
+            camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}
+            onPointerMissed={handlePointerMissed}
+          >
+            <color attach="background" args={[bgColor]} />
+            <fog attach="fog" args={[bgColor, 2000, 5000]} />
+            <Workspace />
+          </Canvas>
 
-        {/* Bottom: Toast + Toolbar */}
-        <div className="pointer-events-auto space-y-2 flex flex-col items-center w-full">
-          {result && <Toast result={result} />}
-          <div className="w-full">
+          {/* Bottom: Toast + BottomBar centered over Canvas */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[90%] z-30 pointer-events-auto">
+            {result && <Toast result={result} />}
             <BottomBar />
           </div>
         </div>
+
+        {/* Right: Property Inspector (Docked; collapses if closed) */}
+        {isPropertyPanelOpen && (
+          <div className="w-80 border-l border-white/10 bg-slate-900/80 backdrop-blur-md z-40 flex flex-col shrink-0 h-full pointer-events-auto">
+            <PropertyInspector />
+          </div>
+        )}
       </div>
 
-      {/* ===== Layer 3: Modals & Panels ===== */}
+      {/* Modals / panels */}
       <BOMPanel />
-      
     </main>
   );
 }

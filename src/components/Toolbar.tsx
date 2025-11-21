@@ -9,7 +9,7 @@ export function Toolbar() {
   const setIsDoorOpen = useDesignStore((state: DesignState) => state.setIsDoorOpen);
 
   return (
-    <div className="fixed left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 p-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-xl z-50">
+    <div className="w-full flex flex-col gap-2 p-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-xl z-50 items-center">
       <button className="p-3 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Select">
         <MousePointer2 size={20} />
       </button>
