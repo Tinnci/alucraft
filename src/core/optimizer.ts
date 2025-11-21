@@ -7,10 +7,30 @@ export interface StockAllocation {
   wasteRatio: number;
 }
 
+export type OptimizerStrategy = 'FFD' | 'genetic' | 'linear';
+
 export function calculateCuttingList(
   items: { length: number; qty: number }[],
   stockLength: number = 6000,
-  bladeWidth: number = 5 // Standard saw blade thickness + trim margin
+  bladeWidth: number = 5, // Standard saw blade thickness + trim margin
+  strategy: OptimizerStrategy = 'FFD'
+): StockAllocation {
+    switch (strategy) {
+        case 'FFD':
+            return ffdOptimizer(items, stockLength, bladeWidth);
+        // case 'genetic':
+        //     return geneticOptimizer(items, stockLength, bladeWidth);
+        // case 'linear':
+        //     return linearProgrammingOptimizer(items, stockLength, bladeWidth);
+        default:
+            return ffdOptimizer(items, stockLength, bladeWidth);
+    }
+}
+
+function ffdOptimizer(
+    items: { length: number; qty: number }[],
+    stockLength: number,
+    bladeWidth: number
 ): StockAllocation {
   // 1. Expand items into individual cuts
   const allCuts: number[] = [];

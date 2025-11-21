@@ -48,3 +48,34 @@ export interface Drawer {
     y: number; // Vertical position (from bottom)
     height: number; // Face height
 }
+
+export type BOMCategory = 'profile' | 'panel' | 'hardware';
+
+export interface BOMItemBase {
+    id: string;
+    name: string;
+    qty: number;
+    category: BOMCategory;
+    note?: string;
+}
+
+export interface ProfileBOMItem extends BOMItemBase {
+    category: 'profile';
+    lengthMm: number;
+    cutAngleStart?: number; // e.g. 90 for straight, 45 for miter
+    cutAngleEnd?: number;
+}
+
+export interface PanelBOMItem extends BOMItemBase {
+    category: 'panel';
+    widthMm: number;
+    heightMm: number;
+    thicknessMm: number;
+}
+
+export interface HardwareBOMItem extends BOMItemBase {
+    category: 'hardware';
+    unit: 'piece' | 'set' | 'pair'; // e.g. 1 piece, 1 set
+}
+
+export type BOMItem = ProfileBOMItem | PanelBOMItem | HardwareBOMItem;

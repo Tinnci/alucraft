@@ -1,24 +1,26 @@
 'use client';
 
 import React, { useState } from 'react';
-import useDesignStore, { BOMItem, DesignState } from '@/store/useDesignStore';
-import { ChevronDown, ChevronUp, FileJson, FileSpreadsheet, Layers, Box, Wrench } from 'lucide-react';
+import useDesignStore, { DesignState } from '../store/useDesignStore';
+import { BOMItem, ProfileBOMItem } from '@/core/types';
 import { calculateCuttingList } from '@/core/optimizer';
+import { ChevronDown, ChevronUp, Download, FileJson, FileText, Scissors, Box, Layers, Wrench, FileSpreadsheet } from 'lucide-react';
 
 export function BOMPanel() {
   const getBOM = useDesignStore((state: DesignState) => state.getBOM);
   const bom: BOMItem[] = getBOM();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'profile' | 'panel' | 'hardware'>('all');
+  const [stockLength, setStockLength] = useState<number>(6000);
 
   const cuttingData = React.useMemo(() => {
     const profileItems = bom
-        .filter(i => i.category === 'profile' && i.lengthMm)
+        .filter((i): i is ProfileBOMItem => i.category === 'profile' && !!i.lengthMm)
         .map(i => ({ length: i.lengthMm!, qty: i.qty }));
     
     if (profileItems.length === 0) return null;
-    return calculateCuttingList(profileItems);
-  }, [bom]);
+    return calculateCuttingList(profileItems, stockLength);
+  }, [bom, stockLength]);
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(bom, null, 2)], { type: 'application/json' });
@@ -31,9 +33,21 @@ export function BOMPanel() {
   };
 
   const exportCsv = () => {
-    const rows = bom.map(i => [i.name, i.qty, i.lengthMm || '', i.note || '']);
-    const header = ['name', 'qty', 'length_mm', 'note'];
-    const csv = [header, ...rows].map(r => r.map(c => JSON.stringify(c)).join(',')).join('\n');
+  const rows = bom.map(i => {
+    const base = [i.category, i.name, i.qty, i.note || ''];
+    if (i.category === 'profile') {
+      return [...base, i.lengthMm, '', ''];
+    }
+    if (i.category === 'panel') {
+      return [...base, '', i.widthMm, i.heightMm];
+    }
+    if (i.category === 'hardware') {
+      return [...base, '', '', ''];
+    }
+    return base;
+  });
+  const header = ['Type', 'Name', 'Qty', 'Note', 'Length (mm)', 'Width (mm)', 'Height (mm)'];
+    const csv = [header, ...rows].map(r => r.map(c => JSON.stringify(c ?? '')).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -60,6 +74,22 @@ export function BOMPanel() {
         </div>
         {isExpanded ? <ChevronDown size={18} className="text-white/50" /> : <ChevronUp size={18} className="text-white/50" />}
       </div>
+
+      {/* Stock length selector */}
+      {isExpanded && (
+        <div className="px-4 pb-2 pt-0">
+          <label className="text-xs text-white/60 mr-2">Stock Length:</label>
+          <select
+            value={stockLength}
+            onChange={(e) => setStockLength(parseInt(e.target.value))}
+            className="bg-white/5 text-white/70 rounded px-2 py-1 text-xs"
+          >
+            <option value={6000}>6,000 mm</option>
+            <option value={3000}>3,000 mm</option>
+            <option value={2500}>2,500 mm</option>
+          </select>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-3 custom-scrollbar flex flex-col">
@@ -101,7 +131,7 @@ export function BOMPanel() {
             <div key={idx} className="flex justify-between items-start py-2 border-b border-white/5 last:border-0">
               <div className="flex-1 min-w-0 pr-3">
                 <div className="text-sm font-medium text-white/90 truncate">{i.name}</div>
-                {i.lengthMm && <div className="text-xs text-white/50 mt-0.5">Length: {i.lengthMm} mm</div>}
+                {i.category === 'profile' && <div className="text-xs text-white/50 mt-0.5">Length: {i.lengthMm} mm</div>}
                 {i.note && <div className="text-xs text-white/40 mt-0.5 italic">{i.note}</div>}
               </div>
               <div className="flex items-center justify-center min-w-[2rem] h-6 bg-white/10 rounded text-xs font-bold text-white/80">
