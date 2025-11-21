@@ -57,12 +57,12 @@ export interface DesignState {
   isDoorOpen: boolean;
   doorCount: number;
   connectorType: 'angle' | 'internal';
-  // shelves: Shelf[]; // Deprecated: moved to LayoutBay
-  // drawers: Drawer[]; // Deprecated: moved to LayoutBay
   showDimensions: boolean;
   showWireframe: boolean;
   cameraResetTrigger: number;
   isDarkMode: boolean;
+  material: 'silver' | 'dark_metal' | 'wood';
+
   setProfileType: (p: ProfileType) => void;
   setOverlay: (v: number) => void;
   setResult: (r: SimulationResult | null) => void;
@@ -83,6 +83,7 @@ export interface DesignState {
   setShowWireframe: (v: boolean) => void;
   triggerCameraReset: () => void;
   toggleTheme: () => void;
+  setMaterial: (material: 'silver' | 'dark_metal' | 'wood') => void;
 
   // Layout Actions
   addBay: () => void;
@@ -129,12 +130,13 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   showWireframe: false,
   cameraResetTrigger: 0,
   isDarkMode: true,
+  material: 'silver',
+
   setProfileType: (p: ProfileType) => set({ profileType: p }),
   setOverlay: (v: number) => set({ overlay: v }),
   setResult: (r: SimulationResult | null) => set({ result: r }),
   setWidth: (v: number) => set((state) => {
     // When total width changes, resize the first bay (simplified logic for now)
-    // In a real multi-bay system, we'd need a strategy (e.g., proportional resize)
     const profileSize = PROFILES[state.profileType].size;
     const diff = v - state.width;
     const newLayout = [...state.layout];
@@ -160,6 +162,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   setShowWireframe: (v: boolean) => set({ showWireframe: v }),
   triggerCameraReset: () => set((state) => ({ cameraResetTrigger: state.cameraResetTrigger + 1 })),
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+  setMaterial: (material) => set({ material }),
 
   // --- Layout Actions ---
   addBay: () => set((state) => {
@@ -186,29 +189,24 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     };
   }),
   removeBay: (id: string) => set((state) => {
-    // Logic to remove bay and adjacent divider
-    // Simplified: Filter out
     const index = state.layout.findIndex(n => n.id === id);
     if (index === -1) return {};
 
-    // If it's the only bay, don't remove? Or reset?
     const bayCount = state.layout.filter(n => n.type === 'bay').length;
     if (bayCount <= 1) return {};
 
-    // Remove bay and preceding divider (if exists) or following divider
     let newLayout = [...state.layout];
     let widthReduction = 0;
 
     const node = newLayout[index] as LayoutBay;
     widthReduction += node.width;
 
-    // Try remove preceding divider
     if (index > 0 && newLayout[index - 1].type === 'divider') {
       widthReduction += (newLayout[index - 1] as LayoutDivider).width;
-      newLayout.splice(index - 1, 2); // Remove divider and bay
+      newLayout.splice(index - 1, 2);
     } else if (index < newLayout.length - 1 && newLayout[index + 1].type === 'divider') {
       widthReduction += (newLayout[index + 1] as LayoutDivider).width;
-      newLayout.splice(index, 2); // Remove bay and next divider
+      newLayout.splice(index, 2);
     } else {
       newLayout.splice(index, 1);
     }
@@ -225,8 +223,7 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
       }
       return node;
     });
-    // Recalculate total width
-    const newTotalWidth = newLayout.reduce((acc, node) => acc + node.width, 0) + (PROFILES[state.profileType].size * 2); // + outer frame
+    const newTotalWidth = newLayout.reduce((acc, node) => acc + node.width, 0) + (PROFILES[state.profileType].size * 2);
     return { layout: newLayout, width: newTotalWidth };
   }),
 
@@ -349,8 +346,6 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
     // Dividers
     const dividers = layout.filter(n => n.type === 'divider') as LayoutDivider[];
     dividers.forEach(d => {
-      // Divider usually consists of a vertical profile? Or just a panel?
-      // For now assume it's a vertical profile
       profileItems.push({ name: `${profileType} Vertical (Divider)`, lengthMm: hLength - (s * 2), qty: 1, category: 'profile' });
     });
 

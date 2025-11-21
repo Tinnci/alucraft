@@ -35,6 +35,7 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
     const hasBottomPanel = useDesignStore((state: DesignState) => state.hasBottomPanel);
     const connectorType = useDesignStore((state: DesignState) => state.connectorType);
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+    const material = useDesignStore((state: DesignState) => state.material);
 
     // Panel Material
     const panelMaterial = new THREE.MeshStandardMaterial({
@@ -50,7 +51,7 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
 
     return (
         <group>
-            <ProfileInstances type={profileType}>
+            <ProfileInstances type={profileType} material={material}>
                 {/* --- Outer Frame --- */}
                 {/* Verticals (4 Pillars) */}
                 <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />

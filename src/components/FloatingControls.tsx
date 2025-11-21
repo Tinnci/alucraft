@@ -30,6 +30,7 @@ import {
 import useDesignStore, { DesignState, LayoutBay } from '@/store/useDesignStore';
 import { calculateHinge } from '@/core/hinge-rules';
 import { ProfileType } from '@/core/types';
+import { DxfGenerator } from '@/utils/DxfGenerator';
 
 // Helper Component for Leva-style Slider
 const LevaSlider = ({ label, value, min, max, step, onChange, unit = '' }: {
@@ -161,6 +162,7 @@ export function FloatingControls() {
   const result = useDesignStore((state: DesignState) => state.result);
   const showDimensions = useDesignStore((state: DesignState) => state.showDimensions);
   const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+  const material = useDesignStore((state: DesignState) => state.material);
   const toggleTheme = useDesignStore((state: DesignState) => state.toggleTheme);
 
   // Temporal State
@@ -184,6 +186,7 @@ export function FloatingControls() {
   const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
   const setShowDimensions = useDesignStore((state: DesignState) => state.setShowDimensions);
   const setShowWireframe = useDesignStore((state: DesignState) => state.setShowWireframe);
+  const setMaterial = useDesignStore((state: DesignState) => state.setMaterial);
   const triggerCameraReset = useDesignStore((state: DesignState) => state.triggerCameraReset);
 
   // Layout Actions
@@ -408,8 +411,8 @@ export function FloatingControls() {
                   key={bay.id}
                   onClick={() => setSelectedBayId(bay.id)}
                   className={`flex-shrink-0 px-3 py-2 rounded border text-xs font-medium transition-all ${selectedBayId === bay.id
-                      ? 'bg-blue-600 text-white border-blue-500 shadow-md'
-                      : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-md'
+                    : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
                     }`}
                 >
                   Bay {index + 1}
@@ -451,6 +454,21 @@ export function FloatingControls() {
                       className={`flex-1 py-1 rounded text-xs transition-colors ${profileType === type ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                       {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Material</label>
+                <div className="flex bg-muted p-1 rounded gap-1">
+                  {['silver', 'dark_metal', 'wood'].map(mat => (
+                    <button
+                      key={mat}
+                      onClick={() => setMaterial(mat as any)}
+                      className={`flex-1 py-1 rounded text-xs transition-colors ${material === mat ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {mat === 'dark_metal' ? 'Dark' : mat.charAt(0).toUpperCase() + mat.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -660,7 +678,21 @@ export function FloatingControls() {
 
           <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
             <button onClick={downloadDesign} className="flex items-center justify-center gap-2 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors">
-              <Download size={12} /> Save
+              <Download size={12} /> Save JSON
+            </button>
+            <button onClick={() => {
+              const state = useDesignStore.getState();
+              const generator = new DxfGenerator(state);
+              const dxfContent = generator.generate();
+              const blob = new Blob([dxfContent], { type: 'application/dxf' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'alucraft-design.dxf';
+              a.click();
+              URL.revokeObjectURL(url);
+            }} className="flex items-center justify-center gap-2 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/20 rounded text-xs transition-colors">
+              <Download size={12} /> Export DXF
             </button>
             <label className="flex items-center justify-center gap-2 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors cursor-pointer">
               <Upload size={12} /> Load
