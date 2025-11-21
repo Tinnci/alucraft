@@ -37,6 +37,7 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
     const connectorType = useDesignStore((state: DesignState) => state.connectorType);
     const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+    const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
 
     // Panel Material (PBR-ish)
     const panelMaterial = new THREE.MeshStandardMaterial({
@@ -46,22 +47,6 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
         side: THREE.DoubleSide,
         wireframe: showWireframe
     });
-
-    // Simple Collision Logic: Check if any drawer overlaps with any shelf
-    const checkCollision = (drawer: Drawer) => {
-        // Drawer Y range (relative to bottom 0)
-        const drawerBottom = drawer.y;
-        const drawerTop = drawer.y + drawer.height;
-
-        // Check shelves
-        for (const shelf of shelves) {
-            // Shelf Y is center position. Shelf thickness approx 20mm?
-            const shelfY = shelf.y;
-            if (shelfY > drawerBottom && shelfY < drawerTop) return true;
-        }
-
-        return false;
-    };
 
     return (
         <group>
@@ -113,7 +98,7 @@ export function CabinetFrame({ width, height, depth, profileType, shelves = [], 
 
             {/* --- Drawers --- */}
             {drawers.map(drawer => {
-                const isColliding = checkCollision(drawer);
+                const isColliding = checkDrawerCollision(drawer);
                 return (
                     <DrawerUnit
                         key={drawer.id}
@@ -231,9 +216,9 @@ function DraggableShelf({ shelf, width, height, depth, profileType, wLength, dLe
         const limit = 40;
         newShelfY = Math.max(limit, Math.min(height - limit, newShelfY));
 
-        // Snap
-        const snap = 50;
-        if (Math.abs(newShelfY % snap) < 15) {
+        // Snap to 32mm system
+        const snap = 32;
+        if (Math.abs(newShelfY % snap) < 10) {
             newShelfY = Math.round(newShelfY / snap) * snap;
         }
 

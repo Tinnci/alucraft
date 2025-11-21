@@ -74,6 +74,8 @@ export interface DesignState {
   removeDrawer: (id: string) => void;
   updateDrawer: (id: string, y: number, height: number) => void;
   getDerived: () => { innerWidth: number; doorWidth: number };
+  getCollisions: () => { left: boolean; right: boolean };
+  checkDrawerCollision: (drawer: Drawer) => boolean;
   getBOM: () => BOMItem[];
 }
 
@@ -145,6 +147,25 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   updateDrawer: (id: string, y: number, height: number) => set((state) => ({
     drawers: state.drawers.map(d => d.id === id ? { ...d, y, height } : d)
   })),
+  getCollisions: () => {
+    const { hasLeftWall, hasRightWall, result } = get();
+    const isCollision = (result && !result.success) || false;
+    return {
+      left: hasLeftWall && isCollision,
+      right: hasRightWall && isCollision
+    };
+  },
+  checkDrawerCollision: (drawer: Drawer) => {
+    const { shelves } = get();
+    const drawerBottom = drawer.y;
+    const drawerTop = drawer.y + drawer.height;
+
+    for (const shelf of shelves) {
+      const shelfY = shelf.y;
+      if (shelfY > drawerBottom && shelfY < drawerTop) return true;
+    }
+    return false;
+  },
   getDerived: () => {
     const state = get() as DesignState;
     const { width, profileType, overlay } = state;

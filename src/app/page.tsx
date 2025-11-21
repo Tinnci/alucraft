@@ -70,8 +70,8 @@ export default function Home() {
     depth / 2 + 2
   ];
 
-  const collisionLeft = Boolean(hasLeftWall && result && !result.success);
-  const collisionRight = Boolean(hasRightWall && result && !result.success);
+  const collisionLeft = useDesignStore((state: DesignState) => state.getCollisions().left);
+  const collisionRight = useDesignStore((state: DesignState) => state.getCollisions().right);
 
   let doorElements: JSX.Element | null = null;
   if (doorCount === 1) {
