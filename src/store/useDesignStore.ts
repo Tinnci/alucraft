@@ -21,6 +21,7 @@ import {
 } from '@/core/types';
 import { calculateBOM } from '@/core/bom-calculator';
 import { nanoid } from 'nanoid';
+import computeLayoutSizes from '@/core/layout-utils';
 
 // Helper function to generate unique IDs
 const uid = (len = 8) => nanoid(len);
@@ -414,20 +415,18 @@ export const useDesignStore = create<DesignState>()(temporal((set, get) => ({
   splitItem: (itemId: string, orientation: 'horizontal' | 'vertical') => set((state) => {
     let newBayId: string | null = null;
     // Helper to recursively find and replace the target node
+    // compute sizes once for the current layout (top-level inner width)
+    const s = PROFILES[state.profileType].size;
+    const inner = Math.max(0, state.width - (s * 2));
+    const topSizes = computeLayoutSizes(state.layout, inner, 'horizontal', new Map<string, number>());
+
     const replaceNode = (nodes: LayoutNode[]): LayoutNode[] => {
       return nodes.map((n) => {
         if (n.id === itemId && n.type === 'item') {
           const orig = n as LayoutBay;
           const dividerThickness = PROFILES[state.profileType].size;
-          let origWidth = orig.config?.width ?? 0;
-          // If the width is not numeric (i.e., 'auto'), approximate using top-level auto width
-          if (typeof origWidth !== 'number') {
-            const s = PROFILES[state.profileType].size;
-            const totalDividerWidth = state.layout.reduce((acc, n) => acc + (n.type === 'divider' ? ((n as LayoutDivider).thickness ?? 0) : 0), 0);
-            const topLevelItemCount = state.layout.filter(n => n.type === 'item').length || 1;
-            const available = Math.max(0, state.width - (s * 2) - totalDividerWidth);
-            origWidth = Math.floor(available / topLevelItemCount);
-          }
+          let origWidth = topSizes.get(orig.id) ?? (typeof orig.config?.width === 'number' ? orig.config.width : 0);
+          if (typeof origWidth !== 'number') origWidth = 0;
           const firstWidth = Math.floor((origWidth - dividerThickness) / 2);
           const secondWidth = origWidth - dividerThickness - firstWidth;
 

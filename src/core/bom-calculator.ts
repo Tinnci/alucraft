@@ -10,10 +10,10 @@ import {
     CONNECTORS,
     LayoutNode,
     ContainerNode,
-    DividerNode,
     ItemNode,
     isBayNode
 } from './types';
+import computeLayoutSizes from './layout-utils';
 import { calculateHinge } from './hinge-rules';
 
 const uid = (len = 8) => nanoid(len);
@@ -75,52 +75,13 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     profileItems.push({ id: uid(), name: `${profileType} Vertical (Pillar)`, lengthMm: hLength, qty: 4, category: 'profile' });
     profileItems.push({ id: uid(), name: `${profileType} Width Beam (Deducted)`, lengthMm: frameBeamDeductedLength, qty: 4, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
     profileItems.push({ id: uid(), name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4, category: 'profile' });
-    // --- Helper functions ---
-    // Recursively walk the layout tree and execute cb for each node
+    // simple traverse helper for tree iteration
     const traverse = (nodes: LayoutNode[] | undefined, cb: (node: LayoutNode) => void) => {
         if (!nodes) return;
         for (const n of nodes) {
             cb(n);
             if (n.type === 'container') {
                 traverse((n as ContainerNode).children, cb);
-            }
-        }
-    };
-
-    // Compute numeric width for each ItemNode by recursively assigning sizes in each container
-    const computeWidths = (nodes: LayoutNode[], containerInnerWidth: number, widths: Map<string, number>) => {
-        // Sum divider thickness and fixed sizes
-        const totalDividerWidth = nodes.reduce((acc, n) => acc + (n.type === 'divider' ? ((n as DividerNode).thickness ?? 0) : 0), 0);
-        // For fixed widths: item.config.width (number) or container.size (number)
-        let fixedSum = 0;
-        let autoCount = 0;
-        for (const n of nodes) {
-            if (n.type === 'divider') continue;
-            if (n.type === 'item') {
-                const wconf = (n as ItemNode).config?.width;
-                if (typeof wconf === 'number') fixedSum += wconf;
-                else autoCount += 1;
-            } else if (n.type === 'container') {
-                const wconf = (n as LayoutNode).size;
-                if (typeof wconf === 'number') fixedSum += wconf;
-                else autoCount += 1;
-            }
-        }
-
-        const remaining = Math.max(0, containerInnerWidth - totalDividerWidth - fixedSum);
-        const perAuto = autoCount > 0 ? Math.floor(remaining / autoCount) : 0;
-
-        // Assign sizes and recurse
-        for (const n of nodes) {
-            if (n.type === 'divider') continue;
-            if (n.type === 'item') {
-                const cw = typeof (n as ItemNode).config?.width === 'number' ? (n as ItemNode).config!.width as number : perAuto;
-                widths.set(n.id, cw);
-            } else if (n.type === 'container') {
-                const cn = n as ContainerNode;
-                const assigned = typeof cn.size === 'number' ? (cn.size as number) : perAuto;
-                // Recurse into the container with its assigned inner width
-                computeWidths(cn.children, assigned, widths);
             }
         }
     };
@@ -159,9 +120,8 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     }
 
     // --- 4. Bay Components (Doors, Shelves, Drawers) ---
-    // Precompute item widths using the top-level innerWidth
-    const widths = new Map<string, number>();
-    computeWidths(layout, innerWidth, widths);
+    // Precompute layout sizes using top-level innerWidth as the container axis
+    const widths = computeLayoutSizes(layout, innerWidth, 'horizontal', new Map<string, number>());
 
     // Build per-bay panel/profile/hardware entries using computed widths
     let bayCounter = 0;

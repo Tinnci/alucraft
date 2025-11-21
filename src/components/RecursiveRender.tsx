@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { LayoutNode, ContainerNode, DividerNode, ItemNode, PROFILES } from '@/core/types';
+import computeLayoutSizes from '@/core/layout-utils';
 import { Bay } from './CabinetFrame';
 import { ProfileInstance } from './AluProfile';
 import { ProfileType } from '@/core/types';
@@ -39,7 +40,7 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
     // The existing `Bay` component expects a `bay` with config width; we can just render it at computed center
     return (
       <group position={[x, y, z]} {...groupProps}>
-        <Bay key={node.id} bay={node as ItemNode} position={[0, 0, 0]} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} />
+        <Bay key={node.id} bay={node as ItemNode} position={[0, 0, 0]} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} computedWidth={w} />
       </group>
     );
   }
@@ -51,44 +52,19 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
 
     const children = container.children;
 
-    // Sum divider thickness
-    const totalDividerSize = children
-      .filter(c => c.type === 'divider')
-      .reduce((acc, c) => acc + ((c as DividerNode).thickness ?? 0), 0);
+    // Count items participating in size distribution
 
-  // Count items participating in size distribution
+  const availableSpace = (isVert ? h : w);
 
-    const availableSpace = (isVert ? h : w) - totalDividerSize;
+  // Compute fixed widths vs auto (kept briefly for reference when using the shared utility)
+    // children sizing handled by computeLayoutSizes
 
-    // Compute fixed widths vs auto
-    let sumFixed = 0;
-    let autoCount = 0;
-    children.forEach((c) => {
-      if (c.type === 'divider') return;
-      if (isVert) {
-        // vertical containers distribute available height; we don't have per-item height config yet
-        autoCount += 1;
-        return;
-      }
-      if (c.type === 'item') {
-        const wconf = (c as ItemNode).config?.width;
-        if (typeof wconf === 'number') {
-          sumFixed += wconf;
-        } else {
-          autoCount += 1;
-        }
-        return;
-      }
-      // container nodes are auto by default
-      autoCount += 1;
-    });
-
-    const remainingSpace = Math.max(0, availableSpace - sumFixed);
-    const itemSize = autoCount > 0 ? remainingSpace / autoCount : 0;
+  // Use computeLayoutSizes for consistent sizing
+  const sizes = computeLayoutSizes(children, availableSpace, isVert ? 'vertical' : 'horizontal', new Map<string, number>());
 
     // cursor starts at left or bottom edge
     const start = isVert ? y - h / 2 : x - w / 2;
-    const childSizes = children.map((child) => (child.type === 'divider' ? ((child as DividerNode).thickness ?? 0) : itemSize));
+  const childSizes = children.map((child) => (sizes.get(child.id) ?? (child.type === 'divider' ? ((child as DividerNode).thickness ?? 0) : 0)));
 
     // Compute child centers and dims without mutating during render
     const childInfos: { center: [number, number, number]; dims: [number, number, number] }[] = [];

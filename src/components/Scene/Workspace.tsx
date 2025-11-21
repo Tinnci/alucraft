@@ -9,6 +9,7 @@ import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
 import DimensionLines from '@/components/DimensionLines';
 import { PROFILES, ProfileType, LayoutBay, isBayNode } from '@/core/types';
+import computeLayoutSizes from '@/core/layout-utils';
 
 /**
  * CameraHandler - 处理相机重置触发
@@ -82,22 +83,15 @@ export function Workspace() {
 
   // ===== 生成门板元素 =====
   const doorElements: JSX.Element[] = [];
-  // Compute positions for top-level nodes respecting 'auto' widths
+  // Compute positions for top-level nodes respecting 'auto' widths using shared computeLayoutSizes
   const totalInnerWidth = width - (s * 2);
-  const totalDividerThickness = layout.reduce((acc, n) => acc + (n.type === 'divider' ? (n.thickness ?? 0) : 0), 0);
-  const fixedWidthsSum = layout.reduce((acc, n) => {
-    if (isBayNode(n) && typeof n.config?.width === 'number') return acc + (n.config!.width as number);
-    return acc;
-  }, 0);
-  const autoCount = layout.reduce((acc, n) => acc + ((isBayNode(n) && typeof n.config?.width !== 'number') ? 1 : 0), 0);
-  const remaining = Math.max(0, totalInnerWidth - totalDividerThickness - fixedWidthsSum);
-  const perAuto = autoCount > 0 ? Math.floor(remaining / autoCount) : 0;
+  const sizes = computeLayoutSizes(layout, totalInnerWidth, 'horizontal', new Map<string, number>());
   let cursor = -width / 2 + s;
 
   layout.forEach((node) => {
     if (isBayNode(node)) {
       const bay = node as LayoutBay;
-      const bayWidth = typeof bay.config?.width === 'number' ? bay.config!.width as number : perAuto;
+  const bayWidth = sizes.get(bay.id) ?? (typeof bay.config?.width === 'number' ? bay.config!.width as number : 0);
       const centerX = cursor + bayWidth / 2;
       cursor += bayWidth;
 
