@@ -1,17 +1,25 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, DoorOpen, BoxSelect, Layers, Eye } from 'lucide-react';
-import useDesignStore, { DesignState, createDefaultDoorConfig } from '@/store/useDesignStore';
+import React, { useMemo } from 'react';
+import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2, BoxSelect, Layers, Eye, Magnet, ArrowLeftRight, ScanLine } from 'lucide-react';
+import useDesignStore from '@/store/useDesignStore';
 import { findBays } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
 import { calculateHinge } from '@/core/hinge-rules';
 import { CONNECTORS, ConnectorType } from '@/core/types';
 
+// Shadcn UI Components
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 /**
- * LevaSlider - 范围滑块组件
+ * Helper: 带有数值显示的 Slider 包装器
  */
-const LevaSlider = ({
+const PropertySlider = ({
   label,
   value,
   min,
@@ -28,158 +36,82 @@ const LevaSlider = ({
   onChange: (v: number) => void;
   unit?: string;
 }) => {
-  const [localValue, setLocalValue] = useState(value.toString());
-
-  React.useEffect(() => {
-    setLocalValue(value.toString());
-  }, [value]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalValue(e.target.value);
-  };
-
-  const handleBlur = () => {
-    let num = parseFloat(localValue);
-    if (isNaN(num)) {
-      setLocalValue(value.toString());
-      return;
-    }
-    num = Math.max(min, Math.min(max, num));
-    onChange(num);
-    setLocalValue(num.toString());
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleBlur();
-      (e.target as HTMLInputElement).blur();
-    }
-  };
-
   return (
-    <div className="flex items-center gap-3 h-8 group">
-      <label className="w-20 text-muted-foreground truncate text-xs font-medium">{label}</label>
-      <div className="flex-1 relative h-full flex items-center">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="absolute w-full h-full opacity-0 cursor-ew-resize z-10"
-        />
-        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-500 transition-all duration-75"
-            style={{ width: `${((value - min) / (max - min)) * 100}%` }}
-          />
-        </div>
+    <div className="space-y-3 py-1">
+      <div className="flex justify-between items-center">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">
+          {value}{unit}
+        </span>
       </div>
-      <div className="w-14 flex items-center bg-muted rounded px-2 py-1 focus-within:ring-1 ring-blue-500">
-        <input
-          type="number"
-          value={localValue}
-          onChange={handleInputChange}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className="w-full bg-transparent text-right text-xs font-mono focus:outline-none text-blue-500 appearance-none p-0 border-none"
-          style={{ MozAppearance: 'textfield' }}
-        />
-        {unit && <span className="text-xs text-muted-foreground ml-0.5">{unit}</span>}
-      </div>
+      <Slider
+        value={[value]}
+        min={min}
+        max={max}
+        step={step}
+        onValueChange={(vals) => onChange(vals[0])}
+        className="[&_.bg-primary]:bg-blue-500" // 自定义颜色示例
+      />
     </div>
   );
 };
 
-/**
- * Accordion Item Component
- */
-const AccordionItem = ({
-  title,
-  children,
-  defaultOpen = true,
-  icon: Icon
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  icon?: React.ComponentType<{ size?: number | string; className?: string }>;
-}) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className="border border-border/50 rounded-lg bg-muted/10 overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3 bg-muted/20 hover:bg-muted/30 transition-colors"
-      >
-        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          {Icon && <Icon size={14} className="text-muted-foreground" />}
-          {title}
-        </div>
-        {isOpen ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
-      </button>
-      {isOpen && <div className="p-3 space-y-3 border-t border-border/50">{children}</div>}
-    </div>
-  );
-};
-
-/**
- * PropertyInspector - 上下文相关的属性检视器
- * 根据选中对象的类型显示不同的属性
- */
 export function PropertyInspector() {
-  const layout = useDesignStore((state: DesignState) => state.layout);
-  const height = useDesignStore((state: DesignState) => state.height);
-  const overlay = useDesignStore((state: DesignState) => state.overlay);
-  const result = useDesignStore((state: DesignState) => state.result);
-  const connectorType = useDesignStore((state: DesignState) => state.connectorType);
-  const hasLeftWall = useDesignStore((state: DesignState) => state.hasLeftWall);
-  const hasRightWall = useDesignStore((state: DesignState) => state.hasRightWall);
-  const hasLeftPanel = useDesignStore((state: DesignState) => state.hasLeftPanel);
-  const hasRightPanel = useDesignStore((state: DesignState) => state.hasRightPanel);
-  const hasBackPanel = useDesignStore((state: DesignState) => state.hasBackPanel);
-  const hasTopPanel = useDesignStore((state: DesignState) => state.hasTopPanel);
-  const hasBottomPanel = useDesignStore((state: DesignState) => state.hasBottomPanel);
-  const panelThickness = useDesignStore((state: DesignState) => state.panelThickness);
-  const tolerance = useDesignStore((state: DesignState) => state.tolerance);
+  // === Settings Slice ===
+  const overlay = useDesignStore((s) => s.overlay);
+  const height = useDesignStore((s) => s.height);
+  const result = useDesignStore((s) => s.result);
+  const connectorType = useDesignStore((s) => s.connectorType);
+  const hasLeftWall = useDesignStore((s) => s.hasLeftWall);
+  const hasRightWall = useDesignStore((s) => s.hasRightWall);
+  const hasLeftPanel = useDesignStore((s) => s.hasLeftPanel);
+  const hasRightPanel = useDesignStore((s) => s.hasRightPanel);
+  const hasBackPanel = useDesignStore((s) => s.hasBackPanel);
+  const hasTopPanel = useDesignStore((s) => s.hasTopPanel);
+  const hasBottomPanel = useDesignStore((s) => s.hasBottomPanel);
+  const panelThickness = useDesignStore((s) => s.panelThickness);
+  const tolerance = useDesignStore((s) => s.tolerance);
+  const profileType = useDesignStore((s) => s.profileType);
 
-  const profileType = useDesignStore((state: DesignState) => state.profileType);
+  // === Layout Slice ===
+  const layout = useDesignStore((s) => s.layout);
+  const resizeBay = useDesignStore((s) => s.resizeBay);
+  const removeShelf = useDesignStore((s) => s.removeShelf);
+  const splitItem = useDesignStore((s) => s.splitItem);
+  const updateShelf = useDesignStore((s) => s.updateShelf);
+  const duplicateShelf = useDesignStore((s) => s.duplicateShelf);
+  const removeDrawer = useDesignStore((s) => s.removeDrawer);
+  const updateDrawer = useDesignStore((s) => s.updateDrawer);
+  const duplicateDrawer = useDesignStore((s) => s.duplicateDrawer);
+  const setBayDoorConfig = useDesignStore((s) => s.setBayDoorConfig);
 
-  // UI Store
-  const selectedBayId = useUIStore((state) => state.selectedBayId);
-  const selectedShelfId = useUIStore((state) => state.selectedShelfId);
-  const selectedDrawerId = useUIStore((state) => state.selectedDrawerId);
-  const selectedObjectType = useUIStore((state) => state.selectedObjectType);
-  const setPropertyPanelOpen = useUIStore((state) => state.setPropertyPanelOpen);
+  // === Settings Setters ===
+  const setOverlay = useDesignStore((s) => s.setOverlay);
+  const setResult = useDesignStore((s) => s.setResult);
+  const setHasLeftWall = useDesignStore((s) => s.setHasLeftWall);
+  const setHasRightWall = useDesignStore((s) => s.setHasRightWall);
+  const setHasLeftPanel = useDesignStore((s) => s.setHasLeftPanel);
+  const setHasRightPanel = useDesignStore((s) => s.setHasRightPanel);
+  const setHasBackPanel = useDesignStore((s) => s.setHasBackPanel);
+  const setHasTopPanel = useDesignStore((s) => s.setHasTopPanel);
+  const setHasBottomPanel = useDesignStore((s) => s.setHasBottomPanel);
+  const setPanelThickness = useDesignStore((s) => s.setPanelThickness);
+  const setTolerance = useDesignStore((s) => s.setTolerance);
+  const setConnectorType = useDesignStore((s) => s.setConnectorType);
 
-  // Setters
-  const setOverlay = useDesignStore((state: DesignState) => state.setOverlay);
-  const setResult = useDesignStore((state: DesignState) => state.setResult);
-  const setHasLeftWall = useDesignStore((state: DesignState) => state.setHasLeftWall);
-  const setHasRightWall = useDesignStore((state: DesignState) => state.setHasRightWall);
-  const setHasLeftPanel = useDesignStore((state: DesignState) => state.setHasLeftPanel);
-  const setHasRightPanel = useDesignStore((state: DesignState) => state.setHasRightPanel);
-  const setHasBackPanel = useDesignStore((state: DesignState) => state.setHasBackPanel);
-  const setHasTopPanel = useDesignStore((state: DesignState) => state.setHasTopPanel);
-  const setHasBottomPanel = useDesignStore((state: DesignState) => state.setHasBottomPanel);
-  const setPanelThickness = useDesignStore((state: DesignState) => state.setPanelThickness);
-  const setTolerance = useDesignStore((state: DesignState) => state.setTolerance);
-  const setConnectorType = useDesignStore((state: DesignState) => state.setConnectorType);
-  const setBayDoorConfig = useDesignStore((state: DesignState) => state.setBayDoorConfig);
-  const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
-  const setShowSnapGuides = useDesignStore((state: DesignState) => state.setShowSnapGuides);
-  const enableHaptics = useDesignStore((state: DesignState) => state.enableHaptics);
-  const setEnableHaptics = useDesignStore((state: DesignState) => state.setEnableHaptics);
-  const resizeBay = useDesignStore((state: DesignState) => state.resizeBay);
-  const removeShelf = useDesignStore((state: DesignState) => state.removeShelf);
-  const splitItem = useDesignStore((state: DesignState) => state.splitItem);
-  const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
-  const duplicateShelf = useDesignStore((state: DesignState) => state.duplicateShelf);
-  const removeDrawer = useDesignStore((state: DesignState) => state.removeDrawer);
-  const updateDrawer = useDesignStore((state: DesignState) => state.updateDrawer);
-  const duplicateDrawer = useDesignStore((state: DesignState) => state.duplicateDrawer);
+  // === Scene Slice ===
+  const showSnapGuides = useDesignStore((s) => s.showSnapGuides);
+  const setShowSnapGuides = useDesignStore((s) => s.setShowSnapGuides);
+  const enableHaptics = useDesignStore((s) => s.enableHaptics);
+  const setEnableHaptics = useDesignStore((s) => s.setEnableHaptics);
+
+  // === UI Store ===
+  const selectedBayId = useUIStore((s) => s.selectedBayId);
+  const selectedShelfId = useUIStore((s) => s.selectedShelfId);
+  const selectedDrawerId = useUIStore((s) => s.selectedDrawerId);
+  const selectedObjectType = useUIStore((s) => s.selectedObjectType);
+  const setPropertyPanelOpen = useUIStore((s) => s.setPropertyPanelOpen);
+  const clearSelection = useUIStore((s) => s.clearSelection);
 
   // Derived State
   const bays = useMemo(() => findBays(layout), [layout]);
@@ -192,19 +124,17 @@ export function PropertyInspector() {
     () => (selectedBay?.config.drawers ?? []).find((d) => d.id === selectedDrawerId),
     [selectedBay, selectedDrawerId]
   );
-  const selectedDoor = selectedBay ? selectedBay.config.door ?? createDefaultDoorConfig() : null;
 
+  // Hinge Calculation Logic (kept same)
   const handleCalculate = () => {
     let currentOverlay = overlay;
     let autoAdjusted = false;
     const warningMessages: string[] = [];
 
-    if (hasLeftWall) {
-      if (currentOverlay > 3) {
-        currentOverlay = 2;
-        autoAdjusted = true;
-        warningMessages.push('Left wall detected: Overlay adjusted to 2mm.');
-      }
+    if (hasLeftWall && currentOverlay > 3) {
+      currentOverlay = 2;
+      autoAdjusted = true;
+      warningMessages.push('Left wall detected: Overlay adjusted to 2mm.');
     }
 
     const res = calculateHinge(profileType, currentOverlay);
@@ -220,34 +150,21 @@ export function PropertyInspector() {
     setResult(res);
   };
 
-  // The panel is now mounted by the page and its visibility is controlled
-  // via CSS (width/opacity) for smooth transitions. Keep this component always mounted.
+  // Helper for door config
+  const doorConfig = selectedBay?.config.door;
 
   return (
-    <div
-      className={`
-        flex flex-col h-full w-full md:w-80
-        bg-slate-900/90 backdrop-blur-xl
-        md:border-l border-white/10 md:rounded-none shadow-2xl
-        overflow-hidden
-        transition-all duration-300
-      `}
-    >
+    <div className="flex flex-col h-full w-full md:w-80 bg-slate-900/95 backdrop-blur-xl border-l border-white/10 shadow-2xl">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-white/10 bg-white/5 shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5 shrink-0">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           {selectedObjectType ? (
-            <button
-              onClick={() => useUIStore.getState().clearSelection()}
-              className="p-1 hover:bg-white/10 rounded text-muted-foreground hover:text-blue-400 transition-colors"
-              title="Back to Global Settings"
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearSelection} title="Back">
               <BoxSelect size={16} />
-            </button>
+            </Button>
           ) : (
             <BoxSelect size={16} className="text-blue-400" />
           )}
-
           <span>
             {selectedObjectType === 'bay' && `Bay #${bays.findIndex((b) => b.id === selectedBayId) + 1}`}
             {selectedObjectType === 'shelf' && `Shelf`}
@@ -255,389 +172,252 @@ export function PropertyInspector() {
             {!selectedObjectType && 'Global Settings'}
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          {selectedObjectType && (
-            <button
-              onClick={() => useUIStore.getState().clearSelection()}
-              className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-muted-foreground hover:text-foreground transition-colors mr-2"
-            >
-              Global Settings
-            </button>
-          )}
-          <button
-            onClick={() => setPropertyPanelOpen(false)}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1 hover:bg-white/10 rounded"
-          >
-            ✕
-          </button>
-        </div>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPropertyPanelOpen(false)}>
+          ✕
+        </Button>
       </div>
 
       {/* Content */}
-      <div className="overflow-y-auto custom-scrollbar flex-1 p-3 space-y-3">
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-6">
 
-        {/* Bay Properties */}
-        {selectedObjectType === 'bay' && selectedBay && (
-          <>
-            <AccordionItem title="Dimensions" icon={BoxSelect}>
-              <div className="flex items-center gap-2">
-                <LevaSlider
-                  label="Width"
-                  value={Math.round(typeof selectedBay.config.width === 'number' ? (selectedBay.config.width ?? 0) : 400)}
-                  min={100}
-                  max={2000}
-                  step={10}
-                  onChange={(v) => resizeBay(selectedBay.id, v)}
-                  unit="mm"
-                />
-                <button
-                  onClick={() => resizeBay(selectedBay.id, selectedBay.config.width === 'auto' ? 400 : 'auto')}
-                  className={`px-2 py-1 rounded text-xs border ${selectedBay.config.width === 'auto' ? 'bg-blue-600 text-white border-blue-500' : 'bg-muted text-muted-foreground'}`}
-                  title={selectedBay.config.width === 'auto' ? 'Auto width enabled' : 'Set Auto width'}
-                >
-                  Auto
-                </button>
-              </div>
-            </AccordionItem>
-
-            {selectedDoor && (
-              <AccordionItem title="Door Configuration" icon={DoorOpen}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-muted-foreground">Enable Door</span>
-                  <button
-                    onClick={() => setBayDoorConfig(selectedBay.id, { enabled: !selectedDoor.enabled })}
-                    className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-colors ${selectedDoor.enabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-muted text-muted-foreground border border-transparent'
-                      }`}
-                  >
-                    {selectedDoor.enabled ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-
-                {selectedDoor.enabled && (
-                  <div className="space-y-3 pt-2 border-t border-border/30">
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-muted-foreground">Type</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(['single', 'double'] as const).map((type) => (
-                          <button
-                            key={type}
-                            onClick={() => setBayDoorConfig(selectedBay.id, { type })}
-                            className={`py-1.5 px-2 rounded text-xs border transition-all ${selectedDoor.type === type
-                              ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
-                              : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
-                              }`}
-                          >
-                            {type === 'single' ? 'Single Door' : 'Double Door'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {selectedDoor.type === 'single' && (
-                      <div className="space-y-1.5">
-                        <label className="text-xs text-muted-foreground">Hinge Side</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(['left', 'right'] as const).map((side) => (
-                            <button
-                              key={side}
-                              onClick={() => setBayDoorConfig(selectedBay.id, { hingeSide: side })}
-                              className={`py-1.5 px-2 rounded text-xs border transition-all ${selectedDoor.hingeSide === side
-                                ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
-                                : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
-                                }`}
-                            >
-                              {side === 'left' ? 'Left Hinge' : 'Right Hinge'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+          {/* --- Bay Properties --- */}
+          {selectedObjectType === 'bay' && selectedBay && (
+            <Accordion type="single" collapsible defaultValue="dims" className="w-full">
+              <AccordionItem value="dims">
+                <AccordionTrigger>Dimensions & Split</AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-2">
+                  <PropertySlider
+                    label="Width"
+                    value={Math.round(typeof selectedBay.config.width === 'number' ? selectedBay.config.width : 400)}
+                    min={100} max={2000} step={10} unit="mm"
+                    onChange={(v) => resizeBay(selectedBay.id, v)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant={selectedBay.config.width === 'auto' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => resizeBay(selectedBay.id, 'auto')}
+                      className="flex-1 text-xs"
+                    >
+                      Auto Width
+                    </Button>
                   </div>
-                )}
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => splitItem(selectedBay.id, 'horizontal')}>
+                      <ArrowLeftRight className="mr-2 h-3 w-3 rotate-90" /> Split Vert
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => splitItem(selectedBay.id, 'vertical')}>
+                      <ArrowLeftRight className="mr-2 h-3 w-3" /> Split Horiz
+                    </Button>
+                  </div>
+                </AccordionContent>
               </AccordionItem>
-            )}
 
-            <div className="pt-2 border-t border-border/30">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => splitItem(selectedBay.id, 'horizontal')}
-                  className="px-2 py-1 bg-muted rounded text-xs border border-border hover:bg-muted/80"
-                >
-                  Split Horizontally
-                </button>
-                <button
-                  onClick={() => splitItem(selectedBay.id, 'vertical')}
-                  className="px-2 py-1 bg-muted rounded text-xs border border-border hover:bg-muted/80"
-                >
-                  Split Vertically
-                </button>
-              </div>
-            </div>
-          </>
-        )}
+              <AccordionItem value="door">
+                <AccordionTrigger>Door Configuration</AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Door Enabled</span>
+                    <Button
+                      size="sm"
+                      variant={doorConfig?.enabled ? 'default' : 'outline'}
+                      onClick={() => setBayDoorConfig(selectedBay.id, { enabled: !doorConfig?.enabled })}
+                      className="h-6 text-xs"
+                    >
+                      {doorConfig?.enabled ? 'ON' : 'OFF'}
+                    </Button>
+                  </div>
 
-        {/* Shelf Properties */}
-        {selectedObjectType === 'shelf' && selectedShelf && selectedBay && (
-          <AccordionItem title="Shelf Properties" icon={Layers}>
-            <LevaSlider
-              label="Y-Position"
-              value={Math.round(selectedShelf.y)}
-              min={0}
-              max={height}
-              step={10}
-              onChange={(v) => updateShelf(selectedBay.id, selectedShelf.id, v)}
-              unit="mm"
-            />
+                  {doorConfig?.enabled && (
+                    <Tabs defaultValue={doorConfig.type} className="w-full" onValueChange={(v) => setBayDoorConfig(selectedBay.id, { type: v as any })}>
+                      <TabsList className="grid w-full grid-cols-2 h-8">
+                        <TabsTrigger value="single" className="text-xs">Single</TabsTrigger>
+                        <TabsTrigger value="double" className="text-xs">Double</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  )}
 
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <button
-                onClick={() => duplicateShelf(selectedBay.id, selectedShelf.id)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors border border-transparent hover:border-border"
-              >
-                <Copy size={12} /> Duplicate
-              </button>
-              <button
-                onClick={() => removeShelf(selectedBay.id, selectedShelf.id)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded text-xs transition-colors"
-              >
-                <Trash2 size={12} /> Remove
-              </button>
-            </div>
-          </AccordionItem>
-        )}
+                  {doorConfig?.enabled && doorConfig.type === 'single' && (
+                    <Tabs defaultValue={doorConfig.hingeSide} className="w-full" onValueChange={(v) => setBayDoorConfig(selectedBay.id, { hingeSide: v as any })}>
+                      <TabsList className="grid w-full grid-cols-2 h-8">
+                        <TabsTrigger value="left" className="text-xs">Left Hinge</TabsTrigger>
+                        <TabsTrigger value="right" className="text-xs">Right Hinge</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
 
-        {/* Drawer Properties */}
-        {selectedObjectType === 'drawer' && selectedDrawer && selectedBay && (
-          <AccordionItem title="Drawer Properties" icon={Layers}>
-            <LevaSlider
-              label="Y-Position"
-              value={Math.round(selectedDrawer.y)}
-              min={0}
-              max={height}
-              step={10}
-              onChange={(v) => updateDrawer(selectedBay.id, selectedDrawer.id, v, selectedDrawer.height)}
-              unit="mm"
-            />
-
-            <LevaSlider
-              label="Height"
-              value={Math.round(selectedDrawer.height)}
-              min={100}
-              max={500}
-              step={10}
-              onChange={(v) => updateDrawer(selectedBay.id, selectedDrawer.id, selectedDrawer.y, v)}
-              unit="mm"
-            />
-
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <button
-                onClick={() => duplicateDrawer(selectedBay.id, selectedDrawer.id)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors border border-transparent hover:border-border"
-              >
-                <Copy size={12} /> Duplicate
-              </button>
-              <button
-                onClick={() => removeDrawer(selectedBay.id, selectedDrawer.id)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded text-xs transition-colors"
-              >
-                <Trash2 size={12} /> Remove
-              </button>
-            </div>
-          </AccordionItem>
-        )}
-
-        {/* Global Settings (shown when nothing is selected) */}
-        {!selectedObjectType && (
-          <>
-            <AccordionItem title="Hinge Logic" icon={Calculator}>
-              <LevaSlider
-                label="Overlay"
-                value={overlay}
-                min={-5}
-                max={30}
-                step={0.5}
-                onChange={setOverlay}
-                unit="mm"
+          {/* --- Shelf Properties --- */}
+          {selectedObjectType === 'shelf' && selectedShelf && selectedBay && (
+            <div className="space-y-4">
+              <PropertySlider
+                label="Position Y"
+                value={Math.round(selectedShelf.y)}
+                min={0} max={height} step={10} unit="mm"
+                onChange={(v) => updateShelf(selectedBay.id, selectedShelf.id, v)}
               />
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
-                  <input
-                    type="checkbox"
-                    checked={hasLeftWall}
-                    onChange={(e) => setHasLeftWall(e.target.checked)}
-                    className="rounded bg-muted border-border text-blue-500 focus:ring-0"
-                  />
-                  Left Wall
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
-                  <input
-                    type="checkbox"
-                    checked={hasRightWall}
-                    onChange={(e) => setHasRightWall(e.target.checked)}
-                    className="rounded bg-muted border-border text-blue-500 focus:ring-0"
-                  />
-                  Right Wall
-                </label>
-              </div>
-
-              <button
-                onClick={handleCalculate}
-                className="w-full py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 border border-emerald-600/20 rounded text-xs font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <Calculator size={12} /> Calculate Hinge
-              </button>
-
-              {result && (
-                <div
-                  className={`p-2 rounded border text-xs ${result.success
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
-                    }`}
-                >
-                  <div className="flex items-center gap-2 font-bold mb-1">
-                    {result.success ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
-                    {result.success ? 'Valid' : 'Issue'}
-                  </div>
-                  <div className="opacity-90 leading-relaxed">{result.message}</div>
-                </div>
-              )}
-            </AccordionItem>
-
-            <AccordionItem title="View Options" icon={Eye}>
-              <div className="space-y-2">
-                <label className="flex items-center justify-between p-2 hover:bg-white/5 rounded cursor-pointer group">
-                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Show Snap Guides</span>
-                  <div
-                    className={`w-8 h-4 rounded-full relative transition-colors ${showSnapGuides ? 'bg-blue-600' : 'bg-muted'}`}
-                    onClick={(e) => { e.preventDefault(); setShowSnapGuides(!showSnapGuides); }}
-                  >
-                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${showSnapGuides ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </div>
-                </label>
-                <p className="text-[10px] text-muted-foreground px-2">显示吸附辅助线和数值标签</p>
-              </div>
-            </AccordionItem>
-            <AccordionItem title="Haptics" icon={Eye}>
-              <div className="space-y-2">
-                <label className="flex items-center justify-between p-2 hover:bg-white/5 rounded cursor-pointer group">
-                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Haptic Feedback</span>
-                  <div
-                    className={`w-8 h-4 rounded-full relative transition-colors ${enableHaptics ? 'bg-blue-600' : 'bg-muted'}`}
-                    onClick={(e) => { e.preventDefault(); setEnableHaptics(!enableHaptics); }}
-                  >
-                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${enableHaptics ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </div>
-                </label>
-                <p className="text-[10px] text-muted-foreground px-2">Enable vibration on snap (if device supports)</p>
-              </div>
-            </AccordionItem>
-
-            <AccordionItem title="Panels" icon={Layers}>
-              <div className="space-y-1">
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
-                  <input
-                    type="checkbox"
-                    checked={hasLeftPanel}
-                    onChange={(e) => setHasLeftPanel(e.target.checked)}
-                    className="rounded bg-muted border-border text-blue-500 focus:ring-0"
-                  />
-                  Left Panel
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
-                  <input
-                    type="checkbox"
-                    checked={hasRightPanel}
-                    onChange={(e) => setHasRightPanel(e.target.checked)}
-                    className="rounded bg-muted border-border text-blue-500 focus:ring-0"
-                  />
-                  Right Panel
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
-                  <input
-                    type="checkbox"
-                    checked={hasBackPanel}
-                    onChange={(e) => setHasBackPanel(e.target.checked)}
-                    className="rounded bg-muted border-border text-blue-500 focus:ring-0"
-                  />
-                  Back Panel
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
-                  <input
-                    type="checkbox"
-                    checked={hasTopPanel}
-                    onChange={(e) => setHasTopPanel(e.target.checked)}
-                    className="rounded bg-muted border-border text-blue-500 focus:ring-0"
-                  />
-                  Top Panel
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground p-1 rounded hover:bg-white/5">
-                  <input
-                    type="checkbox"
-                    checked={hasBottomPanel}
-                    onChange={(e) => setHasBottomPanel(e.target.checked)}
-                    className="rounded bg-muted border-border text-blue-500 focus:ring-0"
-                  />
-                  Bottom Panel
-                </label>
-              </div>
-
-              <div className="pt-2 border-t border-border/30 space-y-2">
-                <div className="flex gap-2 items-center justify-between">
-                  <label className="text-xs text-muted-foreground">Thickness</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min={3}
-                      max={50}
-                      value={panelThickness}
-                      onChange={(e) => setPanelThickness(Number(e.target.value))}
-                      className="w-12 bg-muted text-foreground rounded px-1.5 py-1 text-xs text-right"
-                    />
-                    <span className="text-xs text-muted-foreground">mm</span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 items-center justify-between">
-                  <label className="text-xs text-muted-foreground">Tolerance</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={tolerance}
-                      onChange={(e) => setTolerance(Number(e.target.value))}
-                      className="w-12 bg-muted text-foreground rounded px-1.5 py-1 text-xs text-right"
-                    />
-                    <span className="text-xs text-muted-foreground">mm</span>
-                  </div>
-                </div>
-              </div>
-            </AccordionItem>
-
-            <AccordionItem title="Connectors" icon={BoxSelect}>
               <div className="grid grid-cols-2 gap-2">
-                {Object.entries(CONNECTORS).map(([key, spec]) => (
-                  <button
-                    key={key}
-                    onClick={() => setConnectorType(key as ConnectorType)}
-                    className={`
-                      flex flex-col items-start p-2 rounded border text-left transition-all
-                      ${connectorType === key
-                        ? 'bg-blue-600/20 border-blue-500 text-blue-100'
-                        : 'bg-muted/20 border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground'
-                      }
-                    `}
-                  >
-                    <span className="text-xs font-semibold">{spec.name}</span>
-                    <span className="text-[10px] opacity-70 mt-0.5">Deduction: {spec.deduction}mm</span>
-                  </button>
-                ))}
+                <Button size="sm" variant="outline" onClick={() => duplicateShelf(selectedBay.id, selectedShelf.id)}>
+                  <Copy className="mr-2 h-3 w-3" /> Duplicate
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => removeShelf(selectedBay.id, selectedShelf.id)}>
+                  <Trash2 className="mr-2 h-3 w-3" /> Remove
+                </Button>
               </div>
-            </AccordionItem>
-          </>
-        )}
-      </div>
+            </div>
+          )}
+
+          {/* --- Drawer Properties --- */}
+          {selectedObjectType === 'drawer' && selectedDrawer && selectedBay && (
+            <div className="space-y-4">
+              <PropertySlider
+                label="Position Y"
+                value={Math.round(selectedDrawer.y)}
+                min={0} max={height} step={10} unit="mm"
+                onChange={(v) => updateDrawer(selectedBay.id, selectedDrawer.id, v, selectedDrawer.height)}
+              />
+              <PropertySlider
+                label="Face Height"
+                value={Math.round(selectedDrawer.height)}
+                min={100} max={500} step={10} unit="mm"
+                onChange={(v) => updateDrawer(selectedBay.id, selectedDrawer.id, selectedDrawer.y, v)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" variant="outline" onClick={() => duplicateDrawer(selectedBay.id, selectedDrawer.id)}>
+                  <Copy className="mr-2 h-3 w-3" /> Duplicate
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => removeDrawer(selectedBay.id, selectedDrawer.id)}>
+                  <Trash2 className="mr-2 h-3 w-3" /> Remove
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* --- Global Settings --- */}
+          {!selectedObjectType && (
+            <Accordion type="single" collapsible defaultValue="hinge" className="w-full">
+              <AccordionItem value="hinge">
+                <AccordionTrigger>Hinge & Overlay</AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-2">
+                  <PropertySlider
+                    label="Door Overlay"
+                    value={overlay}
+                    min={-5} max={30} step={0.5} unit="mm"
+                    onChange={setOverlay}
+                  />
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant={hasLeftWall ? "secondary" : "outline"}
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => setHasLeftWall(!hasLeftWall)}
+                    >
+                      {hasLeftWall ? "Left Wall: ON" : "Left Wall: OFF"}
+                    </Button>
+                    <Button
+                      variant={hasRightWall ? "secondary" : "outline"}
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => setHasRightWall(!hasRightWall)}
+                    >
+                      {hasRightWall ? "Right Wall: ON" : "Right Wall: OFF"}
+                    </Button>
+                  </div>
+
+                  <Button onClick={handleCalculate} className="w-full" size="sm">
+                    <Calculator className="mr-2 h-3 w-3" /> Check Compatibility
+                  </Button>
+
+                  {result && (
+                    <div className={`p-3 rounded-md text-xs border ${result.success ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                      <div className="flex items-center gap-2 font-bold mb-1">
+                        {result.success ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                        {result.success ? 'Valid Config' : 'Conflict Detected'}
+                      </div>
+                      <div className="opacity-90 leading-relaxed">{result.message}</div>
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="panels">
+                <AccordionTrigger>Panels & Thickness</AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {['Top', 'Bottom', 'Back', 'Left', 'Right'].map(panel => {
+                      const key = `has${panel}Panel` as const;
+                      // @ts-ignore - dynamic access safe here
+                      const isActive = key === 'hasTopPanel' ? hasTopPanel : key === 'hasBottomPanel' ? hasBottomPanel : key === 'hasBackPanel' ? hasBackPanel : key === 'hasLeftPanel' ? hasLeftPanel : hasRightPanel;
+                      // @ts-ignore
+                      const setter = key === 'hasTopPanel' ? setHasTopPanel : key === 'hasBottomPanel' ? setHasBottomPanel : key === 'hasBackPanel' ? setHasBackPanel : key === 'hasLeftPanel' ? setHasLeftPanel : setHasRightPanel;
+
+                      return (
+                        <Button
+                          key={panel}
+                          variant={isActive ? "secondary" : "outline"}
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => setter(!isActive)}
+                        >
+                          {panel}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Separator />
+                  <PropertySlider label="Thickness" value={panelThickness} min={3} max={50} step={1} unit="mm" onChange={setPanelThickness} />
+                  <PropertySlider label="Tolerance" value={tolerance} min={0} max={10} step={0.5} unit="mm" onChange={setTolerance} />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="view">
+                <AccordionTrigger>View & Haptics</AccordionTrigger>
+                <AccordionContent className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Snap Guides</span>
+                    <Button size="sm" variant={showSnapGuides ? "default" : "outline"} onClick={() => setShowSnapGuides(!showSnapGuides)} className="h-6 text-xs">
+                      {showSnapGuides ? <Magnet size={12} className="mr-1" /> : null} {showSnapGuides ? "ON" : "OFF"}
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Haptics</span>
+                    <Button size="sm" variant={enableHaptics ? "default" : "outline"} onClick={() => setEnableHaptics(!enableHaptics)} className="h-6 text-xs">
+                      {enableHaptics ? <ScanLine size={12} className="mr-1" /> : null} {enableHaptics ? "ON" : "OFF"}
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="connectors">
+                <AccordionTrigger>Connectors</AccordionTrigger>
+                <AccordionContent className="pt-2">
+                  <div className="grid grid-cols-1 gap-2">
+                    {Object.entries(CONNECTORS).map(([key, spec]) => (
+                      <Button
+                        key={key}
+                        variant={connectorType === key ? "default" : "ghost"}
+                        className="justify-start h-auto py-2 px-3"
+                        onClick={() => setConnectorType(key as ConnectorType)}
+                      >
+                        <div className="text-left">
+                          <div className="text-xs font-semibold">{spec.name}</div>
+                          <div className="text-[10px] opacity-70">Deduction: {spec.deduction}mm</div>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
