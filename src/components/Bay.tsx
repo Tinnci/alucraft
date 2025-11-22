@@ -22,16 +22,22 @@ interface BayProps {
     computedWidth?: number;
 }
 
+import { ContextToolbar } from './ContextToolbar';
+
 export function Bay({ bay, position, height, depth, profileType, isShiftDown, computedWidth }: BayProps) {
     // Actions
     const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
     const addShelf = useDesignStore((state: DesignState) => state.addShelf);
     const addDrawer = useDesignStore((state: DesignState) => state.addDrawer);
     const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
+    const splitItem = useDesignStore((state: DesignState) => state.splitItem);
+    const removeBay = useDesignStore((state: DesignState) => state.removeBay);
 
     // Drag State
     const draggedComponent = useUIStore((state) => state.draggedComponent);
     const setDraggedComponent = useUIStore((state) => state.setDraggedComponent);
+    const selectedBayId = useUIStore((state) => state.selectedBayId);
+    const isSelected = selectedBayId === bay.id;
 
     // Local State for Ghost
     const [hoverY, setHoverY] = useState<number | null>(null);
@@ -51,19 +57,11 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
         if (!draggedComponent || !bayGroupRef.current) return;
         e.stopPropagation();
 
-        // Convert world point to local y
         const worldPoint = e.point;
         const localPoint = bayGroupRef.current.worldToLocal(worldPoint.clone());
 
-        // localPoint.y is relative to center (e.g. -400 to +400).
-        // Convert to "Height from Bottom" (0 to 800)
         const yFromBottom = localPoint.y + height / 2;
-
-        // Clamp
         const clampedY = Math.max(s, Math.min(height - s, yFromBottom));
-
-        // Snap to grid (optional, purely visual feedback here, actual snap happens on drop?)
-        // Let's do a simple 10mm snap for the ghost
         const snappedY = Math.round(clampedY / 10) * 10;
 
         setHoverY(snappedY);
@@ -79,7 +77,6 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
             addDrawer(bay.id, hoverY, 200); // Default height 200
         }
 
-        // Reset drag state
         setDraggedComponent(null);
         setHoverY(null);
     };
@@ -100,6 +97,18 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
             <mesh visible={false}>
                 <boxGeometry args={[bayWidth, height, depth]} />
             </mesh>
+
+            {/* Context Toolbar */}
+            {isSelected && !draggedComponent && (
+                <ContextToolbar
+                    position={[0, 0, depth / 2 + 50]}
+                    onSplitHorizontal={() => splitItem(bay.id, 'horizontal')}
+                    onSplitVertical={() => splitItem(bay.id, 'vertical')}
+                    onAddShelf={() => addShelf(bay.id, height / 2)}
+                    onAddDrawer={() => addDrawer(bay.id, 200, 200)} // Default Y=200, H=200
+                    onDelete={() => removeBay(bay.id)}
+                />
+            )}
 
             {/* Ghost Preview */}
             {draggedComponent && hoverY !== null && (
