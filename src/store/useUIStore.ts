@@ -8,6 +8,8 @@ import { create } from 'zustand';
  */
 
 export type SelectableObjectType = 'bay' | 'shelf' | 'drawer' | null;
+// [NEW] 定义可拖拽的组件类型
+export type DraggableComponentType = 'shelf' | 'drawer' | null;
 
 export interface UIState {
   // 选中对象管理
@@ -24,6 +26,9 @@ export interface UIState {
   // 浮动面板状态（暂时保留以备过渡期使用）
   isFloatingControlsExpanded: boolean;
 
+  // [NEW] 拖拽状态
+  draggedComponent: DraggableComponentType;
+
   // Setters
   setSelectedBayId: (id: string | null) => void;
   setSelectedShelfId: (id: string | null) => void;
@@ -34,6 +39,9 @@ export interface UIState {
   setTopBarExpanded: (expanded: boolean) => void;
   setBOMPanelOpen: (open: boolean) => void;
   setFloatingControlsExpanded: (expanded: boolean) => void;
+
+  // [NEW] 拖拽 Setter
+  setDraggedComponent: (type: DraggableComponentType) => void;
 
   // 便利方法：清除所有选中状态
   clearSelection: () => void;
@@ -55,7 +63,10 @@ export const useUIStore = create<UIState>((set) => ({
   isBOMPanelOpen: false,
   isFloatingControlsExpanded: true,
 
-  // Setters
+  // [NEW]
+  draggedComponent: null,
+
+  // ... Setters ...
   setSelectedBayId: (id) => set({ selectedBayId: id, selectedObjectType: id ? 'bay' : null }),
   setSelectedShelfId: (id) => set({ selectedShelfId: id, selectedObjectType: id ? 'shelf' : null }),
   setSelectedDrawerId: (id) => set({ selectedDrawerId: id, selectedObjectType: id ? 'drawer' : null }),
@@ -66,7 +77,10 @@ export const useUIStore = create<UIState>((set) => ({
   setBOMPanelOpen: (open) => set({ isBOMPanelOpen: open }),
   setFloatingControlsExpanded: (expanded) => set({ isFloatingControlsExpanded: expanded }),
 
-  // 便利方法
+  // [NEW]
+  setDraggedComponent: (type) => set({ draggedComponent: type }),
+
+  // ... Helpers ...
   clearSelection: () => set({
     selectedBayId: null,
     selectedShelfId: null,

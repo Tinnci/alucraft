@@ -2,12 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { useThree } from '@react-three/fiber';
+import { useThree, ThreeEvent } from '@react-three/fiber';
 import { Line, TransformControls, Html } from '@react-three/drei';
 import { animated, useSpring } from '@react-spring/three';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
-import { ProfileInstance } from './AluProfile';
+import { ProfileInstance, ProfileInstances } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
 import { PROFILES, ProfileType, LayoutBay } from '@/core/types';
@@ -23,8 +23,19 @@ interface BayProps {
 }
 
 export function Bay({ bay, position, height, depth, profileType, isShiftDown, computedWidth }: BayProps) {
+    // Actions
     const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
+    const addShelf = useDesignStore((state: DesignState) => state.addShelf);
+    const addDrawer = useDesignStore((state: DesignState) => state.addDrawer);
     const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
+
+    // Drag State
+    const draggedComponent = useUIStore((state) => state.draggedComponent);
+    const setDraggedComponent = useUIStore((state) => state.setDraggedComponent);
+
+    // Local State for Ghost
+    const [hoverY, setHoverY] = useState<number | null>(null);
+    const bayGroupRef = useRef<THREE.Group>(null);
 
     const profile = PROFILES[profileType];
     const s = profile.size;
@@ -32,13 +43,91 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
 
     // Use computed width if available, fallback to config
     const bayWidth = typeof computedWidth === 'number' ? computedWidth : (typeof bay.config.width === 'number' ? bay.config.width : 0);
-
     const wLength = bayWidth;
     const dLength = depth - (s * 2);
 
+    // Handlers for Drag & Drop
+    const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
+        if (!draggedComponent || !bayGroupRef.current) return;
+        e.stopPropagation();
+
+        // Convert world point to local y
+        const worldPoint = e.point;
+        const localPoint = bayGroupRef.current.worldToLocal(worldPoint.clone());
+
+        // localPoint.y is relative to center (e.g. -400 to +400).
+        // Convert to "Height from Bottom" (0 to 800)
+        const yFromBottom = localPoint.y + height / 2;
+
+        // Clamp
+        const clampedY = Math.max(s, Math.min(height - s, yFromBottom));
+
+        // Snap to grid (optional, purely visual feedback here, actual snap happens on drop?)
+        // Let's do a simple 10mm snap for the ghost
+        const snappedY = Math.round(clampedY / 10) * 10;
+
+        setHoverY(snappedY);
+    };
+
+    const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
+        if (!draggedComponent || hoverY === null) return;
+        e.stopPropagation();
+
+        if (draggedComponent === 'shelf') {
+            addShelf(bay.id, hoverY);
+        } else if (draggedComponent === 'drawer') {
+            addDrawer(bay.id, hoverY, 200); // Default height 200
+        }
+
+        // Reset drag state
+        setDraggedComponent(null);
+        setHoverY(null);
+    };
+
+    const handlePointerOut = () => {
+        setHoverY(null);
+    };
+
     return (
-        <group position={position}>
-            {/* Shelves */}
+        <group
+            ref={bayGroupRef}
+            position={position}
+            onPointerMove={draggedComponent ? handlePointerMove : undefined}
+            onPointerUp={draggedComponent ? handlePointerUp : undefined}
+            onPointerOut={draggedComponent ? handlePointerOut : undefined}
+        >
+            {/* Invisible Hit Plane for Raycasting */}
+            <mesh visible={false}>
+                <boxGeometry args={[bayWidth, height, depth]} />
+            </mesh>
+
+            {/* Ghost Preview */}
+            {draggedComponent && hoverY !== null && (
+                <group position={[0, hoverY - height / 2, 0]}>
+                    {draggedComponent === 'shelf' && (
+                        <mesh>
+                            <boxGeometry args={[bayWidth, s, depth]} />
+                            <meshStandardMaterial color="#10b981" transparent opacity={0.5} emissive="#10b981" emissiveIntensity={0.5} />
+                        </mesh>
+                    )}
+                    {draggedComponent === 'drawer' && (
+                        <group position={[0, 200 / 2, 0]}> {/* Preview offset for drawer center */}
+                            <mesh>
+                                <boxGeometry args={[bayWidth - 4, 200, depth - s * 2]} />
+                                <meshStandardMaterial color="#8b5cf6" transparent opacity={0.5} emissive="#8b5cf6" emissiveIntensity={0.5} />
+                            </mesh>
+                        </group>
+                    )}
+                    {/* Height Label */}
+                    <Html position={[0, 0, depth / 2 + 20]} center>
+                        <div className="bg-black/80 text-white text-xs px-2 py-1 rounded font-mono pointer-events-none">
+                            Y: {Math.round(hoverY)}
+                        </div>
+                    </Html>
+                </group>
+            )}
+
+            {/* Existing Shelves */}
             {(bay.config.shelves ?? []).map((shelf) => (
                 <DraggableShelf
                     key={shelf.id}
@@ -56,7 +145,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                 />
             ))}
 
-            {/* Drawers */}
+            {/* Existing Drawers */}
             {(bay.config.drawers ?? []).map(drawer => {
                 const isColliding = checkDrawerCollision(bay.id, drawer);
                 return (
