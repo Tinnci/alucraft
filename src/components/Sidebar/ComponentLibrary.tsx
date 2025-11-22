@@ -13,7 +13,7 @@ const DraggableItem = ({
 }: {
     type: DraggableComponentType | 'bay_add',
     label: string,
-    icon: React.ElementType
+    icon: React.ComponentType<any>
 }) => {
     const setDraggedComponent = useUIStore((state) => state.setDraggedComponent);
     const addBay = useDesignStore((state: DesignState) => state.addBay);
