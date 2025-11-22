@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import useDesignStore, { DesignState } from '../store/useDesignStore';
+import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import useUIStore from '@/store/useUIStore';
 import { BOMItem, ProfileBOMItem } from '@/core/types';
 import { calculateCuttingList } from '@/core/optimizer';
 import {
@@ -26,7 +27,11 @@ const DEFAULT_PRICES: Record<string, number> = {
 export function BOMPanel() {
   const getBOM = useDesignStore((state: DesignState) => state.getBOM);
   const bom: BOMItem[] = getBOM();
-  const [isOpen, setIsOpen] = useState(false);
+
+  // Use Global UI Store
+  const isOpen = useUIStore((state) => state.isBOMPanelOpen);
+  const setIsOpen = useUIStore((state) => state.setBOMPanelOpen);
+
   const [activeTab, setActiveTab] = useState<'list' | 'price' | 'cutting'>('list');
   const [stockLength, setStockLength] = useState<number>(6000);
   const [unitPrices, setUnitPrices] = useState(DEFAULT_PRICES);
@@ -90,7 +95,6 @@ export function BOMPanel() {
 
   return (
     <>
-      {/* Floating Toggle Button */}
       {/* Floating Toggle Button Removed */}
 
       {/* Drawer Overlay */}
