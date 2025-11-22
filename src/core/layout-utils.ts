@@ -160,3 +160,28 @@ export function moveDividerInLayout(
 }
 
 export default computeLayoutSizes;
+
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+export function validateLayout(nodes: LayoutNode[], visited = new Set<string>(), depth = 0): ValidationResult {
+  if (depth > 50) {
+    return { valid: false, error: 'Max layout depth exceeded (possible infinite recursion)' };
+  }
+
+  for (const node of nodes) {
+    if (visited.has(node.id)) {
+      return { valid: false, error: `Circular reference detected: Node ${node.id} is referenced multiple times in the tree.` };
+    }
+    visited.add(node.id);
+
+    if (node.type === 'container') {
+      const result = validateLayout((node as ContainerNode).children, new Set(visited), depth + 1);
+      if (!result.valid) return result;
+    }
+  }
+
+  return { valid: true };
+}

@@ -6,7 +6,7 @@ import { Canvas } from '@react-three/fiber';
 import { TopBar } from '@/components/TopBar';
 import { PropertyInspector } from '@/components/PropertyInspector';
 import { BottomBar } from '@/components/BottomBar';
-import { Toolbar } from '@/components/Toolbar';
+import { LeftSidebar } from '@/components/Sidebar/LeftSidebar';
 import { Toast } from '@/components/Toast';
 import { BOMPanel } from '@/components/BOMPanel';
 import { Workspace } from '@/components/Scene/Workspace';
@@ -42,28 +42,32 @@ export default function Home() {
         <TopBar />
       </div>
 
-      {/* Middle: left toolbar, canvas, right property inspector */}
+      {/* Middle: Left Sidebar, Canvas, Right Sidebar */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left: Toolbar */}
-        <div className="w-16 border-r border-white/10 bg-slate-900/20 z-40 flex flex-col items-center py-4 pointer-events-auto">
-          <Toolbar />
-        </div>
+        {/* Left: Hierarchy & Library */}
+        <LeftSidebar />
 
         {/* Center: Canvas (adaptive) */}
-        <div className="flex-1 relative bg-slate-900/20 min-w-0">
-          <Canvas 
-            shadows 
-            camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}
-            onPointerMissed={handlePointerMissed}
-          >
-            <color attach="background" args={[bgColor]} />
-            <fog attach="fog" args={[bgColor, 2000, 5000]} />
-            <Workspace />
-          </Canvas>
+        <div className="flex-1 relative bg-slate-900/20 min-w-0 flex flex-col">
+          <div className="flex-1 relative">
+            <Canvas
+              shadows
+              camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}
+              onPointerMissed={handlePointerMissed}
+            >
+              <color attach="background" args={[bgColor]} />
+              <fog attach="fog" args={[bgColor, 2000, 5000]} />
+              <Workspace />
+            </Canvas>
 
-          {/* Bottom: Toast + BottomBar centered over Canvas */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[90%] z-30 pointer-events-auto">
-            {result && <Toast result={result} />}
+            {/* Toast Notification */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+              {result && <Toast result={result} />}
+            </div>
+          </div>
+
+          {/* Bottom: Status Bar */}
+          <div className="shrink-0 z-30 pointer-events-auto">
             <BottomBar />
           </div>
         </div>

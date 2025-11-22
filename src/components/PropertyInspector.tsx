@@ -236,10 +236,17 @@ export function PropertyInspector() {
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-white/10 bg-white/5 shrink-0">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          {selectedObjectType === 'bay' && <BoxSelect size={16} className="text-blue-400" />}
-          {selectedObjectType === 'shelf' && <Layers size={16} className="text-blue-400" />}
-          {selectedObjectType === 'drawer' && <Layers size={16} className="text-blue-400" />}
-          {!selectedObjectType && <BoxSelect size={16} className="text-blue-400" />}
+          {selectedObjectType ? (
+            <button
+              onClick={() => useUIStore.getState().clearSelection()}
+              className="p-1 hover:bg-white/10 rounded text-muted-foreground hover:text-blue-400 transition-colors"
+              title="Back to Global Settings"
+            >
+              <BoxSelect size={16} />
+            </button>
+          ) : (
+            <BoxSelect size={16} className="text-blue-400" />
+          )}
 
           <span>
             {selectedObjectType === 'bay' && `Bay #${bays.findIndex((b) => b.id === selectedBayId) + 1}`}
@@ -248,12 +255,22 @@ export function PropertyInspector() {
             {!selectedObjectType && 'Global Settings'}
           </span>
         </div>
-        <button
-          onClick={() => setPropertyPanelOpen(false)}
-          className="text-muted-foreground hover:text-foreground transition-colors p-1 hover:bg-white/10 rounded"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1">
+          {selectedObjectType && (
+            <button
+              onClick={() => useUIStore.getState().clearSelection()}
+              className="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-muted-foreground hover:text-foreground transition-colors mr-2"
+            >
+              Global Settings
+            </button>
+          )}
+          <button
+            onClick={() => setPropertyPanelOpen(false)}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1 hover:bg-white/10 rounded"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -263,24 +280,24 @@ export function PropertyInspector() {
         {selectedObjectType === 'bay' && selectedBay && (
           <>
             <AccordionItem title="Dimensions" icon={BoxSelect}>
-            <div className="flex items-center gap-2">
-              <LevaSlider
-                label="Width"
-                value={Math.round(typeof selectedBay.config.width === 'number' ? (selectedBay.config.width ?? 0) : 400)}
-                min={100}
-                max={2000}
-                step={10}
-                onChange={(v) => resizeBay(selectedBay.id, v)}
-                unit="mm"
-              />
-              <button
-                onClick={() => resizeBay(selectedBay.id, selectedBay.config.width === 'auto' ? 400 : 'auto')}
-                className={`px-2 py-1 rounded text-xs border ${selectedBay.config.width === 'auto' ? 'bg-blue-600 text-white border-blue-500' : 'bg-muted text-muted-foreground'}`}
-                title={selectedBay.config.width === 'auto' ? 'Auto width enabled' : 'Set Auto width'}
-              >
-                Auto
-              </button>
-            </div>
+              <div className="flex items-center gap-2">
+                <LevaSlider
+                  label="Width"
+                  value={Math.round(typeof selectedBay.config.width === 'number' ? (selectedBay.config.width ?? 0) : 400)}
+                  min={100}
+                  max={2000}
+                  step={10}
+                  onChange={(v) => resizeBay(selectedBay.id, v)}
+                  unit="mm"
+                />
+                <button
+                  onClick={() => resizeBay(selectedBay.id, selectedBay.config.width === 'auto' ? 400 : 'auto')}
+                  className={`px-2 py-1 rounded text-xs border ${selectedBay.config.width === 'auto' ? 'bg-blue-600 text-white border-blue-500' : 'bg-muted text-muted-foreground'}`}
+                  title={selectedBay.config.width === 'auto' ? 'Auto width enabled' : 'Set Auto width'}
+                >
+                  Auto
+                </button>
+              </div>
             </AccordionItem>
 
             {selectedDoor && (

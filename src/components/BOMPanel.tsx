@@ -91,17 +91,7 @@ export function BOMPanel() {
   return (
     <>
       {/* Floating Toggle Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-        >
-          <ShoppingCart size={24} />
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold border-2 border-slate-900">
-            {bom.reduce((acc, i) => acc + i.qty, 0)}
-          </span>
-        </button>
-      )}
+      {/* Floating Toggle Button Removed */}
 
       {/* Drawer Overlay */}
       {isOpen && (

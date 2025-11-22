@@ -1,18 +1,14 @@
+'use client';
 
-"use client";
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { useThree } from '@react-three/fiber';
-import { Line, TransformControls, Html } from '@react-three/drei';
-import { animated, useSpring } from '@react-spring/three';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
-import useUIStore from '@/store/useUIStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
 import { RecursiveRender } from './RecursiveRender';
 import { Connector } from './Connector';
-import { DrawerUnit } from './DrawerUnit';
-import { PROFILES, ProfileType, LayoutBay, Shelf, isBayNode, ContainerNode } from '@/core/types';
+import { PROFILES, ProfileType, ContainerNode } from '@/core/types';
+import { validateLayout } from '@/core/layout-utils';
+import { TransformControls, Html } from '@react-three/drei';
 
 interface CabinetFrameProps {
     width: number;
@@ -128,6 +124,20 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
     }, []);
 
+    const validation = validateLayout(layout);
+    if (!validation.valid) {
+        return (
+            <group>
+                <Html position={[0, 0, 0]}>
+                    <div className="bg-red-500 text-white p-4 rounded shadow-lg">
+                        <h3 className="font-bold">Layout Error</h3>
+                        <p>{validation.error}</p>
+                    </div>
+                </Html>
+            </group>
+        );
+    }
+
     return (
         <group>
             <ProfileInstances type={profileType} material={material}>
@@ -152,17 +162,17 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
 
                 {/* --- Layout Nodes (Bays & Dividers) --- */}
                 {/* use RecursiveRender to draw the layout tree */}
-                                <RecursiveRender
-                                    node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
-                  origin={[0, 0, 0]}
-                  dims={[width, height, depth]}
-                  profileType={profileType}
-                  height={height}
-                  depth={depth}
-                                                    isShiftDown={isShiftDown}
-                                                    parentOrientation={'horizontal'}
+                <RecursiveRender
+                    node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
+                    origin={[0, 0, 0]}
+                    dims={[width, height, depth]}
+                    profileType={profileType}
+                    height={height}
+                    depth={depth}
+                    isShiftDown={isShiftDown}
+                    parentOrientation={'horizontal'}
                 />
-                
+
             </ProfileInstances>
 
             {/* --- Connectors (Outer Frame) --- */}
@@ -265,321 +275,5 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                 </mesh>
             )}
         </group>
-    );
-}
-
-interface BayProps {
-    bay: LayoutBay;
-    position: [number, number, number];
-    height: number;
-    depth: number;
-    profileType: ProfileType;
-    isShiftDown?: boolean;
-    computedWidth?: number;
-}
-
-    export function Bay({ bay, position, height, depth, profileType, isShiftDown, computedWidth }: BayProps) {
-    const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
-    const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
-
-    const profile = PROFILES[profileType];
-    const s = profile.size;
-    const offset = s / 2;
-
-    const bayWidth = typeof computedWidth === 'number' ? computedWidth : (typeof bay.config.width === 'number' ? bay.config.width : 0);
-
-    const wLength = bayWidth;
-    const dLength = depth - (s * 2);
-
-    return (
-        <group position={position}>
-            {/* Shelves */}
-            {(bay.config.shelves ?? []).map((shelf) => (
-                <DraggableShelf
-                    key={shelf.id}
-                    bayId={bay.id}
-                    shelf={shelf}
-                    width={bayWidth} // This is the width of the shelf itself
-                    height={height}
-                    depth={depth}
-                    profileType={profileType}
-                    wLength={wLength}
-                    dLength={dLength}
-                    offset={offset}
-                    updateShelf={updateShelf}
-                    isShiftDown={isShiftDown}
-                />
-            ))}
-
-            {/* Drawers */}
-            {(bay.config.drawers ?? []).map(drawer => {
-                const isColliding = checkDrawerCollision(bay.id, drawer);
-                return (
-                    <DrawerUnit
-                        key={drawer.id}
-                        width={bayWidth - 2} // Clearance
-                        height={drawer.height}
-                        depth={depth - (s * 2)}
-                        position={[0, -height / 2 + drawer.y + drawer.height / 2 + s, 0]}
-                        isColliding={isColliding}
-                    />
-                );
-            })}
-        </group>
-    );
-}
-
-interface DraggableShelfProps {
-    bayId: string;
-    shelf: Shelf;
-    width: number;
-    height: number;
-    depth: number;
-    profileType: ProfileType;
-    wLength: number;
-    dLength: number;
-    offset: number;
-    updateShelf: (bayId: string, id: string, y: number) => void;
-    isShiftDown?: boolean;
-}
-
-function SnappingGuides({ height, width, depth }: { height: number, width: number, depth: number }) {
-    const lines: React.ReactNode[] = [];
-    const step = 32;
-    const startY = -height / 2;
-    const endY = height / 2;
-
-    for (let y = startY; y <= endY; y += step) {
-        // Skip lines too close to ends
-        if (Math.abs(y - startY) < 1 || Math.abs(y - endY) < 1) continue;
-
-        lines.push(
-            <Line
-                key={y}
-                points={[[-width / 2, y, depth / 2 + 1], [width / 2, y, depth / 2 + 1]]}
-                color="#ef4444"
-                transparent
-                opacity={0.3}
-                lineWidth={1}
-            />
-        );
-    }
-
-    return <group>{lines}</group>;
-}
-
-// SnapLine: Shows a focused snapping guide (across the full cabinet width)
-function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth: number; totalWidth: number; type: 'smart' | 'grid'; labelValue: number }) {
-    const color = type === 'smart' ? '#ec4899' : '#3b82f6';
-    const dashed = type === 'grid';
-    const targetOpacity = type === 'smart' ? 0.9 : 0.55;
-    const props = useSpring<{ opacity: number; scale: number }>({ opacity: targetOpacity, scale: 1, from: { opacity: 0, scale: 0.8 }, config: { tension: 300, friction: 18 } });
-    return (
-    <animated.group position={[0, y, depth / 2 + 1]} scale={props.scale as unknown as number}>
-            <Line
-                points={[[-totalWidth / 2 - 50, 0, 0], [totalWidth / 2 + 50, 0, 0]]}
-                color={color}
-                lineWidth={2}
-                transparent
-                opacity={props.opacity as unknown as number}
-                depthTest={false}
-                dashed={dashed}
-                dashScale={dashed ? 10 : undefined}
-                gapSize={dashed ? 5 : undefined}
-            />
-            {/* Label */}
-            <Html position={[totalWidth / 2 + 60, 0, 0]} center zIndexRange={[100, 0]}>
-                <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono text-white whitespace-nowrap shadow-sm ${type === 'smart' ? 'bg-pink-500' : 'bg-blue-500'}`}>
-                    {Math.round(labelValue)} mm
-                </div>
-            </Html>
-        </animated.group>
-    );
-}
-
-function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf, isShiftDown }: DraggableShelfProps) {
-    const [hovered, setHovered] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
-    const wasSnappedRef = useRef<boolean>(false);
-    const { controls } = useThree();
-    const groupRef = useRef<THREE.Group>(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const transformRef = useRef<any>(null);
-    const currentYRef = useRef(shelf.y);
-    const totalWidth = useDesignStore((state: DesignState) => state.width);
-    const layout = useDesignStore((state: DesignState) => state.layout);
-    const [activeSnap, setActiveSnap] = useState<{ y: number; type: 'smart' | 'grid' } | null>(null);
-
-    const selectShelf = useUIStore(state => state.selectShelf);
-    const selectedShelfId = useUIStore(state => state.selectedShelfId);
-    const isSelected = selectedShelfId === shelf.id;
-
-    const profile = PROFILES[profileType];
-    const s = profile.size;
-    const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
-
-    // Sync ref with prop when not dragging
-    useEffect(() => {
-        if (!isDragging && groupRef.current) {
-            currentYRef.current = shelf.y;
-            groupRef.current.position.y = shelf.y - height / 2;
-        }
-    }, [shelf.y, height, isDragging]);
-
-    // When using TransformControls we disable orbit controls on drag and
-    // use TransformControls's onObjectChange to update shelf position and snapping.
-    // Listen for dragging-changed events from TransformControls and manage orbit controls
-    useEffect(() => {
-        const tc = transformRef.current as unknown as { addEventListener?: (type: string, handler: (e: { value: boolean }) => void) => void; removeEventListener?: (type: string, handler: (e: { value: boolean }) => void) => void } | null;
-        if (!tc) return;
-        const handler = (e: { value: boolean }) => {
-            const isNowDragging = !!e.value;
-            setIsDragging(isNowDragging);
-            const orbit = controls as unknown as { enabled?: boolean } | undefined;
-            if (orbit) orbit.enabled = !isNowDragging;
-            if (!isNowDragging) {
-                setActiveSnap(null);
-                updateShelf(bayId, shelf.id, currentYRef.current);
-            }
-        };
-        tc.addEventListener?.('dragging-changed', handler);
-        return () => tc.removeEventListener?.('dragging-changed', handler);
-    }, [controls, updateShelf, bayId, shelf.id]);
-
-        const computeSnap = (rawY: number, bypass = false): { value: number; type: 'smart' | 'grid' | null } => {
-            if (bypass) return { value: rawY, type: null };
-            const SNAP_THRESHOLD = 15; // mm
-            let bestY = rawY;
-            let snapType: 'smart' | 'grid' | null = null;
-
-            // Smart snap to other shelves
-            let minDiff = Infinity;
-            for (const node of layout) {
-                if (isBayNode(node)) {
-                    for (const s of (node.config.shelves ?? [])) {
-                        if (node.id === bayId && s.id === shelf.id) continue;
-                        const diff = Math.abs(rawY - s.y);
-                        if (diff < SNAP_THRESHOLD && diff < minDiff) {
-                            minDiff = diff;
-                            bestY = s.y;
-                            snapType = 'smart';
-                        }
-                    }
-                }
-            }
-
-            // Grid snap to 32mm if no smart snap
-            if (snapType === null) {
-                const GRID_SIZE = 32;
-                const snappedGrid = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
-                if (Math.abs(rawY - snappedGrid) < 10) {
-                    bestY = snappedGrid;
-                    snapType = 'grid';
-                }
-            }
-
-            // Clamp range
-            const limit = 40;
-            bestY = Math.max(limit, Math.min(height - limit, bestY));
-
-            return { value: bestY, type: snapType };
-        };
-
-        // no pointer-based dragging in this transform control implementation
-
-    return (
-        <>
-            {isSelected && (
-                <TransformControls
-                    ref={(node) => { transformRef.current = node; }}
-                    object={groupRef as unknown as React.MutableRefObject<THREE.Object3D>}
-                    mode="translate"
-                    showX={false}
-                    showZ={false}
-                    size={0.8}
-                    // onDragStart/onDragEnd are handled via the dragging-changed event listener on the ref
-                    onObjectChange={() => {
-                        if (groupRef.current) {
-                            const newY = groupRef.current.position.y + height / 2;
-                            const snapResult = computeSnap(newY, !!isShiftDown);
-                            const snappedValue = snapResult.value;
-                            const snappedType = snapResult.type;
-
-                            // Update visual position
-                            groupRef.current.position.y = snappedValue - height / 2;
-                            currentYRef.current = snappedValue;
-                            setActiveSnap(snappedType ? { y: snappedValue, type: snappedType } : null);
-                            // Haptic feedback on first edge enter
-                            const isSnappedNow = !!snappedType;
-                            const shouldHaptics = useDesignStore.getState().enableHaptics;
-                            if (isSnappedNow && !wasSnappedRef.current && shouldHaptics) {
-                                if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-                                    try { navigator.vibrate(5); } catch {}
-                                }
-                            }
-                            wasSnappedRef.current = isSnappedNow;
-                        }
-                    }}
-                />
-            )}
-            <group
-                ref={groupRef}
-                position={[0, shelf.y - height / 2, 0]}
-                onClick={(e) => { e.stopPropagation(); selectShelf(bayId, shelf.id); }}
-                onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-                onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
-                onPointerDown={(e) => { e.stopPropagation(); selectShelf(bayId, shelf.id); }}
-            >
-                {/* Hit Box for easier selection */}
-                <mesh visible={false}>
-                    <boxGeometry args={[width, 40, depth]} />
-                </mesh>
-
-                {/* Visual Highlight */}
-                {hovered && (
-                    <mesh position={[0, 0, 0]}>
-                        <boxGeometry args={[width + 10, 10, depth + 10]} />
-                        <meshBasicMaterial color="#3b82f6" opacity={0.3} transparent depthTest={false} />
-                    </mesh>
-                )}
-
-                {/* Snapping Guides (Static relative to Bay) */}
-                {(isDragging || isSelected) && (
-                    <group position={[0, -(shelf.y - height / 2), 0]}>
-                        {showSnapGuides && <SnappingGuides height={height} width={width} depth={depth} />}
-                        {showSnapGuides && activeSnap !== null && (
-                            <SnapLine
-                                y={activeSnap.y - height / 2}
-                                depth={depth}
-                                totalWidth={totalWidth}
-                                type={activeSnap.type}
-                                labelValue={activeSnap.y}
-                            />
-                        )}
-                    </group>
-                )}
-
-                {/* Shelf Beams */}
-                <ProfileInstance length={wLength} position={[-wLength / 2, 0, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
-                <ProfileInstance length={wLength} position={[-wLength / 2, 0, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
-                <ProfileInstance length={dLength} position={[-width / 2 + offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
-                <ProfileInstance length={dLength} position={[width / 2 - offset, 0, -dLength / 2]} rotation={[0, 0, 0]} />
-
-                {/* Connectors (Below the shelf beams) */}
-                <group>
-                    {/* Width Beam Connectors (4) */}
-                    <Connector size={s} position={[-width / 2 + s, -s / 2, depth / 2 - s / 2]} rotation={[0, 0, -Math.PI / 2]} />
-                    <Connector size={s} position={[width / 2 - s, -s / 2, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
-                    <Connector size={s} position={[-width / 2 + s, -s / 2, -depth / 2 + s / 2]} rotation={[0, 0, -Math.PI / 2]} />
-                    <Connector size={s} position={[width / 2 - s, -s / 2, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
-
-                    {/* Depth Beam Connectors (4) */}
-                    <Connector size={s} position={[-width / 2 + s / 2, -s / 2, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
-                    <Connector size={s} position={[-width / 2 + s / 2, -s / 2, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
-                    <Connector size={s} position={[width / 2 - s / 2, -s / 2, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
-                    <Connector size={s} position={[width / 2 - s / 2, -s / 2, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
-                </group>
-            </group>
-        </>
     );
 }
