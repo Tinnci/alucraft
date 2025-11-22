@@ -76,6 +76,10 @@ describe('BOM Calculator', () => {
         const doorPanel = bom.find(i => i.category === 'panel' && i.name.includes('Door Panel'));
         expect(doorPanel).toBeDefined();
         expect(doorPanel?.qty).toBe(1);
+
+        const handle = bom.find(i => i.category === 'hardware' && i.name === 'Handle');
+        expect(handle).toBeDefined();
+        expect(handle?.qty).toBeGreaterThanOrEqual(1);
     });
 
     it('should include hardware for connectors', () => {

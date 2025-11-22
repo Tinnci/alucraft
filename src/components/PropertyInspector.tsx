@@ -19,42 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 /**
  * Helper: 带有数值显示的 Slider 包装器
  */
-const PropertySlider = ({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  unit = '',
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (v: number) => void;
-  unit?: string;
-}) => {
-  return (
-    <div className="space-y-3 py-1">
-      <div className="flex justify-between items-center">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">
-          {value}{unit}
-        </span>
-      </div>
-      <Slider
-        value={[value]}
-        min={min}
-        max={max}
-        step={step}
-        onValueChange={(vals) => onChange(vals[0])}
-        className="[&_.bg-primary]:bg-blue-500" // 自定义颜色示例
-      />
-    </div>
-  );
-};
+import { NumberSlider as PropertySlider } from '@/components/ui/number-slider';
 
 export function PropertyInspector() {
   // === Settings Slice ===

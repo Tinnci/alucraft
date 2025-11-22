@@ -133,6 +133,8 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
 
         // Doors
         if (bay.config?.door?.enabled) {
+            const numDoors = bay.config.door.type === 'double' ? 2 : 1;
+
             if (bay.config.door.type === 'single') {
                 const singleWidth = Math.round(cw - 4); // 2mm gap on each side
                 panelItems.push({
@@ -156,6 +158,15 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
                     category: 'panel'
                 });
             }
+
+            // Add Handles for Doors
+            hardwareItems.push({
+                id: uid(),
+                name: 'Handle',
+                qty: numDoors,
+                category: 'hardware',
+                unit: 'piece'
+            });
         }
 
         // Shelves
