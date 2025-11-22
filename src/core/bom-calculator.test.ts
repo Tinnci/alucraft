@@ -45,9 +45,6 @@ describe('BOM Calculator', () => {
         // Angle bracket deduction is 0.
         const widthBeams = profiles.find(p => p.name.includes('Width Beam'));
         expect(widthBeams).toBeDefined();
-        // Note: The actual deduction depends on the connector spec in types.ts.
-        // Assuming angle_bracket deduction is 0.
-        // If it fails, we'll adjust based on actual connector spec.
     });
 
     it('should include panels when enabled', () => {
@@ -89,5 +86,23 @@ describe('BOM Calculator', () => {
         const connectors = hardware.find(h => h.name === 'L型角码'); // Assuming name from types
         expect(connectors).toBeDefined();
         expect(connectors?.qty).toBeGreaterThanOrEqual(16);
+    });
+
+    // Data-driven tests for beam length accuracy
+    it.each([
+        ['2020', 600, 'angle_bracket', 560], // 600 - 40 = 560
+        ['3030', 600, 'angle_bracket', 540], // 600 - 60 = 540
+        ['4040', 1000, 'angle_bracket', 920], // 1000 - 80 = 920
+    ])('calculates correct beam length for %s with width %i', (profileType, width, connectorType, expectedLen) => {
+        const input: BOMCalculationInput = {
+            ...baseInput,
+            width,
+            profileType: profileType as any,
+            connectorType: connectorType as any
+        };
+        const bom = calculateBOM(input);
+        const widthBeams = bom.find(i => i.name.includes('Width Beam'));
+
+        expect((widthBeams as any)?.lengthMm).toBe(expectedLen);
     });
 });
