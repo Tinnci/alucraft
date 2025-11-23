@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useDesignStore } from './useDesignStore';
-import { ContainerNode, ItemNode, LayoutBay, LayoutDivider, PROFILES } from '@/core/types';
+import { ContainerNode, ItemNode, LayoutBay, LayoutDivider } from '@/core/types';
+import { PROFILES } from '@/config/profiles';
 import { getDoorStateKey } from '@/core/utils';
 
 // Mock nanoid to have predictable IDs if needed, or just rely on structure

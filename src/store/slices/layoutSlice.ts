@@ -9,8 +9,8 @@ import {
     BayDoorConfig,
     ContainerNode,
     isBayNode,
-    PROFILES
 } from '@/core/types';
+import { PROFILES } from '@/config/profiles';
 import { uid, createDefaultDoorConfig, getDoorSides, getDoorStateKey } from '@/core/utils';
 import computeLayoutSizes, { moveDividerInLayout } from '@/core/layout-utils';
 import { validateDesignJSON } from '@/utils/validation';
@@ -117,7 +117,7 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
             return node;
         });
         const newTotalWidth = newLayout.reduce((acc, node) => {
-            if (node.type === 'item') return acc + (typeof node.config?.width === 'number' ? (node.config?.width ?? 0) : 0);
+            if (isBayNode(node)) return acc + (typeof node.config?.width === 'number' ? (node.config?.width ?? 0) : 0);
             if (node.type === 'divider') return acc + (node.thickness ?? 0);
             return acc;
         }, 0) + (PROFILES[state.profileType].size * 2);

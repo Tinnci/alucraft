@@ -2,13 +2,9 @@ import { useState, useMemo } from 'react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { BOMItem, ProfileBOMItem } from '@/core/types';
 import { calculateCuttingList } from '@/core/optimizer';
-
-// Mock Unit Prices (in real app, fetch from DB or user input)
-export const DEFAULT_PRICES: Record<string, number> = {
-    'profile': 15.0, // per meter
-    'panel': 45.0,   // per sqm
-    'hardware': 2.5  // per unit
-};
+import { generateCSV } from '@/core/exporters/csv-generator';
+import { generateJSON } from '@/core/exporters/json-generator';
+import { DEFAULT_PRICES } from '@/config/prices';
 
 export function useBOMCalculations() {
     const getBOM = useDesignStore((state: DesignState) => state.getBOM);
@@ -46,10 +42,6 @@ export function useBOMCalculations() {
 
         return { items, total };
     }, [bom, unitPrices]);
-
-    // --- Exports ---
-    import { generateCSV } from '@/core/exporters/csv-generator';
-    import { generateJSON } from '@/core/exporters/json-generator';
 
     // --- Exports ---
     const exportJson = () => {

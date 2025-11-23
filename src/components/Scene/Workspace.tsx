@@ -8,7 +8,8 @@ import useDesignStore, { DesignState, createDefaultDoorConfig, getDoorStateKey }
 import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
 import DimensionLines from '@/components/DimensionLines';
-import { PROFILES, ProfileType, LayoutBay, isBayNode } from '@/core/types';
+import { ProfileType, LayoutBay, isBayNode } from '@/core/types';
+import { PROFILES } from '@/config/profiles';
 import computeLayoutSizes from '@/core/layout-utils';
 import { useThemeColor } from '@/hooks/useThemeColor';
 

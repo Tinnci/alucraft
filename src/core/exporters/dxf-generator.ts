@@ -1,6 +1,7 @@
 import DxfWriter from 'dxf-writer';
 import { DesignState } from '@/store/useDesignStore';
-import { PROFILES, isBayNode } from '@/core/types';
+import { isBayNode } from '@/core/types';
+import { PROFILES } from '@/config/profiles';
 import computeLayoutSizes from '@/core/layout-utils';
 
 export class DxfGenerator {
@@ -22,12 +23,12 @@ export class DxfGenerator {
     }
 
     public generate(): string {
-    const { width, height, profileType, layout } = this.state;
+        const { width, height, profileType, layout } = this.state;
         const profile = PROFILES[profileType];
         const s = profile.size;
-    const slotDepth = profile.slotDepth || 6;
-    const tolerance = this.state.tolerance || 1;
-    // panelThickness not used in 2D front-view DXF, but stored in state for BOM
+        const slotDepth = profile.slotDepth || 6;
+        const tolerance = this.state.tolerance || 1;
+        // panelThickness not used in 2D front-view DXF, but stored in state for BOM
 
         // Draw Outer Frame (Front View)
         // Left Pillar
@@ -44,7 +45,7 @@ export class DxfGenerator {
         // Draw Layout (Bays & Dividers)
         let currentX = -width / 2 + s;
 
-    const widths = computeLayoutSizes(layout, width - s * 2, 'horizontal', new Map<string, number>());
+        const widths = computeLayoutSizes(layout, width - s * 2, 'horizontal', new Map<string, number>());
 
         layout.forEach(node => {
             if (isBayNode(node)) {
@@ -79,9 +80,9 @@ export class DxfGenerator {
 
         // Draw Panels (simplified, front view for back panel, left/right panels as annotations)
         // Left Panel
-    const leftPanelWidth = Math.round(this.state.depth - s * 2 + (slotDepth * 2) - tolerance);
+        const leftPanelWidth = Math.round(this.state.depth - s * 2 + (slotDepth * 2) - tolerance);
         const leftPanelHeight = Math.round(height - s * 2 + (slotDepth * 2) - tolerance);
-    if (this.state.hasLeftPanel) {
+        if (this.state.hasLeftPanel) {
             // draw at leftmost position for visualization
             this.writer.setActiveLayer('PANEL');
             this.drawRect(-width / 2 - leftPanelWidth - 10, -height / 2, leftPanelWidth, leftPanelHeight, 'PANEL');
@@ -89,11 +90,11 @@ export class DxfGenerator {
         // Right Panel
         const rightPanelWidth = leftPanelWidth;
         const rightPanelHeight = leftPanelHeight;
-    if (this.state.hasRightPanel) {
+        if (this.state.hasRightPanel) {
             this.drawRect(width / 2 + 10, -height / 2, rightPanelWidth, rightPanelHeight, 'PANEL');
         }
         // Back panel (front view)
-    if (this.state.hasBackPanel) {
+        if (this.state.hasBackPanel) {
             const backPanelWidth = Math.round(width - s * 2 + (slotDepth * 2) - tolerance);
             const backPanelHeight = Math.round(height - s * 2 + (slotDepth * 2) - tolerance);
             this.drawRect(-backPanelWidth / 2, -height / 2, backPanelWidth, backPanelHeight, 'PANEL');

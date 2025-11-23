@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PROFILES } from '@/core/types';
+import { PROFILES } from '@/config/profiles';
 
 // Helper schemas
 const ShelfSchema = z.object({

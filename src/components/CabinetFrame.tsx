@@ -7,7 +7,8 @@ import { ProfileInstances, ProfileInstance } from './AluProfile';
 import useLayoutPositions from '@/hooks/useLayoutPositions';
 import { RecursiveRender } from './RecursiveRender';
 import { Connector } from './Connector';
-import { PROFILES, ProfileType, ContainerNode } from '@/core/types';
+import { ProfileType, ContainerNode } from '@/core/types';
+import { PROFILES } from '@/config/profiles';
 import { validateLayout } from '@/core/layout-utils';
 import { Html } from '@react-three/drei';
 

@@ -1,18 +1,18 @@
 import { nanoid } from 'nanoid';
 import {
     ProfileType,
-    PROFILES,
     BOMItem,
     ProfileBOMItem,
     PanelBOMItem,
     HardwareBOMItem,
     ConnectorType,
-    CONNECTORS,
     LayoutNode,
     ContainerNode,
     ItemNode,
     isBayNode
 } from './types';
+import { PROFILES } from '@/config/profiles';
+import { CONNECTORS } from '@/config/connectors';
 import computeLayoutSizes from './layout-utils';
 import { calculateHinge } from './hinge-rules';
 
@@ -157,7 +157,7 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     let bayCounter = 0;
     traverse(layout, (node) => {
         if (!isBayNode(node)) return;
-        const bay = node as ItemNode;
+        const bay = node;
         const cw = widths.get(bay.id) ?? (typeof bay.config.width === 'number' ? bay.config.width! : 0);
         const bayLabel = `Bay #${++bayCounter}`;
 

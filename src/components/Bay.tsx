@@ -10,7 +10,8 @@ import useUIStore from '@/store/useUIStore';
 import { ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
-import { PROFILES, ProfileType, LayoutBay } from '@/core/types';
+import { ProfileType, LayoutBay } from '@/core/types';
+import { PROFILES } from '@/config/profiles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
 interface BayProps {
@@ -139,10 +140,10 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                     )}
                     {draggedComponent === 'drawer' && (
                         <group position={[0, 200 / 2, 0]}> {/* Preview offset for drawer center */}
-                                <mesh>
-                                    <boxGeometry args={[bayWidth - 4, 200, depth - s * 2]} />
-                                    <meshStandardMaterial color={colors.highlight} transparent opacity={0.5} emissive={colors.highlight} emissiveIntensity={0.5} />
-                                </mesh>
+                            <mesh>
+                                <boxGeometry args={[bayWidth - 4, 200, depth - s * 2]} />
+                                <meshStandardMaterial color={colors.highlight} transparent opacity={0.5} emissive={colors.highlight} emissiveIntensity={0.5} />
+                            </mesh>
                         </group>
                     )}
                     {/* Height Label */}
@@ -232,7 +233,7 @@ function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth
                 dashScale={dashed ? 10 : undefined}
                 gapSize={dashed ? 5 : undefined}
             />
-                <Html position={[totalWidth / 2 + 60, 0, 0]} center zIndexRange={[100, 0]}>
+            <Html position={[totalWidth / 2 + 60, 0, 0]} center zIndexRange={[100, 0]}>
                 <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono text-white whitespace-nowrap shadow-sm ${type === 'smart' ? 'bg-pink-500' : 'bg-highlight'}`}>
                     {Math.round(labelValue)} mm
                 </div>
@@ -273,10 +274,10 @@ function DraggableShelf({ bayId, shelf, width, height, depth, wLength, dLength, 
     const isSelected = selectedShelfId === shelf.id;
 
     // [NEW] BOM Highlighting
-    const highlightedPartId = useUIStore((s) => s.highlightedPartId);
     const isHighlighted = partId && highlightedPartId === partId;
 
     const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
+    const colors = useThemeColor();
 
     // Sync ref with prop when not dragging
     useEffect(() => {

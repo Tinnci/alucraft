@@ -4,7 +4,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { TransformControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { PROFILES, ProfileType } from '@/core/types';
+import { ProfileType } from '@/core/types';
+import { PROFILES } from '@/config/profiles';
 import useDesignStore from '@/store/useDesignStore';
 import { ProfileInstance } from './AluProfile';
 

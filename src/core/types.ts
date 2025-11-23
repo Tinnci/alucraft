@@ -8,11 +8,7 @@ export interface Profile {
     slotDepth: number;
 }
 
-export const PROFILES: Record<ProfileType, Profile> = {
-    '2020': { type: '2020', size: 20, margin: 10, slotWidth: 6, slotDepth: 6 },
-    '3030': { type: '3030', size: 30, margin: 15, slotWidth: 8, slotDepth: 8 },
-    '4040': { type: '4040', size: 40, margin: 20, slotWidth: 8, slotDepth: 8 }, // Assuming 4040 has 20 margin
-};
+// PROFILES and CONNECTORS constants moved to src/config/
 
 /**
  * ConnectorType - 连接件类型定义
@@ -25,24 +21,6 @@ export interface ConnectorSpec {
     deduction: number; // 扣减量（mm）
     description?: string;
 }
-
-export const CONNECTORS: Record<ConnectorType, ConnectorSpec> = {
-    'angle_bracket': {
-        name: 'L型角码',
-        deduction: 0,
-        description: '表面安装，不影响型材切割长度'
-    },
-    'internal_lock': {
-        name: '内置锁扣',
-        deduction: 0,
-        description: '需要打孔，但不影响型材长度'
-    },
-    '3way_corner': {
-        name: '三维角码',
-        deduction: 20,
-        description: '假设三维角码占据约20mm长（具体值根据型材规格调整）'
-    }
-};
 
 export type HingeSeries = 'C80' | 'Cover25'; // C80 (Small), Cover25 (Large)
 export type HingeArm = 'Straight' | 'MediumBend' | 'BigBend'; // 直臂, 中弯, 大弯

@@ -1,4 +1,5 @@
-import { Hinge, SimulationResult, PROFILES, ProfileType } from './types';
+import { Hinge, SimulationResult, ProfileType } from './types';
+import { PROFILES } from '@/config/profiles';
 
 // 修正后的铰链数据库 (基于图4, 图5, 图13)
 const HINGE_LIBRARY: Hinge[] = [
