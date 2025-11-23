@@ -2,7 +2,6 @@
 
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
-import { Canvas } from '@react-three/fiber';
 import { TopBar } from '@/components/TopBar';
 import { PropertyInspector } from '@/components/PropertyInspector';
 import { BottomBar } from '@/components/BottomBar';
@@ -10,20 +9,22 @@ import { LeftSidebar } from '@/components/Sidebar/LeftSidebar';
 import { DesignToaster } from '@/components/DesignToaster';
 import { ContextToolbar } from '@/components/ContextToolbar';
 import { BOMPanel } from '@/components/BOMPanel';
-import { Workspace } from '@/components/Scene/Workspace';
 import { useAppState } from '@/hooks/useAppState';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import dynamic from 'next/dynamic';
+
+const DesignCanvas = dynamic(() => import('@/components/Scene/DesignCanvas'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+      Initializing workspace...
+    </div>
+  )
+});
 
 export default function Home() {
   // 挂载全局副作用（数据加载、保存、主题切换）
   useAppState();
-
-  const [isSceneReady, setIsSceneReady] = useState(false);
-  useEffect(() => {
-    // Delay Canvas mount until client-side to avoid R3F context errors during SSR
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsSceneReady(true);
-  }, []);
 
   // 获取用于渲染 Canvas 背景的状态
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
@@ -105,21 +106,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex-1 relative">
-            {isSceneReady ? (
-              <Canvas
-                shadows
-                camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}
-                onPointerMissed={handlePointerMissed}
-              >
-                <color attach="background" args={[bgColor]} />
-                <fog attach="fog" args={[bgColor, 2000, 5000]} />
-                <Workspace />
-              </Canvas>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Initializing workspace...
-              </div>
-            )}
+            <DesignCanvas bgColor={bgColor} onPointerMissed={handlePointerMissed} />
 
             {/* Toast Notification Removed */}
           </div>

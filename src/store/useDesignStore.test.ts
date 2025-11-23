@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useDesignStore } from './useDesignStore';
-import { ItemNode, LayoutBay } from '@/core/types';
+import { ContainerNode, ItemNode, LayoutBay, LayoutDivider, PROFILES } from '@/core/types';
+import { getDoorStateKey } from '@/core/utils';
 
 // Mock nanoid to have predictable IDs if needed, or just rely on structure
 // For integration tests, we care more about the state changes than specific IDs usually.
@@ -13,7 +14,9 @@ describe('useDesignStore Actions', () => {
                 { type: 'item', contentType: 'generic_bay', id: 'bay-initial', config: { width: 560, shelves: [], drawers: [], door: { enabled: true, type: 'single', hingeSide: 'left' } } } as LayoutBay
             ],
             width: 600,
-            profileType: '2020'
+            profileType: '2020',
+            doorStates: {},
+            isDoorOpen: false
         });
         useDesignStore.temporal.getState().clear();
     });
@@ -97,5 +100,65 @@ describe('useDesignStore Actions', () => {
         const stateAfterRedo = useDesignStore.getState();
         expect(stateAfterRedo.width).toBe(widthAfterAdd);
         expect(stateAfterRedo.layout.length).toBe(3);
+    });
+
+    it('splitItem should wrap the bay in a horizontal container and add a new door state', () => {
+        const initialBay = useDesignStore.getState().layout[0] as LayoutBay;
+        const originalWidth = initialBay.config.width as number;
+        const profileSize = PROFILES[useDesignStore.getState().profileType].size;
+        useDesignStore.getState().splitItem('bay-initial', 'horizontal');
+
+        const stateAfterSplit = useDesignStore.getState();
+        expect(stateAfterSplit.layout.length).toBe(1);
+
+        const container = stateAfterSplit.layout[0] as ContainerNode;
+        expect(container.type).toBe('container');
+        expect(container.orientation).toBe('horizontal');
+        expect(container.children.length).toBe(3);
+
+        const [first, divider, second] = container.children;
+        const expectedFirstWidth = Math.floor((originalWidth - profileSize) / 2);
+        const expectedSecondWidth = originalWidth - profileSize - expectedFirstWidth;
+
+        expect(first.type).toBe('item');
+        expect(first.id).toBe('bay-initial');
+        expect((first as LayoutBay).config.width).toBe(expectedFirstWidth);
+
+        expect(divider.type).toBe('divider');
+        expect((divider as LayoutDivider).thickness).toBe(profileSize);
+
+        expect(second.type).toBe('item');
+        expect(second.id).not.toBe('bay-initial');
+        expect((second as LayoutBay).config.width).toBe(expectedSecondWidth);
+
+        const hingeSide = (second as LayoutBay).config.door?.hingeSide ?? 'left';
+        const doorKey = getDoorStateKey(second.id, hingeSide);
+        expect(stateAfterSplit.doorStates[doorKey]).toBe(stateAfterSplit.isDoorOpen);
+        expect(Object.keys(stateAfterSplit.doorStates)).toContain(doorKey);
+    });
+
+    it('splitItem should support vertical splits and nested containers', () => {
+        useDesignStore.getState().splitItem('bay-initial', 'vertical');
+        let state = useDesignStore.getState();
+
+        const rootContainer = state.layout[0] as ContainerNode;
+        expect(rootContainer.type).toBe('container');
+        expect(rootContainer.orientation).toBe('vertical');
+        expect(rootContainer.children.length).toBe(3);
+
+        const newBay = rootContainer.children[2];
+        expect(newBay.type).toBe('item');
+
+        useDesignStore.getState().splitItem(newBay.id, 'horizontal');
+        state = useDesignStore.getState();
+
+        const updatedRoot = state.layout[0] as ContainerNode;
+        const nestedNode = updatedRoot.children[2];
+        expect(nestedNode.type).toBe('container');
+        expect((nestedNode as ContainerNode).orientation).toBe('horizontal');
+        expect(((nestedNode as ContainerNode).children.filter(c => c.type === 'item')).length).toBe(2);
+
+        // Each split should register a new door entry for the freshest bay
+        expect(Object.keys(state.doorStates).length).toBe(2);
     });
 });

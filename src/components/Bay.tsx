@@ -109,7 +109,9 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
             <mesh visible={true}>
                 <boxGeometry args={[bayWidth, height, depth]} />
                 <meshBasicMaterial
-                    color={showGuide ? colors.highlight : "transparent"}
+                    // THREE.Color doesn't accept the CSS value 'transparent'.
+                    // Use a valid color and rely on `opacity` + `transparent` prop to hide it.
+                    color={colors.highlight}
                     opacity={showGuide ? 0.1 : 0}
                     transparent
                     depthWrite={false}
