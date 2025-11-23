@@ -32,14 +32,32 @@ const genericRenderer: ItemRenderComponent = ({ node, position, dims, height, de
   );
 };
 
+import { Html } from '@react-three/drei';
+
+export const ErrorRenderer: ItemRenderComponent = ({ node, position, dims }) => {
+  return (
+    <group position={position}>
+      <mesh>
+        <boxGeometry args={dims} />
+        <meshStandardMaterial color="red" wireframe />
+      </mesh>
+      <Html position={[0, 0, 0]} center>
+        <div className="bg-red-500 text-white p-2 rounded text-xs whitespace-nowrap">
+          Unknown Type: {node.contentType}
+        </div>
+      </Html>
+    </group>
+  );
+};
+
 const registry: Record<string, ItemRenderComponent> = {
   'generic_bay': genericRenderer,
   'wardrobe_section': genericRenderer,
   'empty': () => null,
 };
 
-export function getItemRenderer(type: string): ItemRenderComponent | undefined {
-  return registry[type];
+export function getItemRenderer(type: string): ItemRenderComponent {
+  return registry[type] || ErrorRenderer;
 }
 
 export default getItemRenderer;

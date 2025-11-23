@@ -11,6 +11,7 @@ import { Bay } from './Bay';
 import useDesignStore from '@/store/useDesignStore';
 import { ProfileInstance } from './AluProfile';
 import { ProfileType } from '@/core/types';
+import { DividerVisual } from './DividerVisual';
 
 interface RecursiveRenderProps {
   node: LayoutNode;
@@ -28,7 +29,7 @@ interface RecursiveRenderProps {
   positions?: Map<string, NodePosition>;
 }
 
-export function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, prevWidth = 0, nextWidth = 0, recursionDepth = 0, positions, ...groupProps }: RecursiveRenderProps) {
+export const RecursiveRender = React.memo(function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, prevWidth = 0, nextWidth = 0, recursionDepth = 0, positions, ...groupProps }: RecursiveRenderProps) {
   // Defensive check: Limit recursion depth to prevent stack overflow
   if (recursionDepth > 25) {
     console.warn(`Max recursion depth exceeded in RecursiveRender (depth: ${recursionDepth}). Stopping recursion.`);
@@ -53,39 +54,12 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
     const info = pos?.get(node.id);
     const nodeCenter = info?.center ?? origin;
     const nodeDims = info?.dims ?? dims;
-    const widthAxis = nodeDims[0];
 
-    // If an item renderer is registered for this contentType, use it
+    // Use registry to get renderer (now guaranteed to return at least ErrorRenderer)
     const contentType = (node as ItemNode).contentType ?? 'generic_bay';
     const ItemRenderer = getItemRenderer(contentType);
 
-    if (ItemRenderer) {
-      return <ItemRenderer node={node as ItemNode} position={nodeCenter} dims={nodeDims} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} />;
-    }
-
-    // Fallback to Bay rendering if it's a generic bay
-    if (contentType === 'generic_bay') {
-      return (
-        <group position={[x, y, z]} {...groupProps}>
-          <Bay key={node.id} bay={node as any} position={[0, 0, 0]} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} computedWidth={widthAxis} />
-        </group>
-      );
-    }
-
-    // Fallback Error Box for unknown content types
-    return (
-      <group position={nodeCenter}>
-        <mesh>
-          <boxGeometry args={[nodeDims[0], nodeDims[1], nodeDims[2]]} />
-          <meshStandardMaterial color="red" wireframe />
-        </mesh>
-        <Html position={[0, 0, 0]} center>
-          <div className="bg-red-500 text-white p-2 rounded text-xs whitespace-nowrap">
-            Unknown Type: {contentType}
-          </div>
-        </Html>
-      </group>
-    );
+    return <ItemRenderer node={node as ItemNode} position={nodeCenter} dims={nodeDims} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} />;
   }
 
   // Render container node: split children horizontally or vertically
@@ -107,7 +81,41 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
   }
 
   return null;
-}
+}, (prev, next) => {
+  // Custom comparison for React.memo
+  // 1. Check simple props
+  if (prev.node.id !== next.node.id) return false;
+  if (prev.profileType !== next.profileType) return false;
+  if (prev.height !== next.height) return false;
+  if (prev.depth !== next.depth) return false;
+  if (prev.isShiftDown !== next.isShiftDown) return false;
+
+  // 2. Check layout changes via positions map
+  // If map ref changed, check if THIS node's position changed
+  if (prev.positions !== next.positions) {
+    const prevPos = prev.positions?.get(prev.node.id);
+    const nextPos = next.positions?.get(next.node.id);
+
+    // If one is missing and other isn't -> changed
+    if (!prevPos !== !nextPos) return false;
+
+    // If both exist, compare values
+    if (prevPos && nextPos) {
+      if (prevPos.center[0] !== nextPos.center[0] ||
+        prevPos.center[1] !== nextPos.center[1] ||
+        prevPos.center[2] !== nextPos.center[2]) return false;
+      if (prevPos.dims[0] !== nextPos.dims[0] ||
+        prevPos.dims[1] !== nextPos.dims[1] ||
+        prevPos.dims[2] !== nextPos.dims[2]) return false;
+    }
+  }
+
+  // 3. Check node config changes (deep compare config if needed, or ref check)
+  // For now, we assume immutable updates to store mean ref change on node = change
+  if (prev.node !== next.node) return false;
+
+  return true;
+});
 
 interface ContainerVisualProps {
   node: ContainerNode;
@@ -200,135 +208,6 @@ function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDe
   );
 }
 
-interface DividerVisualProps {
-  id: string;
-  position: [number, number, number];
-  profileType: ProfileType;
-  height: number;
-  depth: number;
-  vertLength: number;
-  offset: number;
-  isVertical: boolean;
-  prevWidth: number;
-  nextWidth: number;
-}
 
-function DividerVisual({ id, position, profileType, height, depth, vertLength, offset, isVertical, prevWidth, nextWidth }: DividerVisualProps) {
-  type TransformControlRef = { addEventListener?: (t: string, h: (e: { value: boolean }) => void) => void; removeEventListener?: (t: string, h: (e: { value: boolean }) => void) => void };
-  const transformRef = useRef<TransformControlRef | null>(null);
-  const groupRef = useRef<THREE.Group | null>(null);
-  const { controls } = useThree();
-  const moveDivider = useDesignStore((s) => s.moveDivider);
-  const startRef = useRef<number>(0);
-  const axis: 'x' | 'y' = isVertical ? 'y' : 'x';
-
-  // State for the floating label
-  const [displayValues, setDisplayValues] = useState<{ left: number; right: number } | null>(null);
-
-  useEffect(() => {
-    const tc = transformRef.current;
-    if (!tc) return;
-
-    // Listen to 'change' event for smooth updates during drag
-    const changeHandler = () => {
-      if (groupRef.current) {
-        // Calculate delta based on visual position (not store position)
-        const currentPos = axis === 'x' ? groupRef.current.position.x : groupRef.current.position.y;
-        let delta = currentPos - startRef.current;
-
-        // Visual Clamping
-        const MIN_WIDTH = 40;
-        // Check left/top limit
-        if (prevWidth + delta < MIN_WIDTH) {
-          delta = MIN_WIDTH - prevWidth;
-        }
-        // Check right/bottom limit
-        if (nextWidth - delta < MIN_WIDTH) {
-          delta = nextWidth - MIN_WIDTH;
-        }
-
-        // Apply clamped position back to the object
-        if (axis === 'x') {
-          groupRef.current.position.x = startRef.current + delta;
-        } else {
-          groupRef.current.position.y = startRef.current + delta;
-        }
-
-        // Calculate predicted widths
-        // Logic: Moving Right/Down (+) increases Prev, decreases Next
-        const p = Math.round(prevWidth + delta);
-        const n = Math.round(nextWidth - delta);
-
-        setDisplayValues({ left: p, right: n });
-      }
-    };
-
-    const draggingChangedHandler = (e: { value: boolean }) => {
-      const dragging = !!e.value;
-      if (dragging) {
-        // Start Drag: Disable Orbit, Init Start Pos, Show Label
-        if (controls) (controls as unknown as { enabled?: boolean }).enabled = false;
-        if (groupRef.current) {
-          startRef.current = axis === 'x' ? groupRef.current.position.x : groupRef.current.position.y;
-        }
-        setDisplayValues({ left: prevWidth, right: nextWidth }); // Init label
-      } else {
-        // End Drag: Enable Orbit, Hide Label
-        if (controls) (controls as unknown as { enabled?: boolean }).enabled = true;
-        setDisplayValues(null);
-
-        // On drag end, compute delta relative to start
-        if (groupRef.current) {
-          const newPos = axis === 'x' ? (groupRef.current.position.x) : (groupRef.current.position.y);
-          const delta = newPos - startRef.current;
-          if (Math.abs(delta) >= 1) {
-            moveDivider(id, delta);
-          }
-          // reset visual position - store will re-render
-          if (axis === 'x') groupRef.current.position.x = 0; else groupRef.current.position.y = 0;
-        }
-      }
-    };
-
-
-    tc.addEventListener?.('change', changeHandler);
-    tc.addEventListener?.('dragging-changed', draggingChangedHandler);
-
-    return () => {
-
-      tc.removeEventListener?.('change', changeHandler);
-      tc.removeEventListener?.('dragging-changed', draggingChangedHandler);
-    };
-  }, [controls, moveDivider, id, axis, prevWidth, nextWidth]);
-
-  return (
-    <group position={position} ref={groupRef}>
-      {/* Only render TransformControls if we have a valid group ref (though drei handles this, it adds safety) */}
-      <TransformControls ref={(node) => { transformRef.current = node as unknown as TransformControlRef; }} object={groupRef as unknown as React.MutableRefObject<THREE.Object3D>} mode="translate" size={0.8} showY={isVertical} showZ={false} showX={!isVertical}>
-        <group>
-          <ProfileInstance length={vertLength} position={[0, -height / 2 + (profileType ? (PROFILES[profileType].size) : 0), depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
-          <ProfileInstance length={vertLength} position={[0, -height / 2 + (profileType ? (PROFILES[profileType].size) : 0), -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
-
-          {/* Tooltip */}
-          {displayValues && (
-            <Html position={[0, isVertical ? 0 : height / 2 + 50, 0]} center zIndexRange={[100, 0]}>
-              <div className="flex gap-2 bg-black/80 text-white text-xs px-2 py-1 rounded backdrop-blur-md whitespace-nowrap pointer-events-none select-none shadow-xl border border-white/20">
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] text-gray-400">Prev</span>
-                  <span className="font-mono font-bold text-blue-400">{displayValues.left}</span>
-                </div>
-                <div className="w-px bg-white/20 mx-1"></div>
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] text-gray-400">Next</span>
-                  <span className="font-mono font-bold text-emerald-400">{displayValues.right}</span>
-                </div>
-              </div>
-            </Html>
-          )}
-        </group>
-      </TransformControls>
-    </group>
-  );
-}
 
 export default RecursiveRender;

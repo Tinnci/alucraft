@@ -139,19 +139,6 @@ export interface ContainerNode extends LayoutNodeBase {
     children: LayoutNode[];
 }
 
-export interface ItemNode extends LayoutNodeBase {
-    type: 'item';
-    // Keep a generic bay content type for now; this can be extended to other content types later
-    contentType: 'generic_bay' | 'wardrobe_section' | 'empty' | 'bed_frame' | 'corner_cupboard';
-    // Config contains the former bay fields or content specific config if polymorphized
-    config: BayConfig | BedConfig | CupboardConfig | {
-        width?: number | 'auto';
-        shelves?: Shelf[];
-        drawers?: Drawer[];
-        door?: BayDoorConfig;
-    };
-}
-
 // -------------------------
 // Expanded ItemNode Variants
 // -------------------------
@@ -173,6 +160,18 @@ export interface CupboardConfig {
     lazySusan?: boolean;
 }
 
+export interface EmptyNode extends LayoutNodeBase {
+    type: 'item';
+    contentType: 'empty';
+    config?: Record<string, never>;
+}
+
+export interface WardrobeNode extends LayoutNodeBase {
+    type: 'item';
+    contentType: 'wardrobe_section';
+    config: BayConfig;
+}
+
 export interface BayNode extends LayoutNodeBase {
     type: 'item';
     contentType: 'generic_bay';
@@ -190,6 +189,8 @@ export interface CupboardNode extends LayoutNodeBase {
     contentType: 'corner_cupboard';
     config: CupboardConfig;
 }
+
+export type ItemNode = BayNode | BedNode | CupboardNode | EmptyNode | WardrobeNode;
 
 export interface DividerNode extends LayoutNodeBase {
     type: 'divider';

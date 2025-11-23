@@ -70,6 +70,22 @@ const CupboardNodeSchema = z.object({
     size: z.union([z.number(), z.literal('auto')]).optional(),
 });
 
+const EmptyNodeSchema = z.object({
+    id: z.string(),
+    type: z.literal('item'),
+    contentType: z.literal('empty'),
+    config: z.object({}).optional(),
+    size: z.union([z.number(), z.literal('auto')]).optional(),
+});
+
+const WardrobeNodeSchema = z.object({
+    id: z.string(),
+    type: z.literal('item'),
+    contentType: z.literal('wardrobe_section'),
+    config: BayConfigSchema,
+    size: z.union([z.number(), z.literal('auto')]).optional(),
+});
+
 // Recursive Container Schema
 const LayoutNodeSchema: z.ZodType<any> = z.lazy(() =>
     z.union([
@@ -77,6 +93,8 @@ const LayoutNodeSchema: z.ZodType<any> = z.lazy(() =>
         BayNodeSchema,
         BedNodeSchema,
         CupboardNodeSchema,
+        EmptyNodeSchema,
+        WardrobeNodeSchema,
         ContainerNodeSchema,
     ])
 );
