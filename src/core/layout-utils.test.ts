@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeLayoutSizes, moveDividerInLayout } from './layout-utils';
-import { LayoutNode } from './types';
+import { LayoutNode, ContainerNode, ItemNode } from './types';
 
 describe('Layout Utils', () => {
     describe('computeLayoutSizes', () => {
@@ -11,7 +11,7 @@ describe('Layout Utils', () => {
                 { id: '2', type: 'item', contentType: 'generic_bay', config: { width: 'auto', shelves: [], drawers: [] } }
             ];
             // Total space 1008. Divider 8. Remaining 1000. Each 500.
-            const results = computeLayoutSizes(nodes as any, 1008);
+            const results = computeLayoutSizes(nodes, 1008);
 
             expect(results.get('1')).toBe(500);
             expect(results.get('2')).toBe(500);
@@ -60,9 +60,9 @@ describe('Layout Utils', () => {
             const result = moveDividerInLayout(layout, 'div-1', 50, 20, 1000);
 
             expect(result.success).toBe(true);
-            const newRoot = result.layout[0] as any;
-            const newBay1 = newRoot.children[0];
-            const newBay2 = newRoot.children[2];
+            const newRoot = result.layout[0] as ContainerNode;
+            const newBay1 = newRoot.children[0] as ItemNode;
+            const newBay2 = newRoot.children[2] as ItemNode;
 
             expect(newBay1.config.width).toBe(450);
             expect(newBay2.config.width).toBe(350);
@@ -85,8 +85,8 @@ describe('Layout Utils', () => {
             // Try to move left by 80mm. Bay-1 would be 20mm. Min is 40mm.
             const result = moveDividerInLayout(layout, 'div-1', -80, 40, 1000);
 
-            const newRoot = result.layout[0] as any;
-            const newBay1 = newRoot.children[0];
+            const newRoot = result.layout[0] as ContainerNode;
+            const newBay1 = newRoot.children[0] as ItemNode;
 
             expect(newBay1.config.width).toBe(40);
         });
@@ -113,9 +113,9 @@ describe('Layout Utils', () => {
 
             const result = moveDividerInLayout(layout, 'div-1', 100, 20, 1008);
 
-            const newRoot = result.layout[0] as any;
-            const newBay1 = newRoot.children[0];
-            const newBay2 = newRoot.children[2];
+            const newRoot = result.layout[0] as ContainerNode;
+            const newBay1 = newRoot.children[0] as ItemNode;
+            const newBay2 = newRoot.children[2] as ItemNode;
 
             expect(newBay1.config.width).toBe(580);
             expect(newBay2.config.width).toBe(380);

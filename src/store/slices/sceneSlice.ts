@@ -27,7 +27,7 @@ export interface SceneSlice {
     toggleDoorState: (doorId: string) => void;
 }
 
-export const createSceneSlice: StateCreator<DesignState, [], [], SceneSlice> = (set, get) => ({
+export const createSceneSlice: StateCreator<DesignState, [], [], SceneSlice> = (set, _get) => ({
     showDimensions: true,
     showWireframe: false,
     showSnapGuides: true,

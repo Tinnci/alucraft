@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2, BoxSelect, Layers, Eye, Magnet, ArrowLeftRight, ScanLine } from 'lucide-react';
+import { Trash2, Copy, Calculator, AlertTriangle, CheckCircle2, BoxSelect, Magnet, ArrowLeftRight, ScanLine } from 'lucide-react';
 import useDesignStore from '@/store/useDesignStore';
 import { findBays } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
@@ -10,7 +10,7 @@ import { CONNECTORS, ConnectorType } from '@/core/types';
 
 // Shadcn UI Components
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Slider } from '@/components/ui/slider';
+// Slider not used in current inspector UI; keep NumberSlider (PropertySlider) for numeric inputs
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
@@ -196,7 +196,7 @@ export function PropertyInspector() {
                   </div>
 
                   {doorConfig?.enabled && (
-                    <Tabs defaultValue={doorConfig.type} className="w-full" onValueChange={(v) => setBayDoorConfig(selectedBay.id, { type: v as any })}>
+                    <Tabs defaultValue={doorConfig.type} className="w-full" onValueChange={(v: string) => setBayDoorConfig(selectedBay.id, { type: v as 'single' | 'double' })}>
                       <TabsList className="grid w-full grid-cols-2 h-8">
                         <TabsTrigger value="single" className="text-xs">Single</TabsTrigger>
                         <TabsTrigger value="double" className="text-xs">Double</TabsTrigger>
@@ -205,7 +205,7 @@ export function PropertyInspector() {
                   )}
 
                   {doorConfig?.enabled && doorConfig.type === 'single' && (
-                    <Tabs defaultValue={doorConfig.hingeSide} className="w-full" onValueChange={(v) => setBayDoorConfig(selectedBay.id, { hingeSide: v as any })}>
+                    <Tabs defaultValue={doorConfig.hingeSide} className="w-full" onValueChange={(v: string) => setBayDoorConfig(selectedBay.id, { hingeSide: v as 'left' | 'right' })}>
                       <TabsList className="grid w-full grid-cols-2 h-8">
                         <TabsTrigger value="left" className="text-xs">Left Hinge</TabsTrigger>
                         <TabsTrigger value="right" className="text-xs">Right Hinge</TabsTrigger>
@@ -315,25 +315,17 @@ export function PropertyInspector() {
                 <AccordionTrigger>Panels & Thickness</AccordionTrigger>
                 <AccordionContent className="space-y-3 pt-2">
                   <div className="grid grid-cols-3 gap-2">
-                    {['Top', 'Bottom', 'Back', 'Left', 'Right'].map(panel => {
-                      const key = `has${panel}Panel` as const;
-                      // @ts-ignore - dynamic access safe here
-                      const isActive = key === 'hasTopPanel' ? hasTopPanel : key === 'hasBottomPanel' ? hasBottomPanel : key === 'hasBackPanel' ? hasBackPanel : key === 'hasLeftPanel' ? hasLeftPanel : hasRightPanel;
-                      // @ts-ignore
-                      const setter = key === 'hasTopPanel' ? setHasTopPanel : key === 'hasBottomPanel' ? setHasBottomPanel : key === 'hasBackPanel' ? setHasBackPanel : key === 'hasLeftPanel' ? setHasLeftPanel : setHasRightPanel;
-
-                      return (
-                        <Button
-                          key={panel}
-                          variant={isActive ? "secondary" : "outline"}
-                          size="sm"
-                          className="text-xs h-7"
-                          onClick={() => setter(!isActive)}
-                        >
-                          {panel}
-                        </Button>
-                      );
-                    })}
+                    {[
+                      { name: 'Top', active: hasTopPanel, setter: setHasTopPanel },
+                      { name: 'Bottom', active: hasBottomPanel, setter: setHasBottomPanel },
+                      { name: 'Back', active: hasBackPanel, setter: setHasBackPanel },
+                      { name: 'Left', active: hasLeftPanel, setter: setHasLeftPanel },
+                      { name: 'Right', active: hasRightPanel, setter: setHasRightPanel },
+                    ].map(({ name, active, setter }) => (
+                      <Button key={name} variant={active ? "secondary" : "outline"} size="sm" className="text-xs h-7" onClick={() => setter(!active)}>
+                        {name}
+                      </Button>
+                    ))}
                   </div>
                   <Separator />
                   <PropertySlider label="Thickness" value={panelThickness} min={3} max={50} step={1} unit="mm" onChange={setPanelThickness} />

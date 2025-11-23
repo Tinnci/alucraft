@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
-import { LayoutNode, ContainerNode, ItemNode, DividerNode } from '@/core/types';
+import { LayoutNode, ContainerNode, ItemNode } from '@/core/types';
 
 const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => {
     const [isOpen, setIsOpen] = React.useState(true);

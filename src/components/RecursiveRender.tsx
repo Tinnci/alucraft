@@ -89,8 +89,8 @@ function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDe
   const [x, y, z] = origin;
   const container = node;
   const isVert = container.orientation === 'vertical';
-  // Defensive check: Ensure children is an array
-  const children = Array.isArray(container.children) ? container.children : [];
+  // Defensive check: Ensure children is an array - memoize to avoid fluctuating references
+  const children = useMemo(() => Array.isArray(container.children) ? container.children : [], [container.children]);
   const availableSpace = (isVert ? h : w);
 
   // OPTIMIZATION: Memoize layout calc to prevent thrashing on every frame

@@ -7,7 +7,7 @@ import { Line, TransformControls, Html, Edges } from '@react-three/drei';
 import { animated, useSpring } from '@react-spring/three';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
-import { ProfileInstance, ProfileInstances } from './AluProfile';
+import { ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
 import { PROFILES, ProfileType, LayoutBay } from '@/core/types';
@@ -31,14 +31,12 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
     const addShelf = useDesignStore((state: DesignState) => state.addShelf);
     const addDrawer = useDesignStore((state: DesignState) => state.addDrawer);
     const checkDrawerCollision = useDesignStore((state: DesignState) => state.checkDrawerCollision);
-    const splitItem = useDesignStore((state: DesignState) => state.splitItem);
-    const removeBay = useDesignStore((state: DesignState) => state.removeBay);
+    // splitItem and removeBay are not used in this component; remove to satisfy linter
 
     // Drag State
     const draggedComponent = useUIStore((state) => state.draggedComponent);
     const setDraggedComponent = useUIStore((state) => state.setDraggedComponent);
-    const selectedBayId = useUIStore((state) => state.selectedBayId);
-    const isSelected = selectedBayId === bay.id;
+    // selection info is not used here, removed to avoid unused linter warnings
 
     // Local State for Ghost
     const [hoverY, setHoverY] = useState<number | null>(null);
@@ -163,7 +161,6 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                     width={bayWidth}
                     height={height}
                     depth={depth}
-                    profileType={profileType}
                     wLength={wLength}
                     dLength={dLength}
                     offset={offset}
@@ -248,7 +245,7 @@ interface DraggableShelfProps {
     width: number;
     height: number;
     depth: number;
-    profileType: ProfileType;
+    // profileType is used only by parent to pass to child components; DraggableShelf doesn't need it
     wLength: number;
     dLength: number;
     offset: number;
@@ -257,7 +254,7 @@ interface DraggableShelfProps {
     partId?: string; // [NEW]
 }
 
-function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf, isShiftDown, partId }: DraggableShelfProps) {
+function DraggableShelf({ bayId, shelf, width, height, depth, wLength, dLength, offset, updateShelf, isShiftDown, partId }: DraggableShelfProps) {
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const wasSnappedRef = useRef<boolean>(false);

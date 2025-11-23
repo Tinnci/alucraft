@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { toast } from 'sonner';
 import useDesignStore from '@/store/useDesignStore';
 

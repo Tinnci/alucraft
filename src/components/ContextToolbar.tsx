@@ -10,7 +10,7 @@ import {
     MousePointerClick
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import useDesignStore from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
 
 export function ContextToolbar() {

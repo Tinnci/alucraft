@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateBOM, BOMCalculationInput } from './bom-calculator';
+import { ProfileBOMItem } from './types';
+import { ProfileType, ConnectorType } from './types';
 import { LayoutNode } from './types';
 
 describe('BOM Calculator', () => {
@@ -101,12 +103,12 @@ describe('BOM Calculator', () => {
         const input: BOMCalculationInput = {
             ...baseInput,
             width,
-            profileType: profileType as any,
-            connectorType: connectorType as any
+            profileType: profileType as ProfileType,
+            connectorType: connectorType as ConnectorType
         };
         const bom = calculateBOM(input);
-        const widthBeams = bom.find(i => i.name.includes('Width Beam'));
+        const widthBeams = bom.find(i => i.name.includes('Width Beam')) as ProfileBOMItem | undefined;
 
-        expect((widthBeams as any)?.lengthMm).toBe(expectedLen);
+        expect(widthBeams?.lengthMm).toBe(expectedLen);
     });
 });

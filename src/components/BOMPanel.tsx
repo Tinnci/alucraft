@@ -22,7 +22,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+// Separator intentionally not required in the BOM; remove the unused import
 import { Input } from '@/components/ui/input';
 import {
   Select,

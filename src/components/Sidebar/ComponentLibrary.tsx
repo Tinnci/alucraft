@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Plus, Box, Layers, LayoutGrid } from 'lucide-react';
+import { Box, Layers, LayoutGrid } from 'lucide-react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore, { DraggableComponentType } from '@/store/useUIStore';
 
@@ -13,7 +13,7 @@ const DraggableItem = ({
 }: {
     type: DraggableComponentType | 'bay_add',
     label: string,
-    icon: React.ComponentType<any>
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
 }) => {
     const setDraggedComponent = useUIStore((state) => state.setDraggedComponent);
     const addBay = useDesignStore((state: DesignState) => state.addBay);

@@ -71,7 +71,7 @@ export const createSettingsSlice: StateCreator<DesignState, [], [], SettingsSlic
 
     result: null,
 
-    setWidth: (v) => set((state) => {
+    setWidth: (v) => set((_state) => {
         // Logic to resize the first bay if layout exists (legacy behavior preservation)
         // We delegate the reaction to the layout slice or handle it here if we want to keep it simple.
         // The original logic was:

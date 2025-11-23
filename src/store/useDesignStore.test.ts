@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useDesignStore } from './useDesignStore';
-import { isBayNode } from '@/core/types';
+import { isBayNode, ItemNode, LayoutBay } from '@/core/types';
 
 // Mock nanoid to have predictable IDs if needed, or just rely on structure
 // For integration tests, we care more about the state changes than specific IDs usually.
@@ -10,7 +10,7 @@ describe('useDesignStore Actions', () => {
     beforeEach(() => {
         useDesignStore.setState({
             layout: [
-                { type: 'item', contentType: 'generic_bay', id: 'bay-initial', config: { width: 560, shelves: [], drawers: [], door: { enabled: true, type: 'single', hingeSide: 'left' } } } as any
+                { type: 'item', contentType: 'generic_bay', id: 'bay-initial', config: { width: 560, shelves: [], drawers: [], door: { enabled: true, type: 'single', hingeSide: 'left' } } } as LayoutBay
             ],
             width: 600,
             profileType: '2020'
@@ -66,7 +66,7 @@ describe('useDesignStore Actions', () => {
         useDesignStore.getState().resizeBay(bayId, newBayWidth);
 
         const newState = useDesignStore.getState();
-        const bay = newState.layout.find(n => n.id === bayId) as any;
+        const bay = newState.layout.find(n => n.id === bayId) as ItemNode | undefined;
 
         expect(bay.config.width).toBe(newBayWidth);
 
