@@ -6,7 +6,7 @@ import { PROFILES } from '@/config/profiles';
 import { NodePosition } from '@/core/layout-utils';
 import { useDesignContext } from '@/context/DesignContext';
 import { getItemRenderer } from './itemRegistry';
-import { getItemComponentId, getItemProps } from '@/core/item-utils';
+import { getItemComponentId } from '@/core/item-utils';
 import { DividerVisual } from './DividerVisual';
 
 interface RecursiveRenderProps {

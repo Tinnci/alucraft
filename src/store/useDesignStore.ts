@@ -5,7 +5,7 @@ import { temporal } from 'zundo';
 import { createSettingsSlice, SettingsSlice } from './slices/settingsSlice';
 import { createLayoutSlice, LayoutSlice } from './slices/layoutSlice';
 import { createSceneSlice, SceneSlice } from './slices/sceneSlice';
-import { BOMItem, Drawer, isBayNode, LayoutBay, ItemNode, BayConfig } from '@/core/types';
+import { BOMItem, Drawer, isBayNode, LayoutBay, BayConfig } from '@/core/types';
 import { getItemProps } from '@/core/item-utils';
 import { PROFILES } from '@/config/profiles';
 import { calculateBOM } from '@/core/bom-calculator';

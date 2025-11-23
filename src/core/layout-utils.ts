@@ -1,5 +1,5 @@
 import { LayoutNode, ContainerNode, DividerNode, ItemNode } from './types';
-import { getItemProps, getItemWidth } from './item-utils';
+import { getItemWidth } from './item-utils';
 
 export type Orientation = 'horizontal' | 'vertical';
 

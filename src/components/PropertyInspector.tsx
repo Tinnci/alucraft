@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { BoxSelect } from 'lucide-react';
 import useDesignStore from '@/store/useDesignStore';
-import { findBays, ItemNode, BayConfig } from '@/core/types';
+import { findBays, BayConfig } from '@/core/types';
 import { getItemProps } from '@/core/item-utils';
 import useUIStore from '@/store/useUIStore';
 

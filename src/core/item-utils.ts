@@ -2,8 +2,9 @@ import { ItemNode } from './types';
 
 export function getItemComponentId(node: ItemNode): string {
   // Prefer new `componentId` when present, else fallback to legacy `contentType`.
-  // Fallback to 'generic_bay' if neither is present.
-  return node.componentId ?? node.contentType ?? 'generic_bay';
+  // Avoid assuming a default content type; return 'unknown' if none present to
+  // ensure we surface fallback renderers / errors in the registry layer.
+  return node.componentId || node.contentType || 'unknown';
 }
 
 export function getItemProps<T = Record<string, unknown>>(node: ItemNode): T {
@@ -13,12 +14,17 @@ export function getItemProps<T = Record<string, unknown>>(node: ItemNode): T {
 }
 
 export function getItemWidth(node: ItemNode): number | 'auto' | undefined {
-  const p = getItemProps(node) as unknown as { width?: number | 'auto' } | undefined;
+  // Explicitly use `any` here to avoid the complex typings around transform/event
+  // handlers and to keep the helper robust against legacy `config` shapes.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const p = getItemProps<any>(node);
   return p?.width;
 }
 
-export default {
+const itemUtils = {
   getItemComponentId,
   getItemProps,
   getItemWidth,
 };
+
+export default itemUtils;

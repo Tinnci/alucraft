@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { DesignState } from '../useDesignStore';
-import { isBayNode, ItemNode, BayConfig } from '@/core/types';
+import { isBayNode, BayConfig } from '@/core/types';
 import { getDoorSides, getDoorStateKey } from '@/core/utils';
 import { getItemProps } from '@/core/item-utils';
 

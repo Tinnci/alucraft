@@ -158,7 +158,7 @@ export interface EmptyNode extends LayoutNodeBase {
     contentType: 'empty';
     config?: Record<string, never>;
     componentId?: string;
-    props?: Record<string, any>;
+    props?: Record<string, unknown>;
 }
 
 export interface WardrobeNode extends LayoutNodeBase {
@@ -166,7 +166,7 @@ export interface WardrobeNode extends LayoutNodeBase {
     contentType: 'wardrobe_section';
     config: BayConfig;
     componentId?: string;
-    props?: Record<string, any>;
+    props?: Record<string, unknown>;
 }
 
 export interface BayNode extends LayoutNodeBase {
@@ -174,7 +174,7 @@ export interface BayNode extends LayoutNodeBase {
     contentType: 'generic_bay';
     config: BayConfig;
     componentId?: string;
-    props?: Record<string, any>;
+    props?: Record<string, unknown>;
 }
 
 export interface BedNode extends LayoutNodeBase {
@@ -182,7 +182,7 @@ export interface BedNode extends LayoutNodeBase {
     contentType: 'bed_frame';
     config: BedConfig;
     componentId?: string;
-    props?: Record<string, any>;
+    props?: Record<string, unknown>;
 }
 
 export interface DeskNode extends LayoutNodeBase {
@@ -190,7 +190,7 @@ export interface DeskNode extends LayoutNodeBase {
     contentType: 'desk_unit';
     config: DeskConfig;
     componentId?: string;
-    props?: Record<string, any>;
+    props?: Record<string, unknown>;
 }
 
 export interface CupboardNode extends LayoutNodeBase {
@@ -198,7 +198,7 @@ export interface CupboardNode extends LayoutNodeBase {
     contentType: 'corner_cupboard';
     config: CupboardConfig;
     componentId?: string;
-    props?: Record<string, any>;
+    props?: Record<string, unknown>;
 }
 
 export type ItemNode = BayNode | BedNode | CupboardNode | EmptyNode | WardrobeNode | DeskNode;

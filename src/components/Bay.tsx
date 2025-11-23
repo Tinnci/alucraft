@@ -10,7 +10,7 @@ import useUIStore from '@/store/useUIStore';
 import { ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
-import { LayoutBay, ItemNode, BayConfig } from '@/core/types';
+import { LayoutBay, BayConfig } from '@/core/types';
 import { getItemProps } from '@/core/item-utils';
 import { useDesignContext } from '@/context/DesignContext';
 import { PROFILES } from '@/config/profiles';
@@ -263,7 +263,10 @@ function DraggableShelf({ bayId, shelf, width, height, depth, wLength, dLength, 
     const wasSnappedRef = useRef<boolean>(false);
     const { controls } = useThree();
     const groupRef = useRef<THREE.Group>(null);
-    const transformRef = useRef<{ addEventListener?: (evt: any, cb: any) => void; removeEventListener?: (evt: any, cb: any) => void; } | null>(null);
+    type TFEvent = { value: boolean };
+    // [FIX] Use `any` for transformRef to avoid TypeScript mismatch with TransformControls
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const transformRef = useRef<any>(null);
     const currentYRef = useRef(shelf.y);
     const totalWidth = useDesignStore((state: DesignState) => state.width);
     const [activeSnap, setActiveSnap] = useState<{ y: number; type: 'smart' | 'grid' } | null>(null);
@@ -290,7 +293,7 @@ function DraggableShelf({ bayId, shelf, width, height, depth, wLength, dLength, 
 
     // Listen for dragging-changed events
     useEffect(() => {
-        const tc = transformRef.current as { addEventListener?: (evt: any, cb: any) => void; removeEventListener?: (evt: any, cb: any) => void; } | null;
+        const tc = transformRef.current as { addEventListener?: (evt: string, cb: (e: TFEvent) => void) => void; removeEventListener?: (evt: string, cb: (e: TFEvent) => void) => void; } | null;
         if (!tc) return;
         const handler = (e: { value: boolean }) => {
             const isNowDragging = !!e.value;
