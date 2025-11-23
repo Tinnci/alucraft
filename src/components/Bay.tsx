@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useThree, ThreeEvent } from '@react-three/fiber';
-import { Line, TransformControls, Html } from '@react-three/drei';
+import { Line, TransformControls, Html, Edges } from '@react-three/drei';
 import { animated, useSpring } from '@react-spring/three';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
@@ -41,6 +41,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
 
     // Local State for Ghost
     const [hoverY, setHoverY] = useState<number | null>(null);
+    const [isHovered, setIsHovered] = useState(false);
     const bayGroupRef = useRef<THREE.Group>(null);
 
     const profile = PROFILES[profileType];
@@ -83,7 +84,17 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
 
     const handlePointerOut = () => {
         setHoverY(null);
+        setIsHovered(false);
     };
+
+    const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
+        if (draggedComponent) {
+            e.stopPropagation();
+            setIsHovered(true);
+        }
+    };
+
+    const showGuide = isHovered && !!draggedComponent;
 
     return (
         <group
@@ -92,10 +103,25 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
             onPointerMove={draggedComponent ? handlePointerMove : undefined}
             onPointerUp={draggedComponent ? handlePointerUp : undefined}
             onPointerOut={draggedComponent ? handlePointerOut : undefined}
+            onPointerOver={handlePointerOver}
         >
-            {/* Invisible Hit Plane for Raycasting */}
-            <mesh visible={false}>
+            {/* Hit Plane & Visual Feedback */}
+            <mesh visible={true}>
                 <boxGeometry args={[bayWidth, height, depth]} />
+                <meshBasicMaterial
+                    color={showGuide ? "#3b82f6" : "transparent"}
+                    opacity={showGuide ? 0.1 : 0}
+                    transparent
+                    depthWrite={false}
+                    side={THREE.DoubleSide}
+                />
+                {showGuide && (
+                    <Edges
+                        scale={1}
+                        threshold={15} // Display edges only when the angle between faces exceeds this value (degrees)
+                        color="#3b82f6"
+                    />
+                )}
             </mesh>
 
             {/* Context Toolbar */}
