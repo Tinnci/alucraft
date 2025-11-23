@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
+import useDesignStore from '@/store/useDesignStore';
 
 interface ToastProps {
   result: {
@@ -19,6 +20,16 @@ interface ToastProps {
  * 位置在屏幕底部中间，在 BottomBar 上方
  */
 export function Toast({ result }: ToastProps) {
+  const setResult = useDesignStore(s => s.setResult);
+
+  useEffect(() => {
+    if (result) {
+      const timer = setTimeout(() => {
+        setResult(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [result, setResult]);
   if (!result) return null;
 
   return (

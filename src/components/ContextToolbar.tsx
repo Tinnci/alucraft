@@ -29,7 +29,7 @@ export function ContextToolbar({
     return (
         <Html position={position} center zIndexRange={[10, 0]}>
             <div
-                className="flex items-center gap-1 p-1 bg-popover/90 backdrop-blur-md border border-border rounded-lg shadow-xl animate-in fade-in zoom-in duration-200 select-none text-popover-foreground"
+                className="flex items-center gap-1 p-1 glass-panel rounded-lg animate-in fade-in zoom-in duration-200 select-none text-popover-foreground"
                 onPointerDown={(e) => e.stopPropagation()} // Prevent click-through to scene
                 onClick={(e) => e.stopPropagation()}
             >
