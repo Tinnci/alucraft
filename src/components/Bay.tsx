@@ -22,7 +22,7 @@ interface BayProps {
     computedWidth?: number;
 }
 
-import { ContextToolbar } from './ContextToolbar';
+
 
 export function Bay({ bay, position, height, depth, profileType, isShiftDown, computedWidth }: BayProps) {
     // Actions
@@ -124,17 +124,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                 )}
             </mesh>
 
-            {/* Context Toolbar */}
-            {isSelected && !draggedComponent && (
-                <ContextToolbar
-                    position={[0, 0, depth / 2 + 50]}
-                    onSplitHorizontal={() => splitItem(bay.id, 'horizontal')}
-                    onSplitVertical={() => splitItem(bay.id, 'vertical')}
-                    onAddShelf={() => addShelf(bay.id, height / 2)}
-                    onAddDrawer={() => addDrawer(bay.id, 200, 200)} // Default Y=200, H=200
-                    onDelete={() => removeBay(bay.id)}
-                />
-            )}
+
 
             {/* Ghost Preview */}
             {draggedComponent && hoverY !== null && (

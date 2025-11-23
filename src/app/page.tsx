@@ -8,6 +8,7 @@ import { PropertyInspector } from '@/components/PropertyInspector';
 import { BottomBar } from '@/components/BottomBar';
 import { LeftSidebar } from '@/components/Sidebar/LeftSidebar';
 import { DesignToaster } from '@/components/DesignToaster';
+import { ContextToolbar } from '@/components/ContextToolbar';
 import { BOMPanel } from '@/components/BOMPanel';
 import { Workspace } from '@/components/Scene/Workspace';
 import { useAppState } from '@/hooks/useAppState';
@@ -53,6 +54,11 @@ export default function Home() {
 
         {/* Center: Canvas (adaptive) */}
         <div className="flex-1 relative bg-slate-900/20 min-w-0 flex flex-col">
+          <div className="absolute inset-x-0 top-0 pointer-events-none p-4 z-40 flex justify-center">
+            <div className="pointer-events-auto">
+              <ContextToolbar />
+            </div>
+          </div>
           <div className="flex-1 relative">
             <Canvas
               shadows
