@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Ignore Playwright test configuration (dev-only)
+    "playwright.config.ts",
   ]),
 ]);
 

@@ -25,7 +25,6 @@ test.describe('WebGL context loss (E2E)', () => {
     const msgs = await waitForConsoleMessage(page, 'WebGL context lost on canvas; diagnostics:', 30000);
     // Log messages so CI can print them even if test fails
     for (const m of msgs) {
-      // eslint-disable-next-line no-console
       console.log('[E2E Console Log]', m.slice(0, 1000));
     }
 
