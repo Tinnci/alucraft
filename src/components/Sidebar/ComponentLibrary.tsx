@@ -34,7 +34,7 @@ const DraggableItem = ({
             className="flex flex-col items-center justify-center gap-2 p-3 bg-muted/30 hover:bg-muted/50 border border-border/50 hover:border-border rounded-lg transition-all group cursor-grab active:cursor-grabbing select-none"
         >
             <div className="p-2 bg-muted rounded-full text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-all">
-                <Icon size={18} />
+                <Icon size={14} />
             </div>
             <span className="text-xs text-muted-foreground group-hover:text-foreground">{label}</span>
         </div>

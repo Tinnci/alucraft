@@ -30,6 +30,7 @@ export function BottomBar() {
         border-t border-border shadow-lg
         transition-all duration-300
         ${isDarkMode ? 'dark' : ''}
+        z-30 relative
       `}
     >
       <div className="px-4 py-2 flex items-center justify-between gap-4">

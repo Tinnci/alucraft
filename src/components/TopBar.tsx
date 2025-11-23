@@ -141,7 +141,8 @@ export function TopBar() {
         bg-background/80 backdrop-blur-md glass-shine
         border-b border-border shadow-lg
         transition-all duration-300
-        ${isTopBarExpanded ? 'h-auto' : 'h-12'}
+        ${isTopBarExpanded ? 'h-auto' : 'h-14'}
+        z-50 relative
       `}
     >
       <div className="px-4 py-3 space-y-3">

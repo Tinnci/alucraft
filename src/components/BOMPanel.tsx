@@ -204,7 +204,7 @@ export function BOMPanel() {
                       type="number"
                       value={unitPrices['profile']}
                       onChange={(e) => setUnitPrices({ ...unitPrices, profile: Number(e.target.value) })}
-                      className="w-20 text-right h-8"
+                      className="w-20 text-right h-8 bg-background"
                     />
                   </div>
                   <div className="flex items-center justify-between bg-muted/30 p-2 rounded">
@@ -213,7 +213,7 @@ export function BOMPanel() {
                       type="number"
                       value={unitPrices['panel']}
                       onChange={(e) => setUnitPrices({ ...unitPrices, panel: Number(e.target.value) })}
-                      className="w-20 text-right h-8"
+                      className="w-20 text-right h-8 bg-background"
                     />
                   </div>
                   <div className="flex items-center justify-between bg-muted/30 p-2 rounded">
@@ -222,7 +222,7 @@ export function BOMPanel() {
                       type="number"
                       value={unitPrices['hardware']}
                       onChange={(e) => setUnitPrices({ ...unitPrices, hardware: Number(e.target.value) })}
-                      className="w-20 text-right h-8"
+                      className="w-20 text-right h-8 bg-background"
                     />
                   </div>
                 </div>
