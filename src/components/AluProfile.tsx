@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { Instances, Instance, useTexture } from '@react-three/drei';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import useUIStore from '@/store/useUIStore';
 
 interface AluProfileProps {
@@ -136,6 +137,11 @@ export function ProfileInstance({ length, position = [0, 0, 0], rotation = [0, 0
     const [hovered, setHovered] = useState(false);
     const highlightedPartId = useUIStore((s) => s.highlightedPartId);
     const isHighlighted = partId && highlightedPartId === partId;
+    const colors = useThemeColor();
+
+    const defaultColor = '#e2e8f0';
+    const hoverColor = colors.gridCenter || '#cbd5e1';
+    const col = isHighlighted ? colors.highlight : (hovered ? hoverColor : defaultColor);
 
     return (
         <Instance
@@ -144,7 +150,7 @@ export function ProfileInstance({ length, position = [0, 0, 0], rotation = [0, 0
             scale={[1, 1, length]}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
-            color={isHighlighted ? '#3b82f6' : (hovered ? '#cbd5e1' : '#e2e8f0')}
+            color={col}
         />
     );
 }

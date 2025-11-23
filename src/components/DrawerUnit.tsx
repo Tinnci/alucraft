@@ -6,6 +6,7 @@ import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { Html } from '@react-three/drei';
 import { AlertTriangle } from 'lucide-react';
 import useUIStore from '@/store/useUIStore';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 interface DrawerUnitProps {
     width: number;  // Space width (inner cabinet width - clearance)
@@ -20,6 +21,7 @@ export function DrawerUnit({ width, height, depth, position, isColliding = false
     const [isOpen, setIsOpen] = useState(false);
     const [hovered, setHovered] = useState(false);
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+    const colors = useThemeColor();
 
     // [NEW] BOM Highlighting
     const highlightedPartId = useUIStore((s) => s.highlightedPartId);
@@ -35,8 +37,8 @@ export function DrawerUnit({ width, height, depth, position, isColliding = false
     const boxHeight = Math.max(50, height - 40); // Box is shorter than face
 
     // Material props
-    const materialColor = isColliding ? '#ff4d4d' : (isHighlighted ? '#3b82f6' : '#f1f5f9');
-    const emissiveColor = isColliding ? '#ff0000' : (isHighlighted ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000'));
+    const materialColor = isColliding ? colors.collision : (isHighlighted ? colors.highlight : '#f1f5f9');
+    const emissiveColor = isColliding ? colors.collision : (isHighlighted ? colors.highlight : (hovered ? colors.highlight : '#000000'));
     const emissiveIntensity = isColliding ? 0.5 : (isHighlighted ? 0.5 : (hovered ? 0.1 : 0));
 
     return (

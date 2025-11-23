@@ -58,7 +58,7 @@ export function ComponentLibrary() {
 
     return (
         <div className="flex flex-col border-t border-border bg-muted/50">
-            <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
+            <div className="p-2 section-header text-muted-foreground border-b border-border">
                 Library (Drag & Drop)
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">

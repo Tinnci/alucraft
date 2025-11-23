@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
 import { BOMItem, ProfileBOMItem } from '@/core/types';
@@ -107,6 +108,10 @@ export function BOMPanel() {
     URL.revokeObjectURL(url);
   };
 
+  const [profilesRef] = useAutoAnimate<HTMLDivElement>();
+  const [panelsRef] = useAutoAnimate<HTMLDivElement>();
+  const [hardwareRef] = useAutoAnimate<HTMLDivElement>();
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetContent className="w-full md:w-[400px] p-0 flex flex-col bg-background/95 backdrop-blur-xl border-l border-border text-foreground">
@@ -137,10 +142,10 @@ export function BOMPanel() {
             <TabsContent value="list" className="space-y-6 mt-0">
               {/* Profiles */}
               <div>
-                <h3 className="text-xs font-bold text-chart-1 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h3 className="section-header font-bold text-chart-1 mb-2 flex items-center gap-2">
                   <Box size={12} /> Profiles
                 </h3>
-                <div className="space-y-1">
+                <div className="space-y-1" ref={profilesRef}>
                   {bom.filter(i => i.category === 'profile').map((item, idx) => (
                     <div
                       key={idx}
@@ -162,10 +167,10 @@ export function BOMPanel() {
 
               {/* Panels */}
               <div>
-                <h3 className="text-xs font-bold text-chart-2 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h3 className="section-header font-bold text-chart-2 mb-2 flex items-center gap-2">
                   <Layers size={12} /> Panels
                 </h3>
-                <div className="space-y-1">
+                <div className="space-y-1" ref={panelsRef}>
                   {bom.filter(i => i.category === 'panel').map((item, idx) => (
                     <div
                       key={idx}
@@ -187,10 +192,10 @@ export function BOMPanel() {
 
               {/* Hardware */}
               <div>
-                <h3 className="text-xs font-bold text-chart-3 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h3 className="section-header font-bold text-chart-3 mb-2 flex items-center gap-2">
                   <Wrench size={12} /> Hardware
                 </h3>
-                <div className="space-y-1">
+                <div className="space-y-1" ref={hardwareRef}>
                   {bom.filter(i => i.category === 'hardware').map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center bg-muted/30 p-2 rounded border border-border/50">
                       <div className="min-w-0">
@@ -214,7 +219,7 @@ export function BOMPanel() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit Prices</h3>
+                <h3 className="section-header font-bold text-muted-foreground">Unit Prices</h3>
                 <div className="grid grid-cols-1 gap-2">
                   <div className="flex items-center justify-between bg-muted/30 p-2 rounded">
                     <span className="text-sm text-foreground">Profile ($/m)</span>
@@ -247,7 +252,7 @@ export function BOMPanel() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider">Cost Breakdown</h3>
+                <h3 className="section-header font-bold text-white/50">Cost Breakdown</h3>
                 <div className="space-y-1">
                   {priceData.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center text-sm py-1 border-b border-border last:border-0">

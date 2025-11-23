@@ -4,6 +4,7 @@ import React from 'react';
 import { useDesignStore, DesignState } from '@/store/useDesignStore';
 import { useSpring, animated } from '@react-spring/three';
 import useUIStore from '@/store/useUIStore';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 // Hinge hole visualizer moved out to top-level to avoid creating components during render
 interface HingeHoleVisualizerProps {
@@ -73,6 +74,7 @@ export function DoorPanel({
 
     highlightError = Boolean(highlightError);
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+    const colors = useThemeColor();
 
     // [NEW] BOM Highlighting
     const highlightedPartId = useUIStore((s) => s.highlightedPartId);
@@ -132,7 +134,7 @@ export function DoorPanel({
                 >
                     <boxGeometry args={[width, height, thickness]} />
                     <animated.meshPhysicalMaterial
-                        color={highlightError ? '#ff4d4d' : (isHighlighted ? '#3b82f6' : (material === 'Glass' ? '#e0f2fe' : '#f8fafc'))}
+                        color={highlightError ? colors.collision : (isHighlighted ? colors.highlight : (material === 'Glass' ? '#e0f2fe' : '#f8fafc'))}
                         roughness={material === 'Glass' ? 0.1 : 0.5}
                         metalness={material === 'Glass' ? 0.1 : 0.7}
                         transmission={material === 'Glass' ? 0.5 : 0}
@@ -140,7 +142,7 @@ export function DoorPanel({
                         clearcoat={material === 'Glass' ? 1 : 0.1}
                         transparent={material === 'Glass'}
                         opacity={material === 'Glass' ? 0.8 : 1}
-                        emissive={highlightError ? '#ff0000' : (isHighlighted ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000'))}
+                        emissive={highlightError ? colors.collision : (isHighlighted ? colors.highlight : (hovered ? colors.highlight : '#000000'))}
                         emissiveIntensity={emissiveIntensity}
                         wireframe={showWireframe}
                     />

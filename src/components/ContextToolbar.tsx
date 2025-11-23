@@ -50,7 +50,7 @@ export function ContextToolbar() {
 
     return (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1.5 glass-panel rounded-full shadow-2xl animate-in slide-in-from-top-4 fade-in duration-200 z-40">
-            <div className="px-3 text-xs font-semibold text-muted-foreground flex items-center gap-2 border-r border-border/50 mr-1">
+            <div className="px-3 section-header text-muted-foreground flex items-center gap-2 border-r border-border/50 mr-1">
                 <MousePointerClick size={14} />
                 <span>Selected Bay</span>
             </div>

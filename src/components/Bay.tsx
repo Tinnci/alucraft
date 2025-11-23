@@ -11,6 +11,7 @@ import { ProfileInstance, ProfileInstances } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
 import { PROFILES, ProfileType, LayoutBay } from '@/core/types';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 interface BayProps {
     bay: LayoutBay;
@@ -95,6 +96,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
     };
 
     const showGuide = isHovered && !!draggedComponent;
+    const colors = useThemeColor();
 
     return (
         <group
@@ -109,7 +111,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
             <mesh visible={true}>
                 <boxGeometry args={[bayWidth, height, depth]} />
                 <meshBasicMaterial
-                    color={showGuide ? "#3b82f6" : "transparent"}
+                    color={showGuide ? colors.highlight : "transparent"}
                     opacity={showGuide ? 0.1 : 0}
                     transparent
                     depthWrite={false}
@@ -119,7 +121,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                     <Edges
                         scale={1}
                         threshold={15} // Display edges only when the angle between faces exceeds this value (degrees)
-                        color="#3b82f6"
+                        color={colors.highlight}
                     />
                 )}
             </mesh>
@@ -132,15 +134,15 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                     {draggedComponent === 'shelf' && (
                         <mesh>
                             <boxGeometry args={[bayWidth, s, depth]} />
-                            <meshStandardMaterial color="#10b981" transparent opacity={0.5} emissive="#10b981" emissiveIntensity={0.5} />
+                            <meshStandardMaterial color={colors.success || '#10b981'} transparent opacity={0.5} emissive={colors.success || '#10b981'} emissiveIntensity={0.5} />
                         </mesh>
                     )}
                     {draggedComponent === 'drawer' && (
                         <group position={[0, 200 / 2, 0]}> {/* Preview offset for drawer center */}
-                            <mesh>
-                                <boxGeometry args={[bayWidth - 4, 200, depth - s * 2]} />
-                                <meshStandardMaterial color="#8b5cf6" transparent opacity={0.5} emissive="#8b5cf6" emissiveIntensity={0.5} />
-                            </mesh>
+                                <mesh>
+                                    <boxGeometry args={[bayWidth - 4, 200, depth - s * 2]} />
+                                    <meshStandardMaterial color={colors.highlight} transparent opacity={0.5} emissive={colors.highlight} emissiveIntensity={0.5} />
+                                </mesh>
                         </group>
                     )}
                     {/* Height Label */}
@@ -231,8 +233,8 @@ function SnapLine({ y, depth, totalWidth, type, labelValue }: { y: number; depth
                 dashScale={dashed ? 10 : undefined}
                 gapSize={dashed ? 5 : undefined}
             />
-            <Html position={[totalWidth / 2 + 60, 0, 0]} center zIndexRange={[100, 0]}>
-                <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono text-white whitespace-nowrap shadow-sm ${type === 'smart' ? 'bg-pink-500' : 'bg-blue-500'}`}>
+                <Html position={[totalWidth / 2 + 60, 0, 0]} center zIndexRange={[100, 0]}>
+                <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono text-white whitespace-nowrap shadow-sm ${type === 'smart' ? 'bg-pink-500' : 'bg-highlight'}`}>
                     {Math.round(labelValue)} mm
                 </div>
             </Html>
@@ -375,7 +377,7 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                 {(hovered || isHighlighted) && (
                     <mesh position={[0, 0, 0]}>
                         <boxGeometry args={[width + 10, 10, depth + 10]} />
-                        <meshBasicMaterial color="#3b82f6" opacity={isHighlighted ? 0.5 : 0.3} transparent depthTest={false} />
+                        <meshBasicMaterial color={colors.highlight} opacity={isHighlighted ? 0.5 : 0.3} transparent depthTest={false} />
                     </mesh>
                 )}
 
