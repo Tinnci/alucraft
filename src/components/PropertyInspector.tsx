@@ -300,7 +300,7 @@ export function PropertyInspector() {
                   </Button>
 
                   {result && (
-                    <div className={`p-3 rounded-md text-xs border ${result.success ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                    <div className={`p-3 rounded-md text-xs border ${result.success ? 'bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400' : 'bg-destructive/10 border-destructive/20 text-destructive'}`}>
                       <div className="flex items-center gap-2 font-bold mb-1">
                         {result.success ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
                         {result.success ? 'Valid Config' : 'Conflict Detected'}

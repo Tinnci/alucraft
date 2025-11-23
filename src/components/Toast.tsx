@@ -25,21 +25,20 @@ export function Toast({ result }: ToastProps) {
     <div
       className={`
         fixed bottom-24 left-1/2 -translate-x-1/2 z-50
-        px-6 py-3 rounded-full backdrop-blur-xl shadow-2xl border
+        bg-popover/95 backdrop-blur-xl border border-border shadow-2xl
         transition-all duration-300 pointer-events-auto
         animate-in fade-in slide-in-from-bottom-2
-        ${
-          result.success
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-            : 'bg-red-500/10 border-red-500/30 text-red-400'
+        ${result.success
+          ? 'text-foreground'
+          : 'text-destructive'
         }
       `}
     >
       <div className="flex items-center gap-3">
         {result.success ? (
-          <CheckCircle2 size={16} className="flex-shrink-0" />
+          <CheckCircle2 size={16} className="flex-shrink-0 text-green-500" />
         ) : (
-          <AlertTriangle size={16} className="flex-shrink-0" />
+          <AlertTriangle size={16} className="flex-shrink-0 text-destructive" />
         )}
         <div>
           <div className="font-semibold text-sm">{result.message}</div>

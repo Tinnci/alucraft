@@ -23,6 +23,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // Mock Unit Prices (in real app, fetch from DB or user input)
 const DEFAULT_PRICES: Record<string, number> = {
@@ -129,7 +136,7 @@ export function BOMPanel() {
             <TabsContent value="list" className="space-y-6 mt-0">
               {/* Profiles */}
               <div>
-                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h3 className="text-xs font-bold text-chart-1 uppercase tracking-wider mb-2 flex items-center gap-2">
                   <Box size={12} /> Profiles
                 </h3>
                 <div className="space-y-1">
@@ -149,7 +156,7 @@ export function BOMPanel() {
 
               {/* Panels */}
               <div>
-                <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h3 className="text-xs font-bold text-chart-2 uppercase tracking-wider mb-2 flex items-center gap-2">
                   <Layers size={12} /> Panels
                 </h3>
                 <div className="space-y-1">
@@ -169,7 +176,7 @@ export function BOMPanel() {
 
               {/* Hardware */}
               <div>
-                <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h3 className="text-xs font-bold text-chart-3 uppercase tracking-wider mb-2 flex items-center gap-2">
                   <Wrench size={12} /> Hardware
                 </h3>
                 <div className="space-y-1">
@@ -247,15 +254,16 @@ export function BOMPanel() {
                 <>
                   <div className="flex items-center justify-between bg-muted/30 p-3 rounded-lg">
                     <span className="text-sm text-foreground">Stock Length</span>
-                    <select
-                      value={stockLength}
-                      onChange={(e) => setStockLength(parseInt(e.target.value))}
-                      className="bg-background text-foreground border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-primary"
-                    >
-                      <option value={6000}>6000 mm</option>
-                      <option value={3000}>3000 mm</option>
-                      <option value={2500}>2500 mm</option>
-                    </select>
+                    <Select value={stockLength.toString()} onValueChange={(v) => setStockLength(parseInt(v))}>
+                      <SelectTrigger className="w-[120px] h-8 text-xs bg-background">
+                        <SelectValue placeholder="Select Length" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6000">6000 mm</SelectItem>
+                        <SelectItem value="3000">3000 mm</SelectItem>
+                        <SelectItem value="2500">2500 mm</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="bg-muted/30 rounded-lg p-3 border border-border">
@@ -279,12 +287,12 @@ export function BOMPanel() {
                             <span>Bar #{idx + 1}</span>
                             <span>{bar.reduce((a, b) => a + b, 0)} / {stockLength} mm</span>
                           </div>
-                          <div className="h-4 bg-slate-700 rounded overflow-hidden flex w-full relative">
+                          <div className="h-4 bg-muted rounded overflow-hidden flex w-full relative">
                             {bar.map((cut, cIdx) => (
                               <div
                                 key={cIdx}
                                 style={{ width: `${(cut / stockLength) * 100}%` }}
-                                className={`h-full border-r border-black/20 flex items-center justify-center group relative ${cIdx % 2 === 0 ? 'bg-blue-500' : 'bg-blue-400'}`}
+                                className={`h-full border-r border-background/20 flex items-center justify-center group relative ${cIdx % 2 === 0 ? 'bg-primary' : 'bg-primary/80'}`}
                               >
                                 <span className="text-[8px] text-white font-medium opacity-0 group-hover:opacity-100 absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity">
                                   {cut}
@@ -306,14 +314,14 @@ export function BOMPanel() {
             <Button
               variant="outline"
               onClick={exportCsv}
-              className="w-full border-emerald-600/20 text-emerald-400 hover:bg-emerald-600/10 hover:text-emerald-300"
+              className="w-full border-chart-2/20 text-chart-2 hover:bg-chart-2/10 hover:text-chart-2"
             >
               <FileSpreadsheet size={16} className="mr-2" /> Export CSV
             </Button>
             <Button
               variant="outline"
               onClick={exportJson}
-              className="w-full border-cyan-600/20 text-cyan-400 hover:bg-cyan-600/10 hover:text-cyan-300"
+              className="w-full border-chart-1/20 text-chart-1 hover:bg-chart-1/10 hover:text-chart-1"
             >
               <Download size={16} className="mr-2" /> Export JSON
             </Button>

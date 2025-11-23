@@ -1,6 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import React, { useRef } from 'react';
 import {
@@ -217,18 +224,16 @@ export function TopBar() {
 
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground font-medium">Presets</label>
-                <select
-                  className="w-full bg-muted text-muted-foreground text-xs rounded px-2 py-1.5 border border-transparent focus:border-primary focus:outline-none cursor-pointer hover:text-foreground"
-                  onChange={(e) => applyPreset(e.target.value)}
-                  value=""
-                >
-                  <option value="" disabled>
-                    Load Preset
-                  </option>
-                  <option value="standard">Standard Base</option>
-                  <option value="wall">Wall Unit</option>
-                  <option value="pantry">Pantry</option>
-                </select>
+                <Select onValueChange={(value) => applyPreset(value)}>
+                  <SelectTrigger className="w-full h-8 text-xs bg-muted border-transparent focus:ring-offset-0 focus:ring-1 focus:ring-primary">
+                    <SelectValue placeholder="Load Preset" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard Base</SelectItem>
+                    <SelectItem value="wall">Wall Unit</SelectItem>
+                    <SelectItem value="pantry">Pantry</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

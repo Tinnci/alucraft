@@ -21,7 +21,9 @@ export default function Home() {
   const result = useDesignStore((state: DesignState) => state.result);
   const isPropertyPanelOpen = useUIStore((s) => s.isPropertyPanelOpen);
   const setPropertyPanelOpen = useUIStore((s) => s.setPropertyPanelOpen);
-  const bgColor = isDarkMode ? '#0f172a' : '#f8fafc';
+  // 确保这里的颜色与 globals.css 中的 --background 保持一致
+  // Light: #ffffff, Dark: #0f172a (Slate 900)
+  const bgColor = isDarkMode ? '#0f172a' : '#ffffff';
 
   // 获取清除选中状态的方法
   const clearSelection = useUIStore((state) => state.clearSelection);
