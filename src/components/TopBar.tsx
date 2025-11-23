@@ -28,7 +28,7 @@ import { useStore } from 'zustand';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { MaterialType, findBays } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
-import { DxfGenerator } from '@/utils/DxfGenerator';
+import { DxfGenerator } from '@/core/exporters/dxf-generator';
 import { ProfileType } from '@/core/types';
 import { validateDesignJSON } from '@/utils/validation';
 

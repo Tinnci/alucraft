@@ -19,56 +19,61 @@ export type DesignState = SettingsSlice & LayoutSlice & SceneSlice & {
   getBOM: () => BOMItem[];
 };
 
+import { persist } from 'zustand/middleware';
+
 export const useDesignStore = create<DesignState>()(
   temporal(
-    (set, get, api) => ({
-      ...createSettingsSlice(set, get, api),
-      ...createLayoutSlice(set, get, api),
-      ...createSceneSlice(set, get, api),
+    persist(
+      (set, get, api) => ({
+        ...createSettingsSlice(set, get, api),
+        ...createLayoutSlice(set, get, api),
+        ...createSceneSlice(set, get, api),
 
-      getDerived: () => {
-        const { width, profileType, overlay } = get();
-        const s = PROFILES[profileType].size;
-        const innerWidth = width - (s * 2);
-        const doorWidth = innerWidth + (overlay * 2);
-        return { innerWidth, doorWidth };
-      },
+        getDerived: () => {
+          const { width, profileType, overlay } = get();
+          const s = PROFILES[profileType].size;
+          const innerWidth = width - (s * 2);
+          const doorWidth = innerWidth + (overlay * 2);
+          return { innerWidth, doorWidth };
+        },
 
-      getCollisions: () => {
-        const { hasLeftWall, hasRightWall, result } = get();
-        const isCollision = (result && !result.success) || false;
-        return {
-          left: hasLeftWall && isCollision,
-          right: hasRightWall && isCollision
-        };
-      },
+        getCollisions: () => {
+          const { hasLeftWall, hasRightWall, result } = get();
+          const isCollision = (result && !result.success) || false;
+          return {
+            left: hasLeftWall && isCollision,
+            right: hasRightWall && isCollision
+          };
+        },
 
-      checkDrawerCollision: (bayId: string, drawer: Drawer) => {
-        const { layout } = get();
-        const bay = layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
-        if (!bay) return false;
+        checkDrawerCollision: (bayId: string, drawer: Drawer) => {
+          const { layout } = get();
+          const bay = layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
+          if (!bay) return false;
 
-        const drawerBottom = drawer.y;
-        const drawerTop = drawer.y + drawer.height;
+          const drawerBottom = drawer.y;
+          const drawerTop = drawer.y + drawer.height;
 
-        for (const shelf of (bay.config.shelves ?? [])) {
-          const shelfY = shelf.y;
-          if (shelfY > drawerBottom && shelfY < drawerTop) return true;
+          for (const shelf of (bay.config.shelves ?? [])) {
+            const shelfY = shelf.y;
+            if (shelfY > drawerBottom && shelfY < drawerTop) return true;
+          }
+          return false;
+        },
+
+        getBOM: () => {
+          return calculateBOM(get());
         }
-        return false;
-      },
-
-      getBOM: () => {
-        return calculateBOM(get());
+      }),
+      {
+        name: 'alucraft-design',
+        partialize: (state) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { cameraResetTrigger, ...rest } = state;
+          return rest;
+        },
       }
-    }),
-    {
-      partialize: (state) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { cameraResetTrigger, ...rest } = state;
-        return rest;
-      },
-    }
+    )
   )
 );
 
