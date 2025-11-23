@@ -182,16 +182,16 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                 {/* --- Layout Nodes (Bays & Dividers) --- */}
                 {/* use RecursiveRender to draw the layout tree */}
                 <RecursiveRender
-                node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
-                origin={[0, 0, 0]}
-                dims={[width, height, depth]}
-                profileType={profileType}
-                height={height}
-                depth={depth}
-                isShiftDown={isShiftDown}
-                parentOrientation={'horizontal'}
-                positions={positions}
-            />
+                    node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
+                    origin={[0, 0, 0]}
+                    dims={[width, height, depth]}
+                    profileType={profileType}
+                    height={height}
+                    depth={depth}
+                    isShiftDown={isShiftDown}
+                    parentOrientation={'horizontal'}
+                    positions={positions}
+                />
             </ProfileInstances>
 
             {/* --- Connectors (Outer Frame) --- */}

@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { LayoutNode, ContainerNode, DividerNode, ItemNode, PROFILES } from '@/core/types';
 import { NodePosition } from '@/core/layout-utils';
 import { getItemRenderer } from './itemRegistry';
-import computeLayoutSizes from '@/core/layout-utils';
 import { Bay } from './Bay';
 import useDesignStore from '@/store/useDesignStore';
 import { ProfileInstance } from './AluProfile';
@@ -49,24 +48,42 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
 
   // Render item node (bay)
   if (node.type === 'item') {
-    // If an item renderer is registered for this contentType, use it; otherwise, fallback to Bay
-    const contentType = (node as ItemNode).contentType ?? 'generic_bay';
-    const ItemRenderer = getItemRenderer(contentType);
-    // If positions map is available, use it
+    // If positions map is available, use it to get precise location/dims
     const pos = positions as Map<string, NodePosition> | undefined;
     const info = pos?.get(node.id);
     const nodeCenter = info?.center ?? origin;
     const nodeDims = info?.dims ?? dims;
     const widthAxis = nodeDims[0];
 
+    // If an item renderer is registered for this contentType, use it
+    const contentType = (node as ItemNode).contentType ?? 'generic_bay';
+    const ItemRenderer = getItemRenderer(contentType);
+
     if (ItemRenderer) {
       return <ItemRenderer node={node as ItemNode} position={nodeCenter} dims={nodeDims} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} />;
     }
 
-    // Fallback to Bay rendering
+    // Fallback to Bay rendering if it's a generic bay
+    if (contentType === 'generic_bay') {
+      return (
+        <group position={[x, y, z]} {...groupProps}>
+          <Bay key={node.id} bay={node as any} position={[0, 0, 0]} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} computedWidth={widthAxis} />
+        </group>
+      );
+    }
+
+    // Fallback Error Box for unknown content types
     return (
-      <group position={[x, y, z]} {...groupProps}>
-        <Bay key={node.id} bay={node as ItemNode} position={[0, 0, 0]} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} computedWidth={widthAxis} />
+      <group position={nodeCenter}>
+        <mesh>
+          <boxGeometry args={[nodeDims[0], nodeDims[1], nodeDims[2]]} />
+          <meshStandardMaterial color="red" wireframe />
+        </mesh>
+        <Html position={[0, 0, 0]} center>
+          <div className="bg-red-500 text-white p-2 rounded text-xs whitespace-nowrap">
+            Unknown Type: {contentType}
+          </div>
+        </Html>
       </group>
     );
   }
@@ -105,58 +122,38 @@ interface ContainerVisualProps {
 }
 
 function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, recursionDepth, positions, ...groupProps }: ContainerVisualProps) {
-  const [w, h, d] = dims;
   const [x, y, z] = origin;
   const container = node;
-  const isVert = container.orientation === 'vertical';
+
   // Defensive check: Ensure children is an array - memoize to avoid fluctuating references
   const children = useMemo(() => Array.isArray(container.children) ? container.children : [], [container.children]);
-  const availableSpace = (isVert ? h : w);
-
-  // OPTIMIZATION: Memoize layout calc to prevent thrashing on every frame
-  const sizes = useMemo(() =>
-    computeLayoutSizes(children, availableSpace, isVert ? 'vertical' : 'horizontal', new Map<string, number>()),
-    [children, availableSpace, isVert]
-  );
-
-  const start = isVert ? y - h / 2 : x - w / 2;
-  const childSizes = children.map((child) => (sizes.get(child.id) ?? (child.type === 'divider' ? ((child as DividerNode).thickness ?? 0) : 0)));
-
-  const childInfos: { center: [number, number, number]; dims: [number, number, number] }[] = [];
-  let cur = start;
-  for (let i = 0; i < childSizes.length; i++) {
-    const size = childSizes[i];
-    const center = isVert ? [x, cur + size / 2, z] as [number, number, number] : [cur + size / 2, y, z] as [number, number, number];
-    const dimsChild: [number, number, number] = isVert ? [w, size, d] : [size, h, d];
-    childInfos.push({ center, dims: dimsChild });
-    cur += size;
-  }
 
   return (
     <group position={[x, y, z]} {...groupProps}>
       {children.map((child, idx) => {
-        const info = childInfos[idx];
-        // Prefer supplied positions map (from props) over fallback
+        // Look up position from map
         const posMap = positions as Map<string, NodePosition> | undefined;
-        const pref = posMap?.get(child.id);
-        const childOrigin = pref?.center ?? info.center;
-        const childDims = pref?.dims ?? info.dims;
+        const info = posMap?.get(child.id);
+
+        // If no info found (shouldn't happen if map is complete), skip or fallback?
+        // For now, we assume map is complete if provided.
+        if (!info) return null;
+
+        const childOrigin = info.center;
+        const childDims = info.dims;
+
         // prev/next width computation using positions map (dimensions along main axis)
         let prevWidth = 0;
         let nextWidth = 0;
         if (child.type === 'divider') {
           const prevId = children[idx - 1]?.id;
           const nextId = children[idx + 1]?.id;
-            if (pref) {
-            // if posMap supplied, derive axis size from child dims using the current container orientation
-            const axisPrev = container.orientation === 'vertical' ? (posMap?.get(prevId as string)?.dims[1] ?? 0) : (posMap?.get(prevId as string)?.dims[0] ?? 0);
-            const axisNext = container.orientation === 'vertical' ? (posMap?.get(nextId as string)?.dims[1] ?? 0) : (posMap?.get(nextId as string)?.dims[0] ?? 0);
-            prevWidth = axisPrev;
-            nextWidth = axisNext;
-          } else {
-            prevWidth = prevId ? (sizes.get(prevId) ?? 0) : 0;
-            nextWidth = nextId ? (sizes.get(nextId) ?? 0) : 0;
-          }
+
+          // derive axis size from child dims using the current container orientation
+          const axisPrev = container.orientation === 'vertical' ? (posMap?.get(prevId as string)?.dims[1] ?? 0) : (posMap?.get(prevId as string)?.dims[0] ?? 0);
+          const axisNext = container.orientation === 'vertical' ? (posMap?.get(nextId as string)?.dims[1] ?? 0) : (posMap?.get(nextId as string)?.dims[0] ?? 0);
+          prevWidth = axisPrev;
+          nextWidth = axisNext;
         }
 
         return (
@@ -179,8 +176,6 @@ function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDe
       })}
     </group>
   );
-
-  return null;
 }
 
 interface DividerVisualProps {

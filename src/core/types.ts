@@ -206,6 +206,14 @@ export function isBayNode(node: LayoutNode | undefined): node is LayoutBay {
     return !!node && node.type === 'item' && (node as ItemNode).contentType === 'generic_bay';
 }
 
+export function isBedNode(node: LayoutNode | undefined): node is BedNode {
+    return !!node && node.type === 'item' && (node as ItemNode).contentType === 'bed_frame';
+}
+
+export function isCupboardNode(node: LayoutNode | undefined): node is CupboardNode {
+    return !!node && node.type === 'item' && (node as ItemNode).contentType === 'corner_cupboard';
+}
+
 export function findBays(nodes: LayoutNode[]): LayoutBay[] {
     const result: LayoutBay[] = [];
     for (const n of nodes) {
