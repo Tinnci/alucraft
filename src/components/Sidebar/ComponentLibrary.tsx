@@ -68,7 +68,7 @@ export function ComponentLibrary() {
             </div>
 
             {draggedComponent && (
-                <div className="px-3 pb-3 text-[10px] text-blue-400 text-center animate-pulse">
+                <div className="px-3 pb-3 text-[10px] text-primary text-center animate-pulse">
                     Drag into the 3D view to place...
                 </div>
             )}

@@ -27,8 +27,8 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
 
     const getIcon = () => {
         switch (node.type) {
-            case 'container': return <LayoutGrid size={14} className="text-blue-400" />;
-            case 'item': return <Box size={14} className="text-emerald-400" />;
+            case 'container': return <LayoutGrid size={14} className="text-chart-1" />;
+            case 'item': return <Box size={14} className="text-chart-2" />;
             case 'divider': return <Component size={14} className="text-muted-foreground" />;
             default: return <Layers size={14} />;
         }

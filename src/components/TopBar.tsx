@@ -145,8 +145,7 @@ export function TopBar() {
     <div
       className={`
         w-full
-        bg-background/80 backdrop-blur-md glass-shine
-        border-b border-border shadow-lg
+        glass-panel glass-shine
         transition-all duration-300
         ${isTopBarExpanded ? 'h-auto' : 'h-14'}
         z-50 relative
@@ -361,6 +360,6 @@ export function TopBar() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }

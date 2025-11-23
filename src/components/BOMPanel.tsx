@@ -119,13 +119,13 @@ export function BOMPanel() {
         <Tabs defaultValue="list" className="flex-1 flex flex-col">
           <div className="px-4 pt-2">
             <TabsList className="grid w-full grid-cols-3 bg-muted">
-              <TabsTrigger value="list" className="text-xs data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <TabsTrigger value="list" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Layers size={14} className="mr-2" /> List
               </TabsTrigger>
-              <TabsTrigger value="price" className="text-xs data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <TabsTrigger value="price" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <DollarSign size={14} className="mr-2" /> Price
               </TabsTrigger>
-              <TabsTrigger value="cutting" className="text-xs data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <TabsTrigger value="cutting" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Scissors size={14} className="mr-2" /> Cutting
               </TabsTrigger>
             </TabsList>

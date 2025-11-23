@@ -10,6 +10,7 @@ import { DoorPanel } from '@/components/DoorPanel';
 import DimensionLines from '@/components/DimensionLines';
 import { PROFILES, ProfileType, LayoutBay, isBayNode } from '@/core/types';
 import computeLayoutSizes from '@/core/layout-utils';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 /**
  * CameraHandler - 处理相机重置触发
@@ -54,7 +55,9 @@ export function Workspace() {
   const isDoorOpen = useDesignStore((state: DesignState) => state.isDoorOpen);
   const layout = useDesignStore((state: DesignState) => state.layout);
   const doorStates = useDesignStore((state: DesignState) => state.doorStates);
-  const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
+
+  // Theme colors
+  const colors = useThemeColor();
 
   // Getters
   const toggleDoorState = useDesignStore((state: DesignState) => state.toggleDoorState);
@@ -76,11 +79,6 @@ export function Workspace() {
   const collisionLeft = hasLeftWall && isCollision;
   const collisionRight = hasRightWall && isCollision;
 
-  // Grid colors: use higher contrast colors depending on theme
-  // Center line should be slightly more visible than the regular grid
-  const gridCenterColor = isDarkMode ? '#94a3b8' : '#64748b';
-  const gridLineColor = isDarkMode ? '#475569' : '#cbd5e1';
-
   // ===== 生成门板元素 =====
   const doorElements: JSX.Element[] = [];
   // Compute positions for top-level nodes respecting 'auto' widths using shared computeLayoutSizes
@@ -91,11 +89,11 @@ export function Workspace() {
   layout.forEach((node) => {
     if (isBayNode(node)) {
       const bay = node as LayoutBay;
-  const bayWidth = sizes.get(bay.id) ?? (typeof bay.config?.width === 'number' ? bay.config!.width as number : 0);
+      const bayWidth = sizes.get(bay.id) ?? (typeof bay.config?.width === 'number' ? bay.config!.width as number : 0);
       const centerX = cursor + bayWidth / 2;
       cursor += bayWidth;
 
-  const doorConfig = bay.config.door ?? createDefaultDoorConfig();
+      const doorConfig = bay.config.door ?? createDefaultDoorConfig();
       if (!doorConfig.enabled) {
         return;
       }
@@ -133,14 +131,14 @@ export function Workspace() {
                 }
                 return <ringGeometry args={[0, arcRadius, 32, 1, thetaStart, thetaLength]} />;
               })()}
-              <meshStandardMaterial color={highlight ? '#ff4d4d' : '#60a5fa'} opacity={0.08} transparent />
+              <meshStandardMaterial color={highlight ? colors.collision : colors.highlight} opacity={0.08} transparent />
             </mesh>
           </Fragment>
         );
       };
 
       if (doorConfig.type === 'single') {
-    const doorWidth = bayWidth + overlay * 2;
+        const doorWidth = bayWidth + overlay * 2;
         const hingeX =
           doorConfig.hingeSide === 'left'
             ? centerX - ((bayWidth) / 2 + overlay)
@@ -151,9 +149,9 @@ export function Workspace() {
             : collisionRight && Math.abs(hingeX - rightEdge) <= edgeTolerance;
         buildDoor(doorConfig.hingeSide, doorWidth, hingeX, highlight);
       } else {
-  const leafWidth = (bayWidth / 2) + overlay;
-  const leftHingeX = centerX - (bayWidth / 2 + overlay);
-  const rightHingeX = centerX + (bayWidth / 2 + overlay);
+        const leafWidth = (bayWidth / 2) + overlay;
+        const leftHingeX = centerX - (bayWidth / 2 + overlay);
+        const rightHingeX = centerX + (bayWidth / 2 + overlay);
         const leftHighlight = collisionLeft && Math.abs(leftHingeX - leftEdge) <= edgeTolerance;
         const rightHighlight = collisionRight && Math.abs(rightHingeX - rightEdge) <= edgeTolerance;
         buildDoor('left', leafWidth, leftHingeX, leftHighlight);
@@ -201,7 +199,7 @@ export function Workspace() {
         {hasLeftWall && (
           <Box args={[10, height, depth]} position={[-width / 2 - 5 - 2, 0, 0]}>
             <meshStandardMaterial
-              color={collisionLeft ? '#ff4d4d' : '#94a3b8'}
+              color={collisionLeft ? colors.collision : colors.gridCenter}
               opacity={0.3}
               transparent
             />
@@ -212,7 +210,7 @@ export function Workspace() {
         {hasRightWall && (
           <Box args={[10, height, depth]} position={[width / 2 + 5 + 2, 0, 0]}>
             <meshStandardMaterial
-              color={collisionRight ? '#ff4d4d' : '#94a3b8'}
+              color={collisionRight ? colors.collision : colors.gridCenter}
               opacity={0.3}
               transparent
             />
@@ -224,7 +222,7 @@ export function Workspace() {
       <OrbitControls makeDefault maxDistance={10000} target={[0, height / 2, 0]} />
 
       {/* 4. 网格帮助线 (center line color, regular grid color) */}
-      <gridHelper args={[3000, 60, gridCenterColor, gridLineColor]} position={[0, 0, 0]} />
+      <gridHelper args={[3000, 60, colors.gridCenter, colors.gridLine]} position={[0, 0, 0]} />
       {/* 5. View Navigation Gizmo */}
       {/* Move to bottom-right to avoid overlap with Toolbar and PropertyInspector */}
       <GizmoHelper alignment="bottom-right" margin={[80, 80]}>

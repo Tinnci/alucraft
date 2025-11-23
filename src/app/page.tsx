@@ -82,7 +82,7 @@ export default function Home() {
 
         {/* Right: Property Inspector (Docked with smooth width transition on desktop; overlay on mobile) */}
         <div
-          className={`fixed md:relative top-0 right-0 bottom-0 z-40 flex flex-col h-full transition-transform duration-300 ease-in-out overflow-hidden bg-slate-900/95 backdrop-blur-md ${isPropertyPanelOpen ? 'translate-x-0 md:w-80 w-80 opacity-100 pointer-events-auto' : 'translate-x-full md:w-0 w-0 opacity-0 pointer-events-none md:border-l-0'}`}
+          className={`fixed md:relative top-0 right-0 bottom-0 z-40 flex flex-col h-full transition-transform duration-300 ease-in-out overflow-hidden bg-background/95 backdrop-blur-md ${isPropertyPanelOpen ? 'translate-x-0 md:w-80 w-80 opacity-100 pointer-events-auto' : 'translate-x-full md:w-0 w-0 opacity-0 pointer-events-none md:border-l-0'}`}
         >
           <div className="w-80 h-full md:h-full md:w-80">
             <PropertyInspector />

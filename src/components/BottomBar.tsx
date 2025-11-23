@@ -26,8 +26,7 @@ export function BottomBar() {
     <div
       className={`
         w-full
-        bg-background/80 backdrop-blur-md
-        border-t border-border shadow-lg
+        glass-panel
         transition-all duration-300
         ${isDarkMode ? 'dark' : ''}
         z-30 relative
