@@ -67,8 +67,7 @@ export function ContextToolbar({ selectedBayId, onSplit, onAddShelf, onAddDrawer
 }
 
 interface ToolbarButtonProps {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    icon: React.ComponentType<any>;
+    icon: React.ComponentType<{ size?: number }>;
     label: string;
     onClick: () => void;
     variant?: 'default' | 'destructive';

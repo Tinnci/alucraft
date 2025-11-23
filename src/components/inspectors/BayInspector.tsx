@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeftRight } from 'lucide-react';
-import { LayoutBay } from '@/core/types';
+import { LayoutBay, BayConfig } from '@/core/types';
+import { getItemProps } from '@/core/item-utils';
 import useDesignStore from '@/store/useDesignStore';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -17,7 +18,8 @@ export function BayInspector({ selectedBay }: BayInspectorProps) {
     const splitItem = useDesignStore((s) => s.splitItem);
     const setBayDoorConfig = useDesignStore((s) => s.setBayDoorConfig);
 
-    const doorConfig = selectedBay.config.door;
+    const bayProps = getItemProps<BayConfig>(selectedBay);
+    const doorConfig = bayProps.door;
 
     return (
         <Accordion type="single" collapsible defaultValue="dims" className="w-full">
@@ -26,13 +28,13 @@ export function BayInspector({ selectedBay }: BayInspectorProps) {
                 <AccordionContent className="space-y-4 pt-2">
                     <PropertySlider
                         label="Width"
-                        value={Math.round(typeof selectedBay.config.width === 'number' ? selectedBay.config.width : 400)}
+                        value={Math.round(typeof bayProps.width === 'number' ? bayProps.width : 400)}
                         min={100} max={2000} step={10} unit="mm"
                         onChange={(v) => resizeBay(selectedBay.id, v)}
                     />
                     <div className="flex gap-2">
                         <Button
-                            variant={selectedBay.config.width === 'auto' ? 'default' : 'outline'}
+                            variant={bayProps.width === 'auto' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => resizeBay(selectedBay.id, 'auto')}
                             className="flex-1 text-xs"

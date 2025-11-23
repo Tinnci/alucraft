@@ -10,7 +10,9 @@ import useUIStore from '@/store/useUIStore';
 import { ProfileInstance } from './AluProfile';
 import { Connector } from './Connector';
 import { DrawerUnit } from './DrawerUnit';
-import { ProfileType, LayoutBay } from '@/core/types';
+import { LayoutBay, ItemNode, BayConfig } from '@/core/types';
+import { getItemProps } from '@/core/item-utils';
+import { useDesignContext } from '@/context/DesignContext';
 import { PROFILES } from '@/config/profiles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
@@ -18,13 +20,9 @@ interface BayProps {
     node: LayoutBay;
     position: [number, number, number];
     dims: [number, number, number];
-    height: number;
-    depth: number;
-    profileType: ProfileType;
-    isShiftDown?: boolean;
 }
 
-export function Bay({ node, position, dims, height, depth, profileType, isShiftDown }: BayProps) {
+export function Bay({ node, position, dims }: BayProps) {
     const bay = node;
     const computedWidth = dims[0];
     // Actions
@@ -44,12 +42,14 @@ export function Bay({ node, position, dims, height, depth, profileType, isShiftD
     const [isHovered, setIsHovered] = useState(false);
     const bayGroupRef = useRef<THREE.Group>(null);
 
+    const { profileType, height, depth } = useDesignContext();
     const profile = PROFILES[profileType];
     const s = profile.size;
     const offset = s / 2;
 
-    // Use computed width if available, fallback to config
-    const bayWidth = typeof computedWidth === 'number' ? computedWidth : (typeof bay.config.width === 'number' ? bay.config.width : 0);
+    // Use computed width if available, fallback to config/props
+    const bayProps = getItemProps<BayConfig>(bay);
+    const bayWidth = typeof computedWidth === 'number' ? computedWidth : (typeof bayProps?.width === 'number' ? bayProps.width : 0);
     const wLength = bayWidth;
     const dLength = depth - (s * 2);
 
@@ -156,7 +156,7 @@ export function Bay({ node, position, dims, height, depth, profileType, isShiftD
             )}
 
             {/* Existing Shelves */}
-            {(bay.config.shelves ?? []).map((shelf) => (
+            {(bayProps.shelves ?? []).map((shelf) => (
                 <DraggableShelf
                     key={shelf.id}
                     bayId={bay.id}
@@ -168,13 +168,12 @@ export function Bay({ node, position, dims, height, depth, profileType, isShiftD
                     dLength={dLength}
                     offset={offset}
                     updateShelf={updateShelf}
-                    isShiftDown={isShiftDown}
                     partId={`shelf-${bay.id}-beams`} // [FIX] Match BOM aggregate ID
                 />
             ))}
 
             {/* Existing Drawers */}
-            {(bay.config.drawers ?? []).map(drawer => {
+            {(bayProps.drawers ?? []).map(drawer => {
                 const isColliding = checkDrawerCollision(bay.id, drawer);
                 return (
                     <DrawerUnit
@@ -253,18 +252,18 @@ interface DraggableShelfProps {
     dLength: number;
     offset: number;
     updateShelf: (bayId: string, id: string, y: number) => void;
-    isShiftDown?: boolean;
+    // isShiftDown is consumed from DesignContext instead of being passed in via props
     partId?: string; // [NEW]
 }
 
-function DraggableShelf({ bayId, shelf, width, height, depth, wLength, dLength, offset, updateShelf, isShiftDown, partId }: DraggableShelfProps) {
+function DraggableShelf({ bayId, shelf, width, height, depth, wLength, dLength, offset, updateShelf, partId }: DraggableShelfProps) {
+    const { isShiftDown } = useDesignContext();
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const wasSnappedRef = useRef<boolean>(false);
     const { controls } = useThree();
     const groupRef = useRef<THREE.Group>(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const transformRef = useRef<any>(null);
+    const transformRef = useRef<{ addEventListener?: (evt: any, cb: any) => void; removeEventListener?: (evt: any, cb: any) => void; } | null>(null);
     const currentYRef = useRef(shelf.y);
     const totalWidth = useDesignStore((state: DesignState) => state.width);
     const [activeSnap, setActiveSnap] = useState<{ y: number; type: 'smart' | 'grid' } | null>(null);
@@ -291,14 +290,12 @@ function DraggableShelf({ bayId, shelf, width, height, depth, wLength, dLength, 
 
     // Listen for dragging-changed events
     useEffect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tc = transformRef.current as any;
+        const tc = transformRef.current as { addEventListener?: (evt: any, cb: any) => void; removeEventListener?: (evt: any, cb: any) => void; } | null;
         if (!tc) return;
         const handler = (e: { value: boolean }) => {
             const isNowDragging = !!e.value;
             setIsDragging(isNowDragging);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const orbit = controls as any;
+            const orbit = controls as { enabled?: boolean } | null;
             if (orbit) orbit.enabled = !isNowDragging;
             if (!isNowDragging) {
                 setActiveSnap(null);

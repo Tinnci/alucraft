@@ -68,12 +68,11 @@ function DesignCanvas({ bgColor, onPointerMissed }: DesignCanvasProps) {
 
                   mats.forEach((m) => {
                     if (!m) return;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    materialIds.add((m as any).id);
+                    const matId = (m as unknown as { id?: number }).id;
+                    if (matId !== undefined) materialIds.add(matId);
                     const maps = ['map', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'normalMap'];
                     for (const key of maps) {
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      const t = (m as any)[key] as THREE.Texture | undefined;
+                      const t = (m as unknown as Record<string, unknown>)[key] as THREE.Texture | undefined;
                       if (t) textureIds.add(t.id);
                     }
                   });
@@ -135,8 +134,7 @@ function DesignCanvas({ bgColor, onPointerMissed }: DesignCanvasProps) {
       canvasEl.addEventListener('webglcontextrestored', onContextRestored as EventListener);
 
       // Clean up listeners
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (state as any).__onDispose = () => {
+      (state as RootState & { __onDispose?: () => void }).__onDispose = () => {
         canvasEl.removeEventListener('webglcontextlost', onContextLost as EventListener);
         canvasEl.removeEventListener('webglcontextrestored', onContextRestored as EventListener);
       };

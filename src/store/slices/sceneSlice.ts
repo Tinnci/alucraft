@@ -1,7 +1,8 @@
 import { StateCreator } from 'zustand';
 import { DesignState } from '../useDesignStore';
-import { isBayNode } from '@/core/types';
+import { isBayNode, ItemNode, BayConfig } from '@/core/types';
 import { getDoorSides, getDoorStateKey } from '@/core/utils';
+import { getItemProps } from '@/core/item-utils';
 
 export interface SceneSlice {
     showDimensions: boolean;
@@ -48,7 +49,7 @@ export const createSceneSlice: StateCreator<DesignState, [], [], SceneSlice> = (
         const nextDoorStates = { ...state.doorStates };
         state.layout.forEach((node) => {
             if (!isBayNode(node)) return;
-            const doorConfig = node.config?.door;
+            const doorConfig = getItemProps<BayConfig>(node).door;
             if (!doorConfig || !doorConfig.enabled) return;
 
             getDoorSides(doorConfig).forEach((side) => {

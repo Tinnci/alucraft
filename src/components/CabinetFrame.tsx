@@ -6,6 +6,7 @@ import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
 import useLayoutPositions from '@/hooks/useLayoutPositions';
 import { RecursiveRender } from './RecursiveRender';
+import DesignContext from '@/context/DesignContext';
 import { Connector } from './Connector';
 import { ProfileType, ContainerNode } from '@/core/types';
 import { PROFILES } from '@/config/profiles';
@@ -155,9 +156,11 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         );
     }
 
+    const ctxValue = { profileType, height, depth, isShiftDown };
     return (
         <group>
-            <ProfileInstances type={profileType} material={material}>
+            <DesignContext.Provider value={ctxValue}>
+                <ProfileInstances type={profileType} material={material}>
                 {/* --- Outer Frame --- */}
                 {frameParts.map(part => (
                     <ProfileInstance
@@ -174,14 +177,11 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                     node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
                     origin={[0, 0, 0]}
                     dims={[width, height, depth]}
-                    profileType={profileType}
-                    height={height}
-                    depth={depth}
-                    isShiftDown={isShiftDown}
                     parentOrientation={'horizontal'}
                     positions={positions}
                 />
-            </ProfileInstances>
+                </ProfileInstances>
+            </DesignContext.Provider>
 
             {/* --- Connectors (Outer Frame) --- */}
             {connectorType === 'angle_bracket' && (

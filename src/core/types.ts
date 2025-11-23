@@ -157,36 +157,48 @@ export interface EmptyNode extends LayoutNodeBase {
     type: 'item';
     contentType: 'empty';
     config?: Record<string, never>;
+    componentId?: string;
+    props?: Record<string, any>;
 }
 
 export interface WardrobeNode extends LayoutNodeBase {
     type: 'item';
     contentType: 'wardrobe_section';
     config: BayConfig;
+    componentId?: string;
+    props?: Record<string, any>;
 }
 
 export interface BayNode extends LayoutNodeBase {
     type: 'item';
     contentType: 'generic_bay';
     config: BayConfig;
+    componentId?: string;
+    props?: Record<string, any>;
 }
 
 export interface BedNode extends LayoutNodeBase {
     type: 'item';
     contentType: 'bed_frame';
     config: BedConfig;
+    componentId?: string;
+    props?: Record<string, any>;
 }
 
 export interface DeskNode extends LayoutNodeBase {
     type: 'item';
     contentType: 'desk_unit';
     config: DeskConfig;
+    componentId?: string;
+    props?: Record<string, any>;
 }
 
 export interface CupboardNode extends LayoutNodeBase {
     type: 'item';
     contentType: 'corner_cupboard';
     config: CupboardConfig;
+    componentId?: string;
+    props?: Record<string, any>;
 }
 
 export type ItemNode = BayNode | BedNode | CupboardNode | EmptyNode | WardrobeNode | DeskNode;

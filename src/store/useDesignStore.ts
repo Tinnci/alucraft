@@ -5,7 +5,8 @@ import { temporal } from 'zundo';
 import { createSettingsSlice, SettingsSlice } from './slices/settingsSlice';
 import { createLayoutSlice, LayoutSlice } from './slices/layoutSlice';
 import { createSceneSlice, SceneSlice } from './slices/sceneSlice';
-import { BOMItem, Drawer, isBayNode, LayoutBay } from '@/core/types';
+import { BOMItem, Drawer, isBayNode, LayoutBay, ItemNode, BayConfig } from '@/core/types';
+import { getItemProps } from '@/core/item-utils';
 import { PROFILES } from '@/config/profiles';
 import { calculateBOM } from '@/core/bom-calculator';
 import { createDefaultDoorConfig, getDoorSides, getDoorStateKey } from '@/core/utils';
@@ -55,7 +56,8 @@ export const useDesignStore = create<DesignState>()(
           const drawerBottom = drawer.y;
           const drawerTop = drawer.y + drawer.height;
 
-          for (const shelf of (bay.config.shelves ?? [])) {
+          const bayProps = getItemProps<BayConfig>(bay);
+          for (const shelf of (bayProps.shelves ?? [])) {
             const shelfY = shelf.y;
             if (shelfY > drawerBottom && shelfY < drawerTop) return true;
           }

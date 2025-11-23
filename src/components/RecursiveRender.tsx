@@ -1,20 +1,19 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { ContainerNode, DividerNode, ItemNode, LayoutNode, ProfileType } from '@/core/types';
+import { ContainerNode, ItemNode, LayoutNode } from '@/core/types';
 import { PROFILES } from '@/config/profiles';
-import computeLayoutSizes, { NodePosition } from '@/core/layout-utils';
+import { NodePosition } from '@/core/layout-utils';
+import { useDesignContext } from '@/context/DesignContext';
 import { getItemRenderer } from './itemRegistry';
+import { getItemComponentId, getItemProps } from '@/core/item-utils';
 import { DividerVisual } from './DividerVisual';
 
 interface RecursiveRenderProps {
   node: LayoutNode;
   origin: [number, number, number]; // center point of the node
   dims: [number, number, number]; // width, height, depth
-  profileType: ProfileType;
-  height: number; // cabinet total height, passed for context
-  depth: number; // cabinet total depth
-  isShiftDown?: boolean;
+  // profileType, height, depth and isShiftDown are pulled from DesignContext
   parentOrientation?: 'horizontal' | 'vertical';
   prevWidth?: number;
   nextWidth?: number;
@@ -27,10 +26,6 @@ export const RecursiveRender = React.memo(function RecursiveRender({
   node,
   origin,
   dims,
-  profileType,
-  height,
-  depth: cabDepth,
-  isShiftDown,
   parentOrientation,
   prevWidth = 0,
   nextWidth = 0,
@@ -38,6 +33,7 @@ export const RecursiveRender = React.memo(function RecursiveRender({
   positions,
   ...groupProps
 }: RecursiveRenderProps) {
+  const { profileType, height } = useDesignContext();
   // Defensive check: Limit recursion depth to prevent stack overflow
   if (recursionDepth > 25) {
     console.warn(`Max recursion depth exceeded in RecursiveRender (depth: ${recursionDepth}). Stopping recursion.`);
@@ -48,34 +44,39 @@ export const RecursiveRender = React.memo(function RecursiveRender({
 
   // Render divider node - render as vertical profile pair like in CabinetFrame
   if (node.type === 'divider') {
+    // require positions map for divider rendering; fallback to origin if missing
+    if (!positions) {
+      console.warn('RecursiveRender: positions map is required to render layout. Divider will not render.');
+      return null;
+    }
     const s = PROFILES[profileType].size;
     const offset = s / 2;
     const vertLength = height - (s * 2);
     // Render two vertical pillars at center of this divider
-    return <DividerVisual key={node.id} id={node.id} position={[x, y, z]} profileType={profileType} height={height} depth={cabDepth} vertLength={vertLength} offset={offset} isVertical={parentOrientation === 'vertical'} prevWidth={prevWidth} nextWidth={nextWidth} />;
+    return <DividerVisual key={node.id} id={node.id} position={[x, y, z]} vertLength={vertLength} offset={offset} isVertical={parentOrientation === 'vertical'} prevWidth={prevWidth} nextWidth={nextWidth} />;
   }
 
   // Render item node (bay)
   if (node.type === 'item') {
     // If positions map is available, use it to get precise location/dims
-    const pos = positions as Map<string, NodePosition> | undefined;
-    const info = pos?.get(node.id);
-    const nodeCenter = info?.center ?? origin;
-    const nodeDims = info?.dims ?? dims;
+    if (!positions) {
+      console.warn('RecursiveRender: positions map is required to render item nodes. Skipping node:', node.id);
+      return null;
+    }
+    const info = positions.get(node.id);
+    if (!info) return null;
+    const nodeCenter = info.center;
+    const nodeDims = info.dims;
 
     // Use registry to get renderer (now guaranteed to return at least ErrorRenderer)
-    const contentType = (node as ItemNode).contentType ?? 'generic_bay';
-    const ItemRenderer = getItemRenderer(contentType);
+    const compId = getItemComponentId(node as ItemNode);
+    const ItemRenderer = getItemRenderer(compId);
 
     // Use React.createElement to avoid "creating components during render" error
     return React.createElement(ItemRenderer, {
       node: node as ItemNode,
       position: nodeCenter,
-      dims: nodeDims,
-      height,
-      depth: cabDepth,
-      profileType,
-      isShiftDown
+      dims: nodeDims
     });
   }
 
@@ -86,10 +87,6 @@ export const RecursiveRender = React.memo(function RecursiveRender({
         node={node as ContainerNode}
         origin={origin}
         dims={dims}
-        profileType={profileType}
-        height={height}
-        depth={cabDepth}
-        isShiftDown={isShiftDown}
         recursionDepth={recursionDepth}
         positions={positions}
         {...groupProps}
@@ -102,10 +99,6 @@ export const RecursiveRender = React.memo(function RecursiveRender({
   // Custom comparison for React.memo
   // 1. Check simple props
   if (prev.node.id !== next.node.id) return false;
-  if (prev.profileType !== next.profileType) return false;
-  if (prev.height !== next.height) return false;
-  if (prev.depth !== next.depth) return false;
-  if (prev.isShiftDown !== next.isShiftDown) return false;
 
   // 2. Check layout changes via positions map
   // If map ref changed, check if THIS node's position changed
@@ -138,69 +131,48 @@ interface ContainerVisualProps {
   node: ContainerNode;
   origin: [number, number, number];
   dims: [number, number, number];
-  profileType: ProfileType;
-  height: number;
-  depth: number;
-  isShiftDown?: boolean;
   recursionDepth: number;
   positions?: Map<string, NodePosition>;
 }
 
-function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, recursionDepth, positions, ...groupProps }: ContainerVisualProps) {
-  const [w, h, d] = dims;
+function ContainerVisual({ node, origin, recursionDepth, positions, ...groupProps }: ContainerVisualProps) {
   const [x, y, z] = origin;
   const container = node;
-  const isVert = container.orientation === 'vertical';
 
   // Defensive check: Ensure children is an array - memoize to avoid fluctuating references
   const children = useMemo(() => Array.isArray(container.children) ? container.children : [], [container.children]);
-  const availableSpace = (isVert ? h : w);
+  // availableSpace is no longer needed; positions map supplies child sizes.
 
-  // OPTIMIZATION: Memoize layout calc to prevent thrashing on every frame
-  // If positions map is provided, we don't need to compute layout sizes locally
-  const sizes = useMemo(() => {
-    if (positions) return new Map<string, number>();
-    return computeLayoutSizes(children, availableSpace, isVert ? 'vertical' : 'horizontal', new Map<string, number>());
-  }, [children, availableSpace, isVert, positions]);
-
-  const start = isVert ? y - h / 2 : x - w / 2;
-  const childSizes = children.map((child) => (sizes.get(child.id) ?? (child.type === 'divider' ? ((child as DividerNode).thickness ?? 0) : 0)));
-
-  const childInfos: { center: [number, number, number]; dims: [number, number, number] }[] = [];
-  let cur = start;
-  for (let i = 0; i < childSizes.length; i++) {
-    const size = childSizes[i];
-    const center = isVert ? [x, cur + size / 2, z] as [number, number, number] : [cur + size / 2, y, z] as [number, number, number];
-    const dimsChild: [number, number, number] = isVert ? [w, size, d] : [size, h, d];
-    childInfos.push({ center, dims: dimsChild });
-    cur += size;
+  // IMPORTANT: We require `positions` to be passed in by the parent (CabinetFrame)
+  // The positions map should already contain center/dims for every child in this container.
+  if (!positions) {
+    console.warn('ContainerVisual: missing positions map. Cannot render container children without externally-computed positions.');
+    return null;
   }
+  const childInfos: { center: [number, number, number]; dims: [number, number, number] }[] = children.map((child) => {
+    const p = positions.get(child.id);
+    if (!p) return { center: origin, dims: [0, 0, 0] };
+    return { center: p.center, dims: p.dims };
+  });
 
   return (
     <group position={[x, y, z]} {...groupProps}>
       {children.map((child, idx) => {
         const info = childInfos[idx];
         // Prefer supplied positions map (from props) over fallback
-        const posMap = positions as Map<string, NodePosition> | undefined;
-        const pref = posMap?.get(child.id);
-        const childOrigin = pref?.center ?? info.center;
-        const childDims = pref?.dims ?? info.dims;
+        const childOrigin = info.center;
+        const childDims = info.dims;
         // prev/next width computation using positions map (dimensions along main axis)
         let prevWidth = 0;
         let nextWidth = 0;
         if (child.type === 'divider') {
           const prevId = children[idx - 1]?.id;
           const nextId = children[idx + 1]?.id;
-          if (pref) {
-            // if posMap supplied, derive axis size from child dims using the current container orientation
-            const axisPrev = container.orientation === 'vertical' ? (posMap?.get(prevId as string)?.dims[1] ?? 0) : (posMap?.get(prevId as string)?.dims[0] ?? 0);
-            const axisNext = container.orientation === 'vertical' ? (posMap?.get(nextId as string)?.dims[1] ?? 0) : (posMap?.get(nextId as string)?.dims[0] ?? 0);
-            prevWidth = axisPrev;
-            nextWidth = axisNext;
-          } else {
-            prevWidth = prevId ? (sizes.get(prevId) ?? 0) : 0;
-            nextWidth = nextId ? (sizes.get(nextId) ?? 0) : 0;
-          }
+          // Use positions map to compute adjacent widths along container axis
+          const prevPos = prevId ? positions.get(prevId) : undefined;
+          const nextPos = nextId ? positions.get(nextId) : undefined;
+          prevWidth = prevPos ? (container.orientation === 'vertical' ? prevPos.dims[1] : prevPos.dims[0]) : 0;
+          nextWidth = nextPos ? (container.orientation === 'vertical' ? nextPos.dims[1] : nextPos.dims[0]) : 0;
         }
 
         return (
@@ -209,10 +181,6 @@ function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDe
             node={child}
             origin={childOrigin}
             dims={childDims}
-            profileType={profileType}
-            height={height}
-            depth={cabDepth}
-            isShiftDown={isShiftDown}
             parentOrientation={container.orientation}
             prevWidth={prevWidth}
             nextWidth={nextWidth}

@@ -1,20 +1,17 @@
-'use client';
+ 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { TransformControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { ProfileType } from '@/core/types';
 import { PROFILES } from '@/config/profiles';
+import { useDesignContext } from '@/context/DesignContext';
 import useDesignStore from '@/store/useDesignStore';
 import { ProfileInstance } from './AluProfile';
 
 export interface DividerVisualProps {
     id: string;
     position: [number, number, number];
-    profileType: ProfileType;
-    height: number;
-    depth: number;
     vertLength: number;
     offset: number;
     isVertical: boolean;
@@ -22,7 +19,7 @@ export interface DividerVisualProps {
     nextWidth: number;
 }
 
-export function DividerVisual({ id, position, profileType, height, depth, vertLength, offset, isVertical, prevWidth, nextWidth }: DividerVisualProps) {
+export function DividerVisual({ id, position, vertLength, offset, isVertical, prevWidth, nextWidth }: DividerVisualProps) {
     type TransformControlRef = { addEventListener?: (t: string, h: (e: { value: boolean }) => void) => void; removeEventListener?: (t: string, h: (e: { value: boolean }) => void) => void };
     const transformRef = useRef<TransformControlRef | null>(null);
     const groupRef = useRef<THREE.Group | null>(null);
@@ -30,6 +27,7 @@ export function DividerVisual({ id, position, profileType, height, depth, vertLe
     const moveDivider = useDesignStore((s) => s.moveDivider);
     const startRef = useRef<number>(0);
     const axis: 'x' | 'y' = isVertical ? 'y' : 'x';
+    const { profileType, height, depth } = useDesignContext();
 
     // State for the floating label
     const [displayValues, setDisplayValues] = useState<{ left: number; right: number } | null>(null);

@@ -3,7 +3,8 @@
 import React, { useMemo } from 'react';
 import { BoxSelect } from 'lucide-react';
 import useDesignStore from '@/store/useDesignStore';
-import { findBays } from '@/core/types';
+import { findBays, ItemNode, BayConfig } from '@/core/types';
+import { getItemProps } from '@/core/item-utils';
 import useUIStore from '@/store/useUIStore';
 
 // Shadcn UI Components
@@ -31,14 +32,16 @@ export function PropertyInspector() {
   // Derived State
   const bays = useMemo(() => findBays(layout), [layout]);
   const selectedBay = useMemo(() => bays.find((b) => b.id === selectedBayId), [bays, selectedBayId]);
-  const selectedShelf = useMemo(
-    () => (selectedBay?.config.shelves ?? []).find((s) => s.id === selectedShelfId),
-    [selectedBay, selectedShelfId]
-  );
-  const selectedDrawer = useMemo(
-    () => (selectedBay?.config.drawers ?? []).find((d) => d.id === selectedDrawerId),
-    [selectedBay, selectedDrawerId]
-  );
+  const selectedShelf = useMemo(() => {
+  if (!selectedBay) return undefined;
+  const p = getItemProps<BayConfig>(selectedBay);
+    return (p.shelves ?? []).find((s) => s.id === selectedShelfId);
+  }, [selectedBay, selectedShelfId]);
+  const selectedDrawer = useMemo(() => {
+  if (!selectedBay) return undefined;
+  const p = getItemProps<BayConfig>(selectedBay);
+    return (p.drawers ?? []).find((d) => d.id === selectedDrawerId);
+  }, [selectedBay, selectedDrawerId]);
 
   return (
     <div className="flex flex-col h-full w-full md:w-80 glass-panel">

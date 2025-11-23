@@ -8,9 +8,10 @@ import useDesignStore, { DesignState, createDefaultDoorConfig, getDoorStateKey }
 import { CabinetFrame } from '@/components/CabinetFrame';
 import { DoorPanel } from '@/components/DoorPanel';
 import DimensionLines from '@/components/DimensionLines';
-import { ProfileType, LayoutBay, isBayNode } from '@/core/types';
+import { ProfileType, LayoutBay, isBayNode, BayConfig } from '@/core/types';
 import { PROFILES } from '@/config/profiles';
 import computeLayoutSizes from '@/core/layout-utils';
+import { getItemProps } from '@/core/item-utils';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
 /**
@@ -87,14 +88,15 @@ export function Workspace() {
   const sizes = computeLayoutSizes(layout, totalInnerWidth, 'horizontal', new Map<string, number>());
   let cursor = -width / 2 + s;
 
-  layout.forEach((node) => {
+    layout.forEach((node) => {
     if (isBayNode(node)) {
       const bay = node as LayoutBay;
-      const bayWidth = sizes.get(bay.id) ?? (typeof bay.config?.width === 'number' ? bay.config!.width as number : 0);
+    const bayProps = getItemProps<BayConfig>(bay);
+      const bayWidth = sizes.get(bay.id) ?? (typeof bayProps.width === 'number' ? bayProps.width as number : 0);
       const centerX = cursor + bayWidth / 2;
       cursor += bayWidth;
 
-      const doorConfig = bay.config.door ?? createDefaultDoorConfig();
+      const doorConfig = bayProps.door ?? createDefaultDoorConfig();
       if (!doorConfig.enabled) {
         return;
       }

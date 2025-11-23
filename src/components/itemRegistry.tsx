@@ -1,5 +1,5 @@
 import React from 'react';
-import { ItemNode, ProfileType } from '@/core/types';
+import { ItemNode } from '@/core/types';
 import { Bay } from './Bay';
 import { Html } from '@react-three/drei';
 
@@ -7,10 +7,7 @@ export interface ItemRendererProps {
   node: ItemNode;
   position: [number, number, number];
   dims: [number, number, number];
-  height: number;
-  depth: number;
-  profileType: ProfileType;
-  isShiftDown?: boolean;
+  // layout and design context values (height, depth, profileType, isShiftDown) are provided via DesignContext, not props
 }
 
 // Placeholder Error Renderer
@@ -73,4 +70,12 @@ const registry: Record<string, React.FC<ItemRendererProps>> = {
 
 export function getItemRenderer(type: string): React.FC<ItemRendererProps> {
   return registry[type] || ErrorRenderer;
+}
+
+export function registerItemRenderer(type: string, renderer: React.FC<ItemRendererProps>) {
+  registry[type] = renderer;
+}
+
+export function unregisterItemRenderer(type: string) {
+  delete registry[type];
 }
