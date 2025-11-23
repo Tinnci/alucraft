@@ -167,6 +167,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                     offset={offset}
                     updateShelf={updateShelf}
                     isShiftDown={isShiftDown}
+                    partId={`shelf-${bay.id}-${shelf.id}`} // [NEW] Pass partId
                 />
             ))}
 
@@ -181,6 +182,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                         depth={depth - (s * 2)}
                         position={[0, -height / 2 + drawer.y + drawer.height / 2 + s, 0]}
                         isColliding={isColliding}
+                        partId={`drawer-${bay.id}-${drawer.id}`} // [NEW] Pass partId
                     />
                 );
             })}
@@ -250,9 +252,10 @@ interface DraggableShelfProps {
     offset: number;
     updateShelf: (bayId: string, id: string, y: number) => void;
     isShiftDown?: boolean;
+    partId?: string; // [NEW]
 }
 
-function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf, isShiftDown }: DraggableShelfProps) {
+function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLength, dLength, offset, updateShelf, isShiftDown, partId }: DraggableShelfProps) {
     const [hovered, setHovered] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const wasSnappedRef = useRef<boolean>(false);
@@ -267,6 +270,10 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
     const selectShelf = useUIStore(state => state.selectShelf);
     const selectedShelfId = useUIStore(state => state.selectedShelfId);
     const isSelected = selectedShelfId === shelf.id;
+
+    // [NEW] BOM Highlighting
+    const highlightedPartId = useUIStore((s) => s.highlightedPartId);
+    const isHighlighted = partId && highlightedPartId === partId;
 
     const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);
 
@@ -365,10 +372,10 @@ function DraggableShelf({ bayId, shelf, width, height, depth, profileType, wLeng
                 </mesh>
 
                 {/* Highlight */}
-                {hovered && (
+                {(hovered || isHighlighted) && (
                     <mesh position={[0, 0, 0]}>
                         <boxGeometry args={[width + 10, 10, depth + 10]} />
-                        <meshBasicMaterial color="#3b82f6" opacity={0.3} transparent depthTest={false} />
+                        <meshBasicMaterial color="#3b82f6" opacity={isHighlighted ? 0.5 : 0.3} transparent depthTest={false} />
                     </mesh>
                 )}
 

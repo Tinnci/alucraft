@@ -117,6 +117,7 @@ export function Workspace() {
               onToggle={() => toggleDoorState(doorId)}
               highlightError={highlight}
               overlay={overlay}
+              partId={`door-${bay.id}`} // [NEW] Pass partId
             />
             {/* Door swing arc (visual aid) */}
             <mesh position={[hingeX, -height / 2 + s + 1, doorDepthOffset]} rotation={[Math.PI / 2, 0, 0]} raycast={() => { }}>

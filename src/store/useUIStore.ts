@@ -29,6 +29,9 @@ export interface UIState {
   // [NEW] 拖拽状态
   draggedComponent: DraggableComponentType;
 
+  // [NEW] BOM Highlighting
+  highlightedPartId: string | null;
+
   // Setters
   setSelectedBayId: (id: string | null) => void;
   setSelectedShelfId: (id: string | null) => void;
@@ -42,6 +45,8 @@ export interface UIState {
 
   // [NEW] 拖拽 Setter
   setDraggedComponent: (type: DraggableComponentType) => void;
+
+  setHighlightedPartId: (id: string | null) => void;
 
   // 便利方法：清除所有选中状态
   clearSelection: () => void;
@@ -62,9 +67,8 @@ export const useUIStore = create<UIState>((set) => ({
   isTopBarExpanded: true,
   isBOMPanelOpen: false,
   isFloatingControlsExpanded: true,
-
-  // [NEW]
   draggedComponent: null,
+  highlightedPartId: null,
 
   // ... Setters ...
   setSelectedBayId: (id) => set({ selectedBayId: id, selectedObjectType: id ? 'bay' : null }),
@@ -77,8 +81,8 @@ export const useUIStore = create<UIState>((set) => ({
   setBOMPanelOpen: (open) => set({ isBOMPanelOpen: open }),
   setFloatingControlsExpanded: (expanded) => set({ isFloatingControlsExpanded: expanded }),
 
-  // [NEW]
   setDraggedComponent: (type) => set({ draggedComponent: type }),
+  setHighlightedPartId: (id) => set({ highlightedPartId: id }),
 
   // ... Helpers ...
   clearSelection: () => set({
@@ -87,7 +91,6 @@ export const useUIStore = create<UIState>((set) => ({
     selectedDrawerId: null,
     selectedObjectType: null
   }),
-
   selectBay: (bayId) => set({
     selectedBayId: bayId,
     selectedShelfId: null,

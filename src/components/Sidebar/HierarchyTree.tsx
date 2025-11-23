@@ -14,8 +14,13 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
     const selectedBayId = useUIStore((state) => state.selectedBayId);
     const setSelectedBayId = useUIStore((state) => state.setSelectedBayId);
     const setPropertyPanelOpen = useUIStore((state) => state.setPropertyPanelOpen);
+    const highlightedPartId = useUIStore((state) => state.highlightedPartId);
+    const setHighlightedPartId = useUIStore((state) => state.setHighlightedPartId);
 
     const isSelected = node.type === 'item' && node.id === selectedBayId;
+
+    // Check if this node or any of its children are highlighted
+    const isNodeHighlighted = highlightedPartId === node.id; // For future use if bays have partIds
 
     const handleSelect = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -49,7 +54,8 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
                 variant="ghost"
                 className={cn(
                     "w-full justify-start h-7 px-2 text-xs font-normal mb-0.5",
-                    isSelected ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
+                    isSelected ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground",
+                    isNodeHighlighted && "bg-blue-100/10 text-blue-400"
                 )}
                 style={{ paddingLeft: `${depth * 12 + 8}px` }}
                 onClick={handleSelect}
@@ -61,9 +67,16 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
                     >
                         {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                     </div>
+                ) : (node.type === 'item' ? (
+                    <div
+                        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+                        className="p-0.5 hover:bg-muted/50 rounded mr-1 cursor-pointer"
+                    >
+                        {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </div>
                 ) : (
                     <span className="w-4 mr-1" />
-                )}
+                ))}
                 {getIcon()}
                 <span className="ml-2 truncate">{getLabel()}</span>
             </Button>
@@ -76,10 +89,64 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
                 </div>
             )}
 
-            {/* Show Shelves/Drawers for Items */}
+            {/* Show Shelves/Drawers/Doors for Items */}
             {isOpen && node.type === 'item' && (
-                <div className="border-l border-border ml-4">
-                    {/* We could list shelves here, but keeping it simple for now */}
+                <div className="flex flex-col">
+                    {/* Door */}
+                    {(node as ItemNode).config.door?.enabled && (
+                        <Button
+                            variant="ghost"
+                            className={cn(
+                                "w-full justify-start h-6 px-2 text-[10px] font-normal mb-0.5 text-muted-foreground hover:text-foreground",
+                                highlightedPartId === `door-${node.id}` && "bg-blue-100/10 text-blue-400"
+                            )}
+                            style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
+                            onMouseEnter={() => setHighlightedPartId(`door-${node.id}`)}
+                            onMouseLeave={() => setHighlightedPartId(null)}
+                        >
+                            <span className="w-4 mr-1" />
+                            <Layers size={12} className="mr-2 opacity-70" />
+                            Door
+                        </Button>
+                    )}
+
+                    {/* Shelves */}
+                    {((node as ItemNode).config.shelves || []).map(shelf => (
+                        <Button
+                            key={shelf.id}
+                            variant="ghost"
+                            className={cn(
+                                "w-full justify-start h-6 px-2 text-[10px] font-normal mb-0.5 text-muted-foreground hover:text-foreground",
+                                highlightedPartId === `shelf-${node.id}-${shelf.id}` && "bg-blue-100/10 text-blue-400"
+                            )}
+                            style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
+                            onMouseEnter={() => setHighlightedPartId(`shelf-${node.id}-${shelf.id}`)}
+                            onMouseLeave={() => setHighlightedPartId(null)}
+                        >
+                            <span className="w-4 mr-1" />
+                            <Layers size={12} className="mr-2 opacity-70" />
+                            Shelf {Math.round(shelf.y)}mm
+                        </Button>
+                    ))}
+
+                    {/* Drawers */}
+                    {((node as ItemNode).config.drawers || []).map(drawer => (
+                        <Button
+                            key={drawer.id}
+                            variant="ghost"
+                            className={cn(
+                                "w-full justify-start h-6 px-2 text-[10px] font-normal mb-0.5 text-muted-foreground hover:text-foreground",
+                                highlightedPartId === `drawer-${node.id}-${drawer.id}` && "bg-blue-100/10 text-blue-400"
+                            )}
+                            style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
+                            onMouseEnter={() => setHighlightedPartId(`drawer-${node.id}-${drawer.id}`)}
+                            onMouseLeave={() => setHighlightedPartId(null)}
+                        >
+                            <span className="w-4 mr-1" />
+                            <Layers size={12} className="mr-2 opacity-70" />
+                            Drawer {Math.round(drawer.y)}mm
+                        </Button>
+                    ))}
                 </div>
             )}
         </div>

@@ -2,6 +2,9 @@
 
 import React from 'react';
 import { useDesignStore, DesignState } from '@/store/useDesignStore';
+import { useSpring, animated } from '@react-spring/three';
+import useUIStore from '@/store/useUIStore';
+
 // Hinge hole visualizer moved out to top-level to avoid creating components during render
 interface HingeHoleVisualizerProps {
     holeX: number;
@@ -32,7 +35,6 @@ export function HingeHoleVisualizer({ holeX, yPosition, thickness, cupRadius, sc
         </group>
     );
 }
-import { useSpring, animated } from '@react-spring/three';
 
 interface DoorPanelProps {
     width: number;
@@ -49,6 +51,7 @@ interface DoorPanelProps {
     showHoles?: boolean; // 是否显示孔位
     kValue?: number;     // 比如 3, 4, 5, 6...
     hingeSeries?: 'C80' | 'Cover25'; // 决定螺丝孔距
+    partId?: string; // [NEW] BOM Highlighting
 }
 
 export function DoorPanel({
@@ -64,18 +67,23 @@ export function DoorPanel({
     overlay = 0,
     showHoles = true, // 默认开启
     kValue = 4,       // 默认给个值防止报错
-    hingeSeries = 'C80'
+    hingeSeries = 'C80',
+    partId
 }: DoorPanelProps) {
-    
+
     highlightError = Boolean(highlightError);
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
+
+    // [NEW] BOM Highlighting
+    const highlightedPartId = useUIStore((s) => s.highlightedPartId);
+    const isHighlighted = partId && highlightedPartId === partId;
 
     const [hovered, setHovered] = React.useState(false);
 
     // 动画逻辑
     const { rotationY, emissiveIntensity } = useSpring({
         rotationY: isOpen ? (hingeSide === 'left' ? -Math.PI / 2 : Math.PI / 2) : 0,
-        emissiveIntensity: highlightError ? 0.8 : (hovered ? 0.2 : 0),
+        emissiveIntensity: highlightError ? 0.8 : (isHighlighted ? 0.5 : (hovered ? 0.2 : 0)),
         config: { mass: 1, tension: 170, friction: 26 }
     });
 
@@ -108,8 +116,6 @@ export function DoorPanel({
     // 简单可视化：我们在杯孔中心的两侧（上下方向，即 Y 轴）画两个小点代表螺丝孔。
     const screwY_Offset = screwSpacing / 2;
 
-    // (HingeHoleVisualizer is defined at file scope)
-
     return (
         <group position={position}>
             <animated.group rotation-y={rotationY}>
@@ -126,7 +132,7 @@ export function DoorPanel({
                 >
                     <boxGeometry args={[width, height, thickness]} />
                     <animated.meshPhysicalMaterial
-                        color={highlightError ? '#ff4d4d' : (material === 'Glass' ? '#e0f2fe' : '#f8fafc')}
+                        color={highlightError ? '#ff4d4d' : (isHighlighted ? '#3b82f6' : (material === 'Glass' ? '#e0f2fe' : '#f8fafc'))}
                         roughness={material === 'Glass' ? 0.1 : 0.5}
                         metalness={material === 'Glass' ? 0.1 : 0.7}
                         transmission={material === 'Glass' ? 0.5 : 0}
@@ -134,7 +140,7 @@ export function DoorPanel({
                         clearcoat={material === 'Glass' ? 1 : 0.1}
                         transparent={material === 'Glass'}
                         opacity={material === 'Glass' ? 0.8 : 1}
-                        emissive={highlightError ? '#ff0000' : (hovered ? '#3b82f6' : '#000000')}
+                        emissive={highlightError ? '#ff0000' : (isHighlighted ? '#3b82f6' : (hovered ? '#3b82f6' : '#000000'))}
                         emissiveIntensity={emissiveIntensity}
                         wireframe={showWireframe}
                     />

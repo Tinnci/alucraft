@@ -87,6 +87,7 @@ export interface BOMItemBase {
     qty: number;
     category: BOMCategory;
     note?: string;
+    partId?: string; // Identifier for 3D highlighting linkage
 }
 
 export interface ProfileBOMItem extends BOMItemBase {

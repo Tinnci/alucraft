@@ -72,9 +72,32 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     const hardwareItems: HardwareBOMItem[] = [];
 
     // --- 1. Frame Profiles ---
-    profileItems.push({ id: uid(), name: `${profileType} Vertical (Pillar)`, lengthMm: hLength, qty: 4, category: 'profile' });
-    profileItems.push({ id: uid(), name: `${profileType} Width Beam (Deducted)`, lengthMm: frameBeamDeductedLength, qty: 4, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
-    profileItems.push({ id: uid(), name: `${profileType} Depth Beam`, lengthMm: dLength, qty: 4, category: 'profile' });
+    profileItems.push({
+        id: uid(),
+        name: `${profileType} Vertical (Pillar)`,
+        lengthMm: hLength,
+        qty: 4,
+        category: 'profile',
+        partId: 'frame-pillar'
+    });
+    profileItems.push({
+        id: uid(),
+        name: `${profileType} Width Beam (Deducted)`,
+        lengthMm: frameBeamDeductedLength,
+        qty: 4,
+        category: 'profile',
+        note: `Connector deduction: ${connectorDeduction}mm x 2`,
+        partId: 'frame-width-beam'
+    });
+    profileItems.push({
+        id: uid(),
+        name: `${profileType} Depth Beam`,
+        lengthMm: dLength,
+        qty: 4,
+        category: 'profile',
+        partId: 'frame-depth-beam'
+    });
+
     // simple traverse helper for tree iteration
     const traverse = (nodes: LayoutNode[] | undefined, cb: (node: LayoutNode) => void) => {
         if (!nodes) return;
@@ -88,7 +111,14 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     // --- 2. Layout Dividers ---
     traverse(layout, (node) => {
         if (node.type === 'divider') {
-            profileItems.push({ id: uid(), name: `${profileType} Vertical (Divider)`, lengthMm: hLength - (s * 2), qty: 1, category: 'profile' });
+            profileItems.push({
+                id: uid(),
+                name: `${profileType} Vertical (Divider)`,
+                lengthMm: hLength - (s * 2),
+                qty: 1,
+                category: 'profile',
+                partId: `divider-${node.id}`
+            });
         }
     });
 
@@ -96,27 +126,27 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
     if (hasLeftPanel) {
         const sidePanelHeight = Math.round(height - s * 2 + (slotDepth * 2) - tolerance);
         const sidePanelWidth = Math.round(depth - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Side Panel (Left)', qty: 1, widthMm: sidePanelWidth, heightMm: sidePanelHeight, thicknessMm: panelThickness, category: 'panel' });
+        panelItems.push({ id: uid(), name: 'Side Panel (Left)', qty: 1, widthMm: sidePanelWidth, heightMm: sidePanelHeight, thicknessMm: panelThickness, category: 'panel', partId: 'panel-left' });
     }
     if (hasRightPanel) {
         const sidePanelHeight = Math.round(height - s * 2 + (slotDepth * 2) - tolerance);
         const sidePanelWidth = Math.round(depth - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Side Panel (Right)', qty: 1, widthMm: sidePanelWidth, heightMm: sidePanelHeight, thicknessMm: panelThickness, category: 'panel' });
+        panelItems.push({ id: uid(), name: 'Side Panel (Right)', qty: 1, widthMm: sidePanelWidth, heightMm: sidePanelHeight, thicknessMm: panelThickness, category: 'panel', partId: 'panel-right' });
     }
     if (hasBackPanel) {
         const backPanelHeight = Math.round(height - s * 2 + (slotDepth * 2) - tolerance);
         const backPanelWidth = Math.round(width - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Back Panel', qty: 1, widthMm: backPanelWidth, heightMm: backPanelHeight, thicknessMm: panelThickness, category: 'panel' });
+        panelItems.push({ id: uid(), name: 'Back Panel', qty: 1, widthMm: backPanelWidth, heightMm: backPanelHeight, thicknessMm: panelThickness, category: 'panel', partId: 'panel-back' });
     }
     if (hasTopPanel) {
         const tbPanelWidth = Math.round(width - s * 2 + (slotDepth * 2) - tolerance);
         const tbPanelDepth = Math.round(depth - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Top Panel', qty: 1, widthMm: tbPanelWidth, heightMm: tbPanelDepth, thicknessMm: panelThickness, category: 'panel' });
+        panelItems.push({ id: uid(), name: 'Top Panel', qty: 1, widthMm: tbPanelWidth, heightMm: tbPanelDepth, thicknessMm: panelThickness, category: 'panel', partId: 'panel-top' });
     }
     if (hasBottomPanel) {
         const tbPanelWidth = Math.round(width - s * 2 + (slotDepth * 2) - tolerance);
         const tbPanelDepth = Math.round(depth - s * 2 + (slotDepth * 2) - tolerance);
-        panelItems.push({ id: uid(), name: 'Bottom Panel', qty: 1, widthMm: tbPanelWidth, heightMm: tbPanelDepth, thicknessMm: panelThickness, category: 'panel' });
+        panelItems.push({ id: uid(), name: 'Bottom Panel', qty: 1, widthMm: tbPanelWidth, heightMm: tbPanelDepth, thicknessMm: panelThickness, category: 'panel', partId: 'panel-bottom' });
     }
 
     // --- 4. Bay Components (Doors, Shelves, Drawers) ---
@@ -144,7 +174,8 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
                     widthMm: singleWidth,
                     heightMm: Math.round(height),
                     thicknessMm: panelThickness,
-                    category: 'panel'
+                    category: 'panel',
+                    partId: `door-${bay.id}`
                 });
             } else { // Double
                 const leafWidth = Math.round((cw / 2) - 3); // 2mm outer gap, 2mm inner gap
@@ -155,7 +186,8 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
                     widthMm: leafWidth,
                     heightMm: Math.round(height),
                     thicknessMm: panelThickness,
-                    category: 'panel'
+                    category: 'panel',
+                    partId: `door-${bay.id}`
                 });
             }
 
@@ -173,8 +205,23 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
         if ((bay.config.shelves ?? []).length > 0) {
             const bayInnerWidth = Math.round(cw - (s * 2));
             const bayBeamDeductedLength = Math.round(bayInnerWidth - (connectorDeduction * 2));
-            profileItems.push({ id: uid(), name: `${profileType} Shelf Width Beam (Bay ${bayBeamDeductedLength}mm)`, lengthMm: bayBeamDeductedLength, qty: (bay.config.shelves ?? []).length * 2, category: 'profile', note: `Connector deduction: ${connectorDeduction}mm x 2` });
-            profileItems.push({ id: uid(), name: `${profileType} Shelf Depth Beam`, lengthMm: dLength, qty: (bay.config.shelves ?? []).length * 2, category: 'profile' });
+            profileItems.push({
+                id: uid(),
+                name: `${profileType} Shelf Width Beam (Bay ${bayBeamDeductedLength}mm)`,
+                lengthMm: bayBeamDeductedLength,
+                qty: (bay.config.shelves ?? []).length * 2,
+                category: 'profile',
+                note: `Connector deduction: ${connectorDeduction}mm x 2`,
+                partId: `shelf-${bay.id}-beams`
+            });
+            profileItems.push({
+                id: uid(),
+                name: `${profileType} Shelf Depth Beam`,
+                lengthMm: dLength,
+                qty: (bay.config.shelves ?? []).length * 2,
+                category: 'profile',
+                partId: `shelf-${bay.id}-beams`
+            });
         }
 
         // Drawers
@@ -198,7 +245,8 @@ export const calculateBOM = (input: BOMCalculationInput): BOMItem[] => {
                     widthMm: faceWidth,
                     heightMm: Math.round(d.height),
                     thicknessMm: panelThickness,
-                    category: 'panel'
+                    category: 'panel',
+                    partId: `drawer-${bay.id}-faces`
                 });
                 hardwareItems.push({
                     id: uid(),

@@ -112,8 +112,6 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         wireframe: showWireframe
     });
 
-    // Layout node positions are now handled by RecursiveRender
-
     // Global keyboard tracking for Shift key to disable snapping during TransformControls drag
     const [isShiftDown, setIsShiftDown] = useState(false);
     useEffect(() => {
@@ -143,37 +141,36 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
             <ProfileInstances type={profileType} material={material}>
                 {/* --- Outer Frame --- */}
                 {/* Verticals (4 Pillars) */}
-                <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
-                <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} />
-                <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
-                <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} />
+                <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} partId="frame-pillar" />
+                <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} partId="frame-pillar" />
+                <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} partId="frame-pillar" />
+                <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} partId="frame-pillar" />
 
                 {/* Width Beams (Top/Bottom, Front/Back) */}
-                <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
-                <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} />
-                <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
-                <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} />
+                <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} partId="frame-width-beam" />
+                <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} partId="frame-width-beam" />
+                <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} partId="frame-width-beam" />
+                <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} partId="frame-width-beam" />
 
                 {/* Depth Beams (Left/Right, Top/Bottom) */}
-                <ProfileInstance length={dLength} position={[-width / 2 + offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} />
-                <ProfileInstance length={dLength} position={[-width / 2 + offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
-                <ProfileInstance length={dLength} position={[width / 2 - offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} />
-                <ProfileInstance length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} />
-
-                {/* --- Layout Nodes (Bays & Dividers) --- */}
-                {/* use RecursiveRender to draw the layout tree */}
-                <RecursiveRender
-                    node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
-                    origin={[0, 0, 0]}
-                    dims={[width, height, depth]}
-                    profileType={profileType}
-                    height={height}
-                    depth={depth}
-                    isShiftDown={isShiftDown}
-                    parentOrientation={'horizontal'}
-                />
-
+                <ProfileInstance length={dLength} position={[-width / 2 + offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
+                <ProfileInstance length={dLength} position={[-width / 2 + offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
+                <ProfileInstance length={dLength} position={[width / 2 - offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
+                <ProfileInstance length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
             </ProfileInstances>
+
+            {/* --- Layout Nodes (Bays & Dividers) --- */}
+            {/* use RecursiveRender to draw the layout tree */}
+            <RecursiveRender
+                node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
+                origin={[0, 0, 0]}
+                dims={[width, height, depth]}
+                profileType={profileType}
+                height={height}
+                depth={depth}
+                isShiftDown={isShiftDown}
+                parentOrientation={'horizontal'}
+            />
 
             {/* --- Connectors (Outer Frame) --- */}
             {/* 仅在使用 angle_bracket 时渲染外部连接件 */}

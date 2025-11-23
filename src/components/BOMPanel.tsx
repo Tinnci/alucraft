@@ -45,6 +45,7 @@ export function BOMPanel() {
   // Use Global UI Store
   const isOpen = useUIStore((state) => state.isBOMPanelOpen);
   const setIsOpen = useUIStore((state) => state.setBOMPanelOpen);
+  const setHighlightedPartId = useUIStore((state) => state.setHighlightedPartId);
 
   const [stockLength, setStockLength] = useState<number>(6000);
   const [unitPrices, setUnitPrices] = useState(DEFAULT_PRICES);
@@ -141,7 +142,12 @@ export function BOMPanel() {
                 </h3>
                 <div className="space-y-1">
                   {bom.filter(i => i.category === 'profile').map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-muted/30 p-2 rounded border border-border/50">
+                    <div
+                      key={idx}
+                      className="flex justify-between items-center bg-muted/30 p-2 rounded border border-border/50 hover:bg-muted/50 transition-colors cursor-default"
+                      onMouseEnter={() => item.partId && setHighlightedPartId(item.partId)}
+                      onMouseLeave={() => setHighlightedPartId(null)}
+                    >
                       <div className="min-w-0">
                         <div className="text-sm text-foreground truncate">{item.name}</div>
                         <div className="text-xs text-muted-foreground">{item.lengthMm}mm</div>
@@ -161,7 +167,12 @@ export function BOMPanel() {
                 </h3>
                 <div className="space-y-1">
                   {bom.filter(i => i.category === 'panel').map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-muted/30 p-2 rounded border border-border/50">
+                    <div
+                      key={idx}
+                      className="flex justify-between items-center bg-muted/30 p-2 rounded border border-border/50 hover:bg-muted/50 transition-colors cursor-default"
+                      onMouseEnter={() => item.partId && setHighlightedPartId(item.partId)}
+                      onMouseLeave={() => setHighlightedPartId(null)}
+                    >
                       <div className="min-w-0">
                         <div className="text-sm text-foreground truncate">{item.name}</div>
                         <div className="text-xs text-muted-foreground">{item.widthMm} x {item.heightMm} mm</div>
