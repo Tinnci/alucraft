@@ -167,7 +167,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                     offset={offset}
                     updateShelf={updateShelf}
                     isShiftDown={isShiftDown}
-                    partId={`shelf-${bay.id}-${shelf.id}`} // [NEW] Pass partId
+                    partId={`shelf-${bay.id}-beams`} // [FIX] Match BOM aggregate ID
                 />
             ))}
 
@@ -182,7 +182,7 @@ export function Bay({ bay, position, height, depth, profileType, isShiftDown, co
                         depth={depth - (s * 2)}
                         position={[0, -height / 2 + drawer.y + drawer.height / 2 + s, 0]}
                         isColliding={isColliding}
-                        partId={`drawer-${bay.id}-${drawer.id}`} // [NEW] Pass partId
+                        partId={`drawer-${bay.id}-faces`} // [FIX] Match BOM aggregate ID
                     />
                 );
             })}
