@@ -5,7 +5,7 @@ import { useThree } from '@react-three/fiber';
 import { TransformControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { LayoutNode, ContainerNode, DividerNode, ItemNode, PROFILES } from '@/core/types';
-import { NodePosition } from '@/core/layout-utils';
+import computeLayoutSizes, { NodePosition } from '@/core/layout-utils';
 import { getItemRenderer } from './itemRegistry';
 import { Bay } from './Bay';
 import useDesignStore from '@/store/useDesignStore';
@@ -122,38 +122,60 @@ interface ContainerVisualProps {
 }
 
 function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, recursionDepth, positions, ...groupProps }: ContainerVisualProps) {
+  const [w, h, d] = dims;
   const [x, y, z] = origin;
   const container = node;
+  const isVert = container.orientation === 'vertical';
 
   // Defensive check: Ensure children is an array - memoize to avoid fluctuating references
   const children = useMemo(() => Array.isArray(container.children) ? container.children : [], [container.children]);
+  const availableSpace = (isVert ? h : w);
+
+  // OPTIMIZATION: Memoize layout calc to prevent thrashing on every frame
+  // If positions map is provided, we don't need to compute layout sizes locally
+  const sizes = useMemo(() => {
+    if (positions) return new Map<string, number>();
+    return computeLayoutSizes(children, availableSpace, isVert ? 'vertical' : 'horizontal', new Map<string, number>());
+  }, [children, availableSpace, isVert, positions]);
+
+  const start = isVert ? y - h / 2 : x - w / 2;
+  const childSizes = children.map((child) => (sizes.get(child.id) ?? (child.type === 'divider' ? ((child as DividerNode).thickness ?? 0) : 0)));
+
+  const childInfos: { center: [number, number, number]; dims: [number, number, number] }[] = [];
+  let cur = start;
+  for (let i = 0; i < childSizes.length; i++) {
+    const size = childSizes[i];
+    const center = isVert ? [x, cur + size / 2, z] as [number, number, number] : [cur + size / 2, y, z] as [number, number, number];
+    const dimsChild: [number, number, number] = isVert ? [w, size, d] : [size, h, d];
+    childInfos.push({ center, dims: dimsChild });
+    cur += size;
+  }
 
   return (
     <group position={[x, y, z]} {...groupProps}>
       {children.map((child, idx) => {
-        // Look up position from map
+        const info = childInfos[idx];
+        // Prefer supplied positions map (from props) over fallback
         const posMap = positions as Map<string, NodePosition> | undefined;
-        const info = posMap?.get(child.id);
-
-        // If no info found (shouldn't happen if map is complete), skip or fallback?
-        // For now, we assume map is complete if provided.
-        if (!info) return null;
-
-        const childOrigin = info.center;
-        const childDims = info.dims;
-
+        const pref = posMap?.get(child.id);
+        const childOrigin = pref?.center ?? info.center;
+        const childDims = pref?.dims ?? info.dims;
         // prev/next width computation using positions map (dimensions along main axis)
         let prevWidth = 0;
         let nextWidth = 0;
         if (child.type === 'divider') {
           const prevId = children[idx - 1]?.id;
           const nextId = children[idx + 1]?.id;
-
-          // derive axis size from child dims using the current container orientation
-          const axisPrev = container.orientation === 'vertical' ? (posMap?.get(prevId as string)?.dims[1] ?? 0) : (posMap?.get(prevId as string)?.dims[0] ?? 0);
-          const axisNext = container.orientation === 'vertical' ? (posMap?.get(nextId as string)?.dims[1] ?? 0) : (posMap?.get(nextId as string)?.dims[0] ?? 0);
-          prevWidth = axisPrev;
-          nextWidth = axisNext;
+          if (pref) {
+            // if posMap supplied, derive axis size from child dims using the current container orientation
+            const axisPrev = container.orientation === 'vertical' ? (posMap?.get(prevId as string)?.dims[1] ?? 0) : (posMap?.get(prevId as string)?.dims[0] ?? 0);
+            const axisNext = container.orientation === 'vertical' ? (posMap?.get(nextId as string)?.dims[1] ?? 0) : (posMap?.get(nextId as string)?.dims[0] ?? 0);
+            prevWidth = axisPrev;
+            nextWidth = axisNext;
+          } else {
+            prevWidth = prevId ? (sizes.get(prevId) ?? 0) : 0;
+            nextWidth = nextId ? (sizes.get(nextId) ?? 0) : 0;
+          }
         }
 
         return (

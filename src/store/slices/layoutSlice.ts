@@ -13,6 +13,7 @@ import {
 } from '@/core/types';
 import { uid, createDefaultDoorConfig, getDoorSides, getDoorStateKey } from '@/core/utils';
 import computeLayoutSizes, { moveDividerInLayout } from '@/core/layout-utils';
+import { validateDesignJSON } from '@/utils/validation';
 
 export interface LayoutSlice {
     layout: LayoutNode[];
@@ -33,6 +34,7 @@ export interface LayoutSlice {
     removeDrawer: (bayId: string, id: string) => void;
     updateDrawer: (bayId: string, id: string, y: number, height: number) => void;
     duplicateDrawer: (bayId: string, id: string) => void;
+    setLayout: (layout: LayoutNode[]) => void;
 }
 
 export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> = (set) => ({
@@ -341,4 +343,49 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
             })
         };
     }),
-    });
+    setLayout: (layout: LayoutNode[]) => set((state) => {
+        // Validate incoming layout
+        const validation = validateDesignJSON(layout);
+        if (!validation.success) {
+            console.error('Invalid layout JSON:', validation.error);
+            // Optionally throw or return early. For now, we log and return current state to prevent corruption.
+            return {};
+        }
+
+        const profileSize = PROFILES[state.profileType].size;
+
+        // Compute total width from layout
+        const newTotalWidth = layout.reduce((acc: number, node: LayoutNode) => {
+            if (node.type === 'item') return acc + (typeof (node as LayoutBay).config?.width === 'number' ? (node as LayoutBay).config!.width as number : 0);
+            if (node.type === 'divider') return acc + ((node as LayoutDivider).thickness ?? 0);
+            if (node.type === 'container') return acc + (typeof (node as ContainerNode).size === 'number' ? (node as ContainerNode).size as number : 0);
+            return acc;
+        }, 0) + (profileSize * 2);
+
+        // Build doorStates for any bays with doors
+        const newDoorStates: Record<string, boolean> = { ...state.doorStates };
+        const setDoorStatesRec = (nodes: LayoutNode[]) => {
+            for (const n of nodes) {
+                if (n.type === 'item') {
+                    const bay = n as LayoutBay;
+                    if (bay.config?.door) {
+                        const sides = getDoorSides(bay.config.door);
+                        sides.forEach((side) => {
+                            const key = getDoorStateKey(bay.id, side);
+                            newDoorStates[key] = state.isDoorOpen;
+                        });
+                    }
+                } else if (n.type === 'container') {
+                    setDoorStatesRec((n as ContainerNode).children);
+                }
+            }
+        };
+        setDoorStatesRec(layout);
+
+        return {
+            layout,
+            width: newTotalWidth,
+            doorStates: newDoorStates,
+        };
+    }),
+});

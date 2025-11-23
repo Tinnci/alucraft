@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
+import { validateDesignJSON } from '@/utils/validation';
 
 /**
  * useAppState - 应用级副作用管理 Hook
@@ -60,6 +61,17 @@ export function useAppState() {
       if (parsed.hasRightWall !== undefined) setHasRightWall(parsed.hasRightWall);
       if (parsed.isDoorOpen !== undefined) setIsDoorOpen(parsed.isDoorOpen);
       if (parsed.result) setResult(parsed.result);
+      // If a layout is present, validate and set it
+      if (parsed.layout) {
+        const validation = validateDesignJSON(parsed.layout);
+        if (validation.success) {
+          // Ensure we call store method to load layout, if available
+          const setLayout = useDesignStore.getState().setLayout;
+          if (setLayout) setLayout(parsed.layout as any);
+        } else {
+          console.warn('Saved layout failed validation:', validation.error);
+        }
+      }
   if (parsed.showSnapGuides !== undefined) setShowSnapGuides(parsed.showSnapGuides);
   if (parsed.enableHaptics !== undefined) setEnableHaptics(parsed.enableHaptics);
     } catch (err) {
