@@ -12,6 +12,7 @@ import { ContextToolbar } from '@/components/ContextToolbar';
 import { BOMPanel } from '@/components/BOMPanel';
 import { Workspace } from '@/components/Scene/Workspace';
 import { useAppState } from '@/hooks/useAppState';
+import { useCallback } from 'react';
 
 export default function Home() {
   // 挂载全局副作用（数据加载、保存、主题切换）
@@ -19,16 +20,47 @@ export default function Home() {
 
   // 获取用于渲染 Canvas 背景的状态
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
+  const height = useDesignStore((state: DesignState) => state.height);
+  const splitItem = useDesignStore((state: DesignState) => state.splitItem);
+  const addShelf = useDesignStore((state: DesignState) => state.addShelf);
+  const addDrawer = useDesignStore((state: DesignState) => state.addDrawer);
+  const removeBay = useDesignStore((state: DesignState) => state.removeBay);
 
   // const result = useDesignStore((state: DesignState) => state.result); // No longer needed here
   const isPropertyPanelOpen = useUIStore((s) => s.isPropertyPanelOpen);
   const setPropertyPanelOpen = useUIStore((s) => s.setPropertyPanelOpen);
+  const selectedBayId = useUIStore((s) => s.selectedBayId);
+  const setSelectedBayId = useUIStore((s) => s.setSelectedBayId);
   // 确保这里的颜色与 globals.css 中的 --background 保持一致
   // Light: #ffffff, Dark: #0f172a (Slate 900)
   const bgColor = isDarkMode ? '#0f172a' : '#ffffff';
 
   // 获取清除选中状态的方法
   const clearSelection = useUIStore((state) => state.clearSelection);
+
+  const handleSplit = useCallback(
+    (orientation: 'horizontal' | 'vertical') => {
+      if (!selectedBayId) return;
+      splitItem(selectedBayId, orientation);
+    },
+    [selectedBayId, splitItem]
+  );
+
+  const handleAddShelf = useCallback(() => {
+    if (!selectedBayId) return;
+    addShelf(selectedBayId, height / 2);
+  }, [addShelf, height, selectedBayId]);
+
+  const handleAddDrawer = useCallback(() => {
+    if (!selectedBayId) return;
+    addDrawer(selectedBayId, 200, 200);
+  }, [addDrawer, selectedBayId]);
+
+  const handleDeleteBay = useCallback(() => {
+    if (!selectedBayId) return;
+    removeBay(selectedBayId);
+    setSelectedBayId(null);
+  }, [removeBay, selectedBayId, setSelectedBayId]);
 
   // 使用 onPointerMissed 处理点击空白处的交互
   // R3F 自动检测"点击了 Canvas 但没点中任何 3D 物体"的情况
@@ -56,7 +88,13 @@ export default function Home() {
         <div className="flex-1 relative bg-slate-900/20 min-w-0 flex flex-col">
           <div className="absolute inset-x-0 top-0 pointer-events-none p-4 z-40 flex justify-center">
             <div className="pointer-events-auto">
-              <ContextToolbar />
+              <ContextToolbar
+                selectedBayId={selectedBayId}
+                onSplit={handleSplit}
+                onAddShelf={handleAddShelf}
+                onAddDrawer={handleAddDrawer}
+                onDelete={handleDeleteBay}
+              />
             </div>
           </div>
           <div className="flex-1 relative">

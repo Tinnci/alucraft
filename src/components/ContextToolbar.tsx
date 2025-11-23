@@ -10,43 +10,18 @@ import {
     MousePointerClick
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import useDesignStore from '@/store/useDesignStore';
-import useUIStore from '@/store/useUIStore';
 
-export function ContextToolbar() {
-    // 1. 获取选中状态
-    const selectedBayId = useUIStore((state) => state.selectedBayId);
-    const height = useDesignStore((s) => s.height);
+interface ContextToolbarProps {
+    selectedBayId: string | null;
+    onSplit: (orientation: 'horizontal' | 'vertical') => void;
+    onAddShelf: () => void;
+    onAddDrawer: () => void;
+    onDelete: () => void;
+}
 
-    // 2. 获取 Actions
-    const splitItem = useDesignStore((s) => s.splitItem);
-    const addShelf = useDesignStore((s) => s.addShelf);
-    const addDrawer = useDesignStore((s) => s.addDrawer);
-    const removeBay = useDesignStore((s) => s.removeBay);
-
-    // 3. 查找当前选中的 Bay 对象 (用于判断是否存在)
-    // 这里的逻辑简化为：只要有 selectedBayId，我们就显示工具栏
+export function ContextToolbar({ selectedBayId, onSplit, onAddShelf, onAddDrawer, onDelete }: ContextToolbarProps) {
+    // 没有选中 Bay 时不显示工具栏
     if (!selectedBayId) return null;
-
-    // 处理点击
-    const handleSplit = (orientation: 'horizontal' | 'vertical') => {
-        splitItem(selectedBayId, orientation);
-    };
-
-    const handleAddShelf = () => {
-        // 默认添加在中间位置
-        addShelf(selectedBayId, height / 2);
-    };
-
-    const handleAddDrawer = () => {
-        // 默认位置
-        addDrawer(selectedBayId, 200, 200);
-    };
-
-    const handleDelete = () => {
-        removeBay(selectedBayId);
-        useUIStore.getState().setSelectedBayId(null); // 取消选中
-    };
 
     return (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1.5 glass-panel rounded-full shadow-2xl animate-in slide-in-from-top-4 fade-in duration-200 z-40">
@@ -58,12 +33,12 @@ export function ContextToolbar() {
             <ToolbarButton
                 icon={SplitSquareHorizontal}
                 label="Split Vert"
-                onClick={() => handleSplit('horizontal')}
+                onClick={() => onSplit('horizontal')}
             />
             <ToolbarButton
                 icon={SplitSquareVertical}
                 label="Split Horiz"
-                onClick={() => handleSplit('vertical')}
+                onClick={() => onSplit('vertical')}
             />
 
             <div className="w-px h-4 bg-border mx-1" />
@@ -71,12 +46,12 @@ export function ContextToolbar() {
             <ToolbarButton
                 icon={Layers}
                 label="Add Shelf"
-                onClick={handleAddShelf}
+                onClick={onAddShelf}
             />
             <ToolbarButton
                 icon={Box}
                 label="Add Drawer"
-                onClick={handleAddDrawer}
+                onClick={onAddDrawer}
             />
 
             <div className="w-px h-4 bg-border mx-1" />
@@ -85,7 +60,7 @@ export function ContextToolbar() {
                 icon={Trash2}
                 label="Delete"
                 variant="destructive"
-                onClick={handleDelete}
+                onClick={onDelete}
             />
         </div>
     );
