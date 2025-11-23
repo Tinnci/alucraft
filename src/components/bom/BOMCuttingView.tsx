@@ -11,7 +11,7 @@ interface BOMCuttingViewProps {
     cuttingData: {
         bars: number[][];
         totalStockNeeded: number;
-        waste: number;
+        wasteRatio: number;
     } | null;
     stockLength: number;
     setStockLength: (length: number) => void;
@@ -45,7 +45,7 @@ export function BOMCuttingView({ cuttingData, stockLength, setStockLength }: BOM
                             <div className="text-right">
                                 <div className="text-xs text-muted-foreground">Waste</div>
                                 <div className="text-lg font-bold text-destructive">
-                                    {((1 - (cuttingData.bars.flat().reduce((a, b) => a + b, 0) / (cuttingData.totalStockNeeded * stockLength))) * 100).toFixed(1)}%
+                                    {(cuttingData.wasteRatio * 100).toFixed(1)}%
                                 </div>
                             </div>
                         </div>

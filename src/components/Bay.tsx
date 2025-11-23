@@ -274,6 +274,8 @@ function DraggableShelf({ bayId, shelf, width, height, depth, wLength, dLength, 
     const isSelected = selectedShelfId === shelf.id;
 
     // [NEW] BOM Highlighting
+    // [NEW] BOM Highlighting
+    const highlightedPartId = useUIStore((s) => s.highlightedPartId);
     const isHighlighted = partId && highlightedPartId === partId;
 
     const showSnapGuides = useDesignStore((state: DesignState) => state.showSnapGuides);

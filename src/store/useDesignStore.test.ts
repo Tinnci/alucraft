@@ -69,9 +69,11 @@ describe('useDesignStore Actions', () => {
         useDesignStore.getState().resizeBay(bayId, newBayWidth);
 
         const newState = useDesignStore.getState();
-        const bay = newState.layout.find(n => n.id === bayId) as ItemNode | undefined;
+        const bay = newState.layout.find(n => n.id === bayId);
+        expect(bay).toBeDefined();
+        if (!bay || bay.type !== 'item' || bay.contentType !== 'generic_bay') throw new Error('Bay not found or invalid type');
 
-        expect(bay.config.width).toBe(newBayWidth);
+        expect((bay as LayoutBay).config.width).toBe(newBayWidth);
 
         // Initial Bay Width was 560. New is 600. Delta +40.
         // Profile size (20*2 = 40) is constant in total width calculation logic?
