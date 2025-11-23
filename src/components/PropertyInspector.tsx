@@ -119,9 +119,9 @@ export function PropertyInspector() {
   const doorConfig = selectedBay?.config.door;
 
   return (
-    <div className="flex flex-col h-full w-full md:w-80 bg-slate-900/95 backdrop-blur-xl border-l border-white/10 shadow-2xl">
+    <div className="flex flex-col h-full w-full md:w-80 bg-background/95 backdrop-blur-xl border-l border-border shadow-2xl">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5 shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-border bg-muted/5 shrink-0">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           {selectedObjectType ? (
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearSelection} title="Back">

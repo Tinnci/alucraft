@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+
 import React, { useRef } from 'react';
 import {
   Settings2,
@@ -109,7 +111,7 @@ export function TopBar() {
 
   const applyPreset = (preset: string) => {
     const state = useDesignStore.getState();
-  const primaryBay = findBays(layout)[0];
+    const primaryBay = findBays(layout)[0];
     switch (preset) {
       case 'standard':
         state.setWidth(600);
@@ -136,8 +138,8 @@ export function TopBar() {
     <div
       className={`
         w-full
-        bg-slate-900/50 backdrop-blur-md glass-shine
-        border-b border-white/10 shadow-lg
+        bg-background/80 backdrop-blur-md glass-shine
+        border-b border-border shadow-lg
         transition-all duration-300
         ${isTopBarExpanded ? 'h-auto' : 'h-12'}
       `}
@@ -147,25 +149,29 @@ export function TopBar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-foreground font-bold text-sm">
-              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
+              <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.8)]"></div>
               ALUCRAFT
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => setTopBarExpanded(!isTopBarExpanded)}
-              className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground"
             >
               {isTopBarExpanded ? '−' : '+'}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant={isPropertyPanelOpen ? "default" : "ghost"}
+              size="icon-sm"
               onClick={() => setPropertyPanelOpen(!isPropertyPanelOpen)}
-              className={`p-2 rounded-md transition-colors ${isPropertyPanelOpen ? 'bg-blue-600 text-white' : 'text-muted-foreground hover:bg-white/10 hover:text-foreground'}`}
               title={isPropertyPanelOpen ? "Hide Inspector" : "Show Inspector"}
+              className={!isPropertyPanelOpen ? "text-muted-foreground" : ""}
             >
               {isPropertyPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -178,17 +184,15 @@ export function TopBar() {
                 <label className="text-xs text-muted-foreground font-medium">Profile</label>
                 <div className="flex bg-muted p-1 rounded gap-1">
                   {['2020', '3030', '4040'].map((type) => (
-                    <button
+                    <Button
                       key={type}
+                      variant={profileType === type ? "default" : "ghost"}
+                      size="sm"
                       onClick={() => setProfileType(type as ProfileType)}
-                      className={`flex-1 py-1 rounded text-xs transition-colors ${
-                        profileType === type
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                      className="flex-1 h-7 text-xs"
                     >
                       {type}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -197,17 +201,15 @@ export function TopBar() {
                 <label className="text-xs text-muted-foreground font-medium">Material</label>
                 <div className="flex bg-muted p-1 rounded gap-1">
                   {['silver', 'dark_metal', 'wood'].map((mat) => (
-                    <button
+                    <Button
                       key={mat}
+                      variant={material === mat ? "default" : "ghost"}
+                      size="sm"
                       onClick={() => setMaterial(mat as MaterialType)}
-                      className={`flex-1 py-1 rounded text-xs transition-colors ${
-                        material === mat
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                      className="flex-1 h-7 text-xs"
                     >
                       {mat === 'dark_metal' ? 'Dark' : mat.charAt(0).toUpperCase() + mat.slice(1)}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -215,7 +217,7 @@ export function TopBar() {
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground font-medium">Presets</label>
                 <select
-                  className="w-full bg-muted text-muted-foreground text-xs rounded px-2 py-1.5 border border-transparent focus:border-blue-500 focus:outline-none cursor-pointer hover:text-foreground"
+                  className="w-full bg-muted text-muted-foreground text-xs rounded px-2 py-1.5 border border-transparent focus:border-primary focus:outline-none cursor-pointer hover:text-foreground"
                   onChange={(e) => applyPreset(e.target.value)}
                   value=""
                 >
@@ -233,101 +235,103 @@ export function TopBar() {
             <div className="flex gap-2 flex-wrap">
               {/* Undo/Redo */}
               <div className="flex items-center gap-0.5 bg-muted rounded-lg p-1 border border-border">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => undo()}
                   disabled={pastStates.length === 0}
-                  className={`p-1.5 rounded hover:bg-background transition-colors ${
-                    pastStates.length === 0 ? 'opacity-30 cursor-not-allowed' : 'text-blue-500 hover:text-blue-400'
-                  }`}
+                  className="h-7 w-7 text-primary hover:text-primary/80"
                   title="Undo"
                 >
                   <Undo2 size={14} />
-                </button>
+                </Button>
                 <div className="w-px h-3 bg-border"></div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => redo()}
                   disabled={futureStates.length === 0}
-                  className={`p-1.5 rounded hover:bg-background transition-colors ${
-                    futureStates.length === 0 ? 'opacity-30 cursor-not-allowed' : 'text-blue-500 hover:text-blue-400'
-                  }`}
+                  className="h-7 w-7 text-primary hover:text-primary/80"
                   title="Redo"
                 >
                   <Redo2 size={14} />
-                </button>
+                </Button>
               </div>
 
               {/* View Controls */}
-              <button
+              <Button
+                variant={showWireframe ? "secondary" : "ghost"}
+                size="icon-sm"
                 onClick={() => setShowWireframe(!showWireframe)}
-                className={`p-1.5 rounded border transition-colors ${
-                  showWireframe
-                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-500 hover:bg-blue-500/20'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={showWireframe ? "text-primary bg-primary/10" : "text-muted-foreground"}
                 title="Wireframe Mode"
               >
                 <Settings2 size={14} />
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant={showDimensions ? "secondary" : "ghost"}
+                size="icon-sm"
                 onClick={() => setShowDimensions(!showDimensions)}
-                className={`p-1.5 rounded border transition-colors ${
-                  showDimensions
-                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-500 hover:bg-blue-500/20'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={showDimensions ? "text-primary bg-primary/10" : "text-muted-foreground"}
                 title="Toggle Dimensions"
               >
                 {showDimensions ? <Eye size={14} /> : <EyeOff size={14} />}
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant={showSnapGuides ? "secondary" : "ghost"}
+                size="icon-sm"
                 onClick={() => setShowSnapGuides(!showSnapGuides)}
-                className={`p-1.5 rounded border transition-colors ${
-                  showSnapGuides
-                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-500 hover:bg-blue-500/20'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                className={showSnapGuides ? "text-primary bg-primary/10" : "text-muted-foreground"}
                 title={showSnapGuides ? "Disable Snapping Guides" : "Enable Snapping Guides"}
               >
                 <Magnet size={14} />
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => triggerCameraReset()}
-                className="p-1.5 rounded border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="text-muted-foreground hover:text-foreground"
                 title="Reset Camera"
               >
                 <Video size={14} />
-              </button>
+              </Button>
 
               {/* Theme Toggle */}
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => toggleTheme()}
-                className="p-1.5 rounded border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="text-muted-foreground hover:text-foreground"
                 title="Toggle Theme"
               >
                 <SunMedium size={14} />
-              </button>
+              </Button>
 
               {/* Export Buttons */}
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={downloadDesign}
-                className="flex items-center gap-1 px-3 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors"
+                className="h-7 text-xs gap-1"
                 title="Download Design"
               >
                 <Download size={12} /> Save
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={exportDxf}
-                className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/20 rounded text-xs transition-colors"
+                className="h-7 text-xs gap-1 text-primary border-primary/20 bg-primary/10 hover:bg-primary/20"
                 title="Export to DXF"
               >
                 <Download size={12} /> DXF
-              </button>
+              </Button>
 
-              <label className="flex items-center gap-1 px-3 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded text-xs transition-colors cursor-pointer">
+              <label className="flex items-center gap-1 px-3 py-1.5 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-md text-xs transition-colors cursor-pointer h-7">
                 <Upload size={12} /> Load
                 <input
                   ref={fileInputRef}
@@ -339,12 +343,14 @@ export function TopBar() {
               </label>
 
               {/* BOM Panel Toggle */}
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setBOMPanelOpen(true)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded text-xs transition-colors"
+                className="h-7 text-xs gap-1 text-primary border-primary/20 bg-primary/10 hover:bg-primary/20"
               >
                 BOM
-              </button>
+              </Button>
             </div>
           </div>
         )}

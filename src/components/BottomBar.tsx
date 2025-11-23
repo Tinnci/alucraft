@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import { Layers, Eye, EyeOff, FileText } from 'lucide-react';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
@@ -25,8 +26,8 @@ export function BottomBar() {
     <div
       className={`
         w-full
-        bg-slate-900/80 backdrop-blur-md
-        border-t border-white/10 shadow-lg
+        bg-background/80 backdrop-blur-md
+        border-t border-border shadow-lg
         transition-all duration-300
         ${isDarkMode ? 'dark' : ''}
       `}
@@ -42,30 +43,28 @@ export function BottomBar() {
 
         {/* Right: Toggles */}
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant={showWireframe ? "secondary" : "ghost"}
+            size="sm"
             onClick={() => setShowWireframe(!showWireframe)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${showWireframe
-              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-              : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground border border-transparent'
-              }`}
+            className={`gap-1.5 text-xs font-medium ${showWireframe ? "text-primary bg-primary/10 border-primary/20" : "text-muted-foreground"}`}
             title="Toggle Wireframe"
           >
             {showWireframe ? <Eye size={14} /> : <EyeOff size={14} />}
             <span>Wireframe</span>
-          </button>
+          </Button>
 
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-border mx-1" />
 
-          <button
+          <Button
+            variant={isBOMPanelOpen ? "secondary" : "ghost"}
+            size="sm"
             onClick={() => setBOMPanelOpen(!isBOMPanelOpen)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${isBOMPanelOpen
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground border border-transparent'
-              }`}
+            className={`gap-1.5 text-xs font-medium ${isBOMPanelOpen ? "text-primary bg-primary/10 border-primary/20" : "text-muted-foreground"}`}
           >
             <FileText size={14} />
             <span>BOM</span>
-          </button>
+          </Button>
         </div>
       </div>
     </div>

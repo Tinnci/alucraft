@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { ChevronRight, ChevronDown, Box, Layers, LayoutGrid, Component } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
 import { LayoutNode, ContainerNode, ItemNode, DividerNode } from '@/core/types';
@@ -26,7 +28,7 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
         switch (node.type) {
             case 'container': return <LayoutGrid size={14} className="text-blue-400" />;
             case 'item': return <Box size={14} className="text-emerald-400" />;
-            case 'divider': return <Component size={14} className="text-gray-400" />;
+            case 'divider': return <Component size={14} className="text-muted-foreground" />;
             default: return <Layers size={14} />;
         }
     };
@@ -42,27 +44,28 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
 
     return (
         <div className="select-none">
-            <div
-                className={`
-          flex items-center gap-2 py-1 px-2 cursor-pointer transition-colors rounded
-          ${isSelected ? 'bg-blue-600/30 text-blue-100' : 'hover:bg-white/5 text-muted-foreground hover:text-foreground'}
-        `}
+            <Button
+                variant="ghost"
+                className={cn(
+                    "w-full justify-start h-7 px-2 text-xs font-normal mb-0.5",
+                    isSelected ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
                 style={{ paddingLeft: `${depth * 12 + 8}px` }}
                 onClick={handleSelect}
             >
                 {node.type === 'container' && (node as ContainerNode).children.length > 0 ? (
-                    <button
+                    <div
                         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-                        className="p-0.5 hover:bg-white/10 rounded"
+                        className="p-0.5 hover:bg-muted/50 rounded mr-1 cursor-pointer"
                     >
                         {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                    </button>
+                    </div>
                 ) : (
-                    <span className="w-4" />
+                    <span className="w-4 mr-1" />
                 )}
                 {getIcon()}
-                <span className="text-xs truncate">{getLabel()}</span>
-            </div>
+                <span className="ml-2 truncate">{getLabel()}</span>
+            </Button>
 
             {isOpen && node.type === 'container' && (
                 <div>
@@ -74,7 +77,7 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
 
             {/* Show Shelves/Drawers for Items */}
             {isOpen && node.type === 'item' && (
-                <div className="border-l border-white/10 ml-4">
+                <div className="border-l border-border ml-4">
                     {/* We could list shelves here, but keeping it simple for now */}
                 </div>
             )}
@@ -87,7 +90,7 @@ export function HierarchyTree() {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-white/10">
+            <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
                 Hierarchy
             </div>
             <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
