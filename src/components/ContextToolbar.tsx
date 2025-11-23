@@ -7,6 +7,7 @@ import {
     Box,
     Trash2
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ContextToolbarProps {
     position: [number, number, number];
@@ -28,7 +29,7 @@ export function ContextToolbar({
     return (
         <Html position={position} center zIndexRange={[100, 0]}>
             <div
-                className="flex items-center gap-1 p-1 bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-lg shadow-xl animate-in fade-in zoom-in duration-200 select-none"
+                className="flex items-center gap-1 p-1 bg-popover/90 backdrop-blur-md border border-border rounded-lg shadow-xl animate-in fade-in zoom-in duration-200 select-none text-popover-foreground"
                 onPointerDown={(e) => e.stopPropagation()} // Prevent click-through to scene
                 onClick={(e) => e.stopPropagation()}
             >
@@ -37,7 +38,7 @@ export function ContextToolbar({
                 <div className="w-px h-4 bg-white/10 mx-1" />
                 <ToolbarButton icon={Layers} onClick={onAddShelf} tooltip="Add Shelf" />
                 <ToolbarButton icon={Box} onClick={onAddDrawer} tooltip="Add Drawer" />
-                <div className="w-px h-4 bg-white/10 mx-1" />
+                <div className="w-px h-4 bg-border mx-1" />
                 <ToolbarButton icon={Trash2} onClick={onDelete} tooltip="Delete Bay" variant="destructive" />
             </div>
         </Html>
@@ -47,17 +48,14 @@ export function ContextToolbar({
 function ToolbarButton({ icon: Icon, onClick, tooltip, variant = 'default' }: { icon: React.ComponentType<any>, onClick: () => void, tooltip: string, variant?: 'default' | 'destructive' }) {
     const isDestructive = variant === 'destructive';
     return (
-        <button
+        <Button
+            variant={isDestructive ? "destructive" : "ghost"}
+            size="icon-sm"
             onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className={`
-        p-1.5 rounded-md transition-colors
-        ${isDestructive
-                    ? 'text-red-400 hover:bg-red-500/20 hover:text-red-300'
-                    : 'text-slate-400 hover:bg-white/10 hover:text-white'}
-      `}
+            className={!isDestructive ? "text-muted-foreground hover:text-foreground" : ""}
             title={tooltip}
         >
             <Icon size={16} />
-        </button>
+        </Button>
     );
 }

@@ -31,9 +31,9 @@ const DraggableItem = ({
     return (
         <div
             onPointerDown={handlePointerDown}
-            className="flex flex-col items-center justify-center gap-2 p-3 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 rounded-lg transition-all group cursor-grab active:cursor-grabbing select-none"
+            className="flex flex-col items-center justify-center gap-2 p-3 bg-muted/30 hover:bg-muted/50 border border-border/50 hover:border-border rounded-lg transition-all group cursor-grab active:cursor-grabbing select-none"
         >
-            <div className="p-2 bg-slate-700/50 rounded-full text-slate-300 group-hover:text-white group-hover:scale-110 transition-all">
+            <div className="p-2 bg-muted rounded-full text-muted-foreground group-hover:text-foreground group-hover:scale-110 transition-all">
                 <Icon size={18} />
             </div>
             <span className="text-xs text-muted-foreground group-hover:text-foreground">{label}</span>
@@ -57,8 +57,8 @@ export function ComponentLibrary() {
     }, [draggedComponent, setDraggedComponent]);
 
     return (
-        <div className="flex flex-col border-t border-white/10 bg-black/20">
-            <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-white/10">
+        <div className="flex flex-col border-t border-border bg-muted/50">
+            <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
                 Library (Drag & Drop)
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">

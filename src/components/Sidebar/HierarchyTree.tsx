@@ -3,6 +3,7 @@
 import React from 'react';
 import { ChevronRight, ChevronDown, Box, Layers, LayoutGrid, Component } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
@@ -93,11 +94,11 @@ export function HierarchyTree() {
             <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
                 Hierarchy
             </div>
-            <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
+            <ScrollArea className="flex-1 py-2">
                 {layout.map((node) => (
                     <TreeNode key={node.id} node={node} />
                 ))}
-            </div>
+            </ScrollArea>
         </div>
     );
 }
