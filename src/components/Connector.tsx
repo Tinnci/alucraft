@@ -44,22 +44,44 @@ function getConnectorGeometry(size: number) {
 export function Connector({ size, position = [0, 0, 0], rotation = [0, 0, 0] }: ConnectorProps) {
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
     const geometry = useMemo(() => getConnectorGeometry(size), [size]);
+    const connectorMaterial = useMemo(() => {
+        const mat = new THREE.MeshStandardMaterial({ color: '#b0b0b0', roughness: 0.6, metalness: 0.6, wireframe: showWireframe });
+        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') console.debug('Connector: creating connectorMaterial', { id: (mat as any).id, showWireframe });
+        return mat;
+    }, [showWireframe]);
+    const boltMaterial = useMemo(() => {
+        const mat = new THREE.MeshStandardMaterial({ color: '#333', wireframe: showWireframe });
+        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') console.debug('Connector: creating boltMaterial', { id: (mat as any).id, showWireframe });
+        return mat;
+    }, [showWireframe]);
+
+    // Ensure materials are disposed when unmounted to free GPU resources
+    React.useEffect(() => {
+        return () => {
+            try {
+                if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+                    console.debug('Connector: disposing materials', { connectorMaterialId: (connectorMaterial as any).id, boltMaterialId: (boltMaterial as any).id });
+                }
+                connectorMaterial.dispose();
+                boltMaterial.dispose();
+            } catch {
+                // ignore
+            }
+        };
+    }, [connectorMaterial, boltMaterial]);
 
     return (
         <group position={position} rotation={rotation}>
             {/* Offset to align corner with origin */}
-            <mesh position={[0, 0, -(size - 2) / 2]} geometry={geometry}>
-                <meshStandardMaterial color="#b0b0b0" roughness={0.6} metalness={0.6} wireframe={showWireframe} />
+            <mesh position={[0, 0, -(size - 2) / 2]} geometry={geometry} material={connectorMaterial}>
             </mesh>
 
             {/* Bolts (Visual only) */}
-            <mesh position={[size / 2, 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <mesh position={[size / 2, 2, 0]} rotation={[Math.PI / 2, 0, 0]} material={boltMaterial}>
                 <cylinderGeometry args={[3, 3, 1, 16]} />
-                <meshStandardMaterial color="#333" wireframe={showWireframe} />
             </mesh>
-            <mesh position={[2, size / 2, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <mesh position={[2, size / 2, 0]} rotation={[0, 0, Math.PI / 2]} material={boltMaterial}>
                 <cylinderGeometry args={[3, 3, 1, 16]} />
-                <meshStandardMaterial color="#333" wireframe={showWireframe} />
             </mesh>
         </group>
     );

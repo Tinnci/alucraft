@@ -73,6 +73,7 @@ const geometryCache: Record<string, THREE.ExtrudeGeometry> = {};
 
 function getProfileGeometry(type: '2020' | '3030' | '4040') {
     if (!geometryCache[type]) {
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') console.debug('AluProfile: caching geometry for', type);
         const shape = createProfileShape(type);
         const extrudeSettings = {
             depth: 1, // Unit length
@@ -80,6 +81,8 @@ function getProfileGeometry(type: '2020' | '3030' | '4040') {
             steps: 1,
         };
         geometryCache[type] = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    } else {
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') console.debug('AluProfile: geometry cache hit for', type);
     }
     return geometryCache[type];
 }
@@ -94,22 +97,44 @@ export function ProfileInstances({ type, material = 'silver', children }: Profil
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
     const geometry = useMemo(() => getProfileGeometry(type), [type]);
 
-    // Load textures unconditionally (hooks rules). 
-    // Note: In a real app, might want to lazy load or handle errors if files missing.
+    // Load textures and set repeat wrap only once; avoid cloning textures per render to reduce GPU memory usage
     const textures = useTexture({
         wood: '/textures/wood.png',
         dark_metal: '/textures/dark_metal.png',
     });
+    React.useEffect(() => {
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+            try {
+                const wood = textures.wood as THREE.Texture | undefined;
+                const dark = textures.dark_metal as THREE.Texture | undefined;
+                const getImgInfo = (t?: THREE.Texture) => {
+                    const img = (t as any)?.image;
+                    if (!img) return undefined;
+                    return { width: img.width ?? img.naturalWidth, height: img.height ?? img.naturalHeight };
+                };
+                // eslint-disable-next-line no-console
+                console.debug('AluProfile: textures', { wood: getImgInfo(wood), dark: getImgInfo(dark) });
+            } catch (err) { /* ignore */ }
+        }
+    }, [textures]);
+
+    useMemo(() => {
+        try {
+            const woodTexture = textures.wood as THREE.Texture | undefined;
+            const darkMetalTexture = textures.dark_metal as THREE.Texture | undefined;
+            if (woodTexture) woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
+            if (darkMetalTexture) darkMetalTexture.wrapS = darkMetalTexture.wrapT = THREE.RepeatWrapping;
+        } catch {
+            // no-op
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const materialProps = useMemo(() => {
-        const woodTexture = textures.wood.clone();
-        const darkMetalTexture = textures.dark_metal.clone();
-        woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
-        darkMetalTexture.wrapS = darkMetalTexture.wrapT = THREE.RepeatWrapping;
         if (material === 'wood') {
-            return { map: woodTexture, color: '#ffffff', roughness: 0.8, metalness: 0.1 };
+            return { map: textures.wood, color: '#ffffff', roughness: 0.8, metalness: 0.1 };
         } else if (material === 'dark_metal') {
-            return { map: darkMetalTexture, color: '#ffffff', roughness: 0.4, metalness: 0.8 };
+            return { map: textures.dark_metal, color: '#ffffff', roughness: 0.4, metalness: 0.8 };
         } else {
             return { map: undefined, color: '#e2e8f0', roughness: 0.5, metalness: 0.6 };
         }

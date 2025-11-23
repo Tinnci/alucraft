@@ -103,14 +103,31 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
     const showWireframe = useDesignStore((state: DesignState) => state.showWireframe);
     const material = useDesignStore((state: DesignState) => state.material);
 
-    // Panel Material
-    const panelMaterial = new THREE.MeshStandardMaterial({
-        color: '#f1f5f9',
-        roughness: 0.2,
-        metalness: 0.1,
-        side: THREE.DoubleSide,
-        wireframe: showWireframe
-    });
+    // Panel Material - memoized so we don't recreate material on every render
+    const panelMaterial = React.useMemo(() => {
+        const m = new THREE.MeshStandardMaterial({
+            color: '#f1f5f9',
+            roughness: 0.2,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+            wireframe: showWireframe
+        });
+        // Debug
+        try { if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') console.debug('CabinetFrame: panelMaterial created', { id: (m as any).id }); } catch { }
+        return m;
+    }, [showWireframe]);
+
+    // Dispose the material on unmount to avoid leaking GPU resources
+    React.useEffect(() => {
+        return () => {
+            try {
+                if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') console.debug('CabinetFrame: disposing panelMaterial', { id: (panelMaterial as any).id });
+                panelMaterial.dispose();
+            } catch {
+                // ignore
+            }
+        };
+    }, [panelMaterial]);
 
     // Global keyboard tracking for Shift key to disable snapping during TransformControls drag
     const [isShiftDown, setIsShiftDown] = useState(false);
