@@ -26,8 +26,9 @@ interface RecursiveRenderProps {
 }
 
 export function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, prevWidth = 0, nextWidth = 0, recursionDepth = 0, ...groupProps }: RecursiveRenderProps) {
-  if (recursionDepth > 50) {
-    console.warn('Max recursion depth exceeded in RecursiveRender');
+  // Defensive check: Limit recursion depth to prevent stack overflow
+  if (recursionDepth > 25) {
+    console.warn(`Max recursion depth exceeded in RecursiveRender (depth: ${recursionDepth}). Stopping recursion.`);
     return null;
   }
   const [w] = dims;
@@ -88,7 +89,8 @@ function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDe
   const [x, y, z] = origin;
   const container = node;
   const isVert = container.orientation === 'vertical';
-  const children = container.children;
+  // Defensive check: Ensure children is an array
+  const children = Array.isArray(container.children) ? container.children : [];
   const availableSpace = (isVert ? h : w);
 
   // OPTIMIZATION: Memoize layout calc to prevent thrashing on every frame
