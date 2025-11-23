@@ -7,7 +7,7 @@ import { TopBar } from '@/components/TopBar';
 import { PropertyInspector } from '@/components/PropertyInspector';
 import { BottomBar } from '@/components/BottomBar';
 import { LeftSidebar } from '@/components/Sidebar/LeftSidebar';
-import { Toast } from '@/components/Toast';
+import { DesignToaster } from '@/components/DesignToaster';
 import { BOMPanel } from '@/components/BOMPanel';
 import { Workspace } from '@/components/Scene/Workspace';
 import { useAppState } from '@/hooks/useAppState';
@@ -18,7 +18,8 @@ export default function Home() {
 
   // 获取用于渲染 Canvas 背景的状态
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
-  const result = useDesignStore((state: DesignState) => state.result);
+
+  // const result = useDesignStore((state: DesignState) => state.result); // No longer needed here
   const isPropertyPanelOpen = useUIStore((s) => s.isPropertyPanelOpen);
   const setPropertyPanelOpen = useUIStore((s) => s.setPropertyPanelOpen);
   // 确保这里的颜色与 globals.css 中的 --background 保持一致
@@ -39,6 +40,7 @@ export default function Home() {
 
   return (
     <main className="flex flex-col h-screen w-screen bg-background overflow-hidden">
+      <DesignToaster />
       {/* Top */}
       <div className="shrink-0 z-50 relative">
         <TopBar />
@@ -62,10 +64,7 @@ export default function Home() {
               <Workspace />
             </Canvas>
 
-            {/* Toast Notification */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-              {result && <Toast result={result} />}
-            </div>
+            {/* Toast Notification Removed */}
           </div>
 
           {/* Bottom: Status Bar */}
