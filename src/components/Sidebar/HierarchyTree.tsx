@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import useUIStore from '@/store/useUIStore';
-import { LayoutNode, ContainerNode, ItemNode } from '@/core/types';
+import { LayoutNode, ContainerNode, ItemNode, BayConfig, Shelf, Drawer } from '@/core/types';
 
 const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => {
     const [isOpen, setIsOpen] = React.useState(true);
@@ -60,8 +60,12 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
 
     const getLabel = () => {
         switch (node.type) {
-            case 'item': return `Bay (${Math.round(Number(node.config.width) || 0)}mm)`;
-            case 'container': return `Container (${node.orientation})`;
+            case 'item': {
+                const itemNode = node as ItemNode;
+                const bayConfig = itemNode.config as BayConfig | undefined;
+                return `Bay (${Math.round(Number(bayConfig?.width) || 0)}mm)`;
+            }
+            case 'container': return `Container (${(node as ContainerNode).orientation ?? 'unknown'})`;
             case 'divider': return 'Divider';
             default: return (node as LayoutNode).id;
         }
@@ -115,7 +119,7 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
             {isOpen && node.type === 'item' && (
                 <div className="flex flex-col">
                     {/* Door */}
-                    {(node as ItemNode).config.door?.enabled && (
+                    {((node as ItemNode).config as BayConfig | undefined)?.door?.enabled && (
                         <Button
                             variant="ghost"
                             className={cn(
@@ -133,7 +137,7 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
                     )}
 
                     {/* Shelves */}
-                    {((node as ItemNode).config.shelves || []).map(shelf => (
+                    {(((node as ItemNode).config as BayConfig | undefined)?.shelves || []).map((shelf: Shelf) => (
                         <Button
                             key={shelf.id}
                             variant="ghost"
@@ -152,7 +156,7 @@ const TreeNode = ({ node, depth = 0 }: { node: LayoutNode; depth?: number }) => 
                     ))}
 
                     {/* Drawers */}
-                    {((node as ItemNode).config.drawers || []).map(drawer => (
+                    {(((node as ItemNode).config as BayConfig | undefined)?.drawers || []).map((drawer: Drawer) => (
                         <Button
                             key={drawer.id}
                             variant="ghost"

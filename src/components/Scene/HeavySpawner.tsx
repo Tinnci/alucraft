@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -81,10 +81,9 @@ export default function HeavySpawner({ enabled = false, boxes = 300, textureSize
 
       // Force a couple of frames to render (if someone wants to call gl.render etc.), but
       // our Playwright test can just wait and watch for console messages.
-    } catch (err) {
+    } catch {
       // swallow errors; the heavy spawner is meant to stress the renderer, not break the app
-      // eslint-disable-next-line no-console
-      console.warn('HeavySpawner: error while creating heavy scene', err);
+      console.warn('HeavySpawner: error while creating heavy scene');
     }
 
     return () => {
@@ -99,12 +98,12 @@ export default function HeavySpawner({ enabled = false, boxes = 300, textureSize
               if (!mm) continue;
               try {
                 // dispose texture maps if present
-                const map = (mm as any).map as THREE.Texture | undefined;
+                const map = (mm as THREE.MeshStandardMaterial).map;
                 if (map) map.dispose();
               } catch { /* ignore */ }
               try {
                 // dispose the material itself
-                if (typeof (mm as any).dispose === 'function') (mm as any).dispose();
+                mm.dispose();
               } catch { /* ignore */ }
             }
           } catch { /* ignore */ }
@@ -112,7 +111,7 @@ export default function HeavySpawner({ enabled = false, boxes = 300, textureSize
         for (const tx of textures) {
           try { tx.dispose(); } catch { }
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
     };

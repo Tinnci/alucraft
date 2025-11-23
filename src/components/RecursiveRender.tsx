@@ -1,17 +1,10 @@
 'use client';
 
-import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { useThree } from '@react-three/fiber';
-import { TransformControls, Html } from '@react-three/drei';
-import * as THREE from 'three';
-import { LayoutNode, ContainerNode, DividerNode, ItemNode } from '@/core/types';
+import React, { useMemo } from 'react';
+import { ContainerNode, DividerNode, ItemNode, LayoutNode, ProfileType } from '@/core/types';
 import { PROFILES } from '@/config/profiles';
 import computeLayoutSizes, { NodePosition } from '@/core/layout-utils';
 import { getItemRenderer } from './itemRegistry';
-import { Bay } from './Bay';
-import useDesignStore from '@/store/useDesignStore';
-import { ProfileInstance } from './AluProfile';
-import { ProfileType } from '@/core/types';
 import { DividerVisual } from './DividerVisual';
 
 interface RecursiveRenderProps {
@@ -30,13 +23,27 @@ interface RecursiveRenderProps {
   positions?: Map<string, NodePosition>;
 }
 
-export const RecursiveRender = React.memo(function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, prevWidth = 0, nextWidth = 0, recursionDepth = 0, positions, ...groupProps }: RecursiveRenderProps) {
+export const RecursiveRender = React.memo(function RecursiveRender({
+  node,
+  origin,
+  dims,
+  profileType,
+  height,
+  depth: cabDepth,
+  isShiftDown,
+  parentOrientation,
+  prevWidth = 0,
+  nextWidth = 0,
+  recursionDepth = 0,
+  positions,
+  ...groupProps
+}: RecursiveRenderProps) {
   // Defensive check: Limit recursion depth to prevent stack overflow
   if (recursionDepth > 25) {
     console.warn(`Max recursion depth exceeded in RecursiveRender (depth: ${recursionDepth}). Stopping recursion.`);
     return null;
   }
-  const [w] = dims;
+  const [, ,] = dims;
   const [x, y, z] = origin;
 
   // Render divider node - render as vertical profile pair like in CabinetFrame
@@ -60,7 +67,16 @@ export const RecursiveRender = React.memo(function RecursiveRender({ node, origi
     const contentType = (node as ItemNode).contentType ?? 'generic_bay';
     const ItemRenderer = getItemRenderer(contentType);
 
-    return <ItemRenderer node={node as ItemNode} position={nodeCenter} dims={nodeDims} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} />;
+    // Use React.createElement to avoid "creating components during render" error
+    return React.createElement(ItemRenderer, {
+      node: node as ItemNode,
+      position: nodeCenter,
+      dims: nodeDims,
+      height,
+      depth: cabDepth,
+      profileType,
+      isShiftDown
+    });
   }
 
   // Render container node: split children horizontally or vertically
@@ -208,7 +224,5 @@ function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDe
     </group>
   );
 }
-
-
 
 export default RecursiveRender;

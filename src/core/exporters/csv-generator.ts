@@ -1,7 +1,5 @@
-import { BOMItem } from '@/core/types';
-
 interface PriceData {
-    items: any[];
+    items: Array<{ category: string; name: string; qty: number; cost: number }>;
     total: number;
 }
 

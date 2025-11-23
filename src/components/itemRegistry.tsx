@@ -1,63 +1,76 @@
 import React from 'react';
+import { ItemNode, ProfileType } from '@/core/types';
 import { Bay } from './Bay';
-import { ItemNode } from '@/core/types';
+import { Html } from '@react-three/drei';
 
-export type ItemRendererProps = {
+export interface ItemRendererProps {
   node: ItemNode;
   position: [number, number, number];
   dims: [number, number, number];
   height: number;
   depth: number;
-  profileType: any;
+  profileType: ProfileType;
   isShiftDown?: boolean;
-};
+}
 
-export type ItemRenderComponent = React.FC<ItemRendererProps>;
-
-const genericRenderer: ItemRenderComponent = ({ node, position, dims, height, depth, profileType, isShiftDown }) => {
-  // The Bay component accepts bay config and computed width (dims[0] for horizontal)
+// Placeholder Error Renderer
+const ErrorRenderer: React.FC<ItemRendererProps> = ({ node }) => {
   return (
-    <group position={position}>
-      <Bay
-        key={node.id}
-        bay={node as any}
-        position={[0, 0, 0]}
-        height={height}
-        depth={depth}
-        profileType={profileType}
-        isShiftDown={isShiftDown}
-        computedWidth={dims[0]}
-      />
-    </group>
+    <Html position={[0, 0, 0]} center>
+      <div className="bg-red-500 text-white p-2 rounded text-xs">
+        Unknown Type: {node.contentType}
+      </div>
+    </Html>
   );
 };
 
-import { Html } from '@react-three/drei';
-
-export const ErrorRenderer: ItemRenderComponent = ({ node, position, dims }) => {
+// Placeholder Bed Renderer
+const BedRenderer: React.FC<ItemRendererProps> = ({ dims, position }) => {
+  const [w, h, d] = dims;
   return (
     <group position={position}>
       <mesh>
-        <boxGeometry args={dims} />
-        <meshStandardMaterial color="red" wireframe />
+        <boxGeometry args={[w, h, d]} />
+        <meshStandardMaterial color="orange" opacity={0.5} transparent />
       </mesh>
-      <Html position={[0, 0, 0]} center>
-        <div className="bg-red-500 text-white p-2 rounded text-xs whitespace-nowrap">
-          Unknown Type: {node.contentType}
-        </div>
+      <Html center>
+        <div className="bg-orange-500 text-white p-1 rounded text-xs">Bed Frame</div>
       </Html>
     </group>
   );
 };
 
-const registry: Record<string, ItemRenderComponent> = {
-  'generic_bay': genericRenderer,
-  'wardrobe_section': genericRenderer,
-  'empty': () => null,
+// Placeholder Desk Renderer
+const DeskRenderer: React.FC<ItemRendererProps> = ({ dims, position }) => {
+  const [w, h, d] = dims;
+  return (
+    <group position={position}>
+      <mesh>
+        <boxGeometry args={[w, h, d]} />
+        <meshStandardMaterial color="blue" opacity={0.5} transparent />
+      </mesh>
+      <Html center>
+        <div className="bg-blue-500 text-white p-1 rounded text-xs">Desk Unit</div>
+      </Html>
+    </group>
+  );
 };
 
-export function getItemRenderer(type: string): ItemRenderComponent {
+const registry: Record<string, React.FC<ItemRendererProps>> = {
+  'generic_bay': Bay as unknown as React.FC<ItemRendererProps>,
+  'bed_frame': BedRenderer,
+  'desk_unit': DeskRenderer,
+  'wardrobe_section': Bay as unknown as React.FC<ItemRendererProps>,
+  'empty': ({ dims, position }) => (
+    <group position={position}>
+      <mesh>
+        <boxGeometry args={dims} />
+        <meshBasicMaterial wireframe color="gray" />
+      </mesh>
+    </group>
+  )
+};
+
+export function getItemRenderer(type: string): React.FC<ItemRendererProps> {
   return registry[type] || ErrorRenderer;
 }
-
-export default getItemRenderer;

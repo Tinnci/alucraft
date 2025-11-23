@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 
 interface BOMPriceViewProps {
     priceData: {
-        items: any[];
+        items: Array<{ category: string; name: string; qty: number; cost: number }>;
         total: number;
     };
     unitPrices: Record<string, number>;

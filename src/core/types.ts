@@ -120,6 +120,16 @@ export interface ContainerNode extends LayoutNodeBase {
 // -------------------------
 // Expanded ItemNode Variants
 // -------------------------
+
+export type ContentType =
+    | 'generic_bay'
+    | 'bed_frame'
+    | 'desk_unit'
+    | 'corner_unit'
+    | 'empty'
+    | 'wardrobe_section'
+    | 'corner_cupboard';
+
 export interface BayConfig {
     width?: number | 'auto';
     shelves?: Shelf[];
@@ -131,6 +141,11 @@ export interface BedConfig {
     mattressSize: 'single' | 'double' | 'queen' | 'king';
     slatsEnabled?: boolean;
     headboardHeight?: number;
+}
+
+export interface DeskConfig {
+    hasDrawers: boolean;
+    keyboardTray: boolean;
 }
 
 export interface CupboardConfig {
@@ -162,13 +177,19 @@ export interface BedNode extends LayoutNodeBase {
     config: BedConfig;
 }
 
+export interface DeskNode extends LayoutNodeBase {
+    type: 'item';
+    contentType: 'desk_unit';
+    config: DeskConfig;
+}
+
 export interface CupboardNode extends LayoutNodeBase {
     type: 'item';
     contentType: 'corner_cupboard';
     config: CupboardConfig;
 }
 
-export type ItemNode = BayNode | BedNode | CupboardNode | EmptyNode | WardrobeNode;
+export type ItemNode = BayNode | BedNode | CupboardNode | EmptyNode | WardrobeNode | DeskNode;
 
 export interface DividerNode extends LayoutNodeBase {
     type: 'divider';

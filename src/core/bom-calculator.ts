@@ -8,7 +8,6 @@ import {
     ConnectorType,
     LayoutNode,
     ContainerNode,
-    ItemNode,
     isBayNode
 } from './types';
 import { PROFILES } from '@/config/profiles';

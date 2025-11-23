@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { PROFILES } from '@/config/profiles';
 
 // Helper schemas
 const ShelfSchema = z.object({
@@ -87,7 +86,7 @@ const WardrobeNodeSchema = z.object({
 });
 
 // Recursive Container Schema
-const LayoutNodeSchema: z.ZodType<any> = z.lazy(() =>
+const LayoutNodeSchema: z.ZodType<unknown> = z.lazy(() =>
     z.union([
         DividerNodeSchema,
         BayNodeSchema,
@@ -109,7 +108,7 @@ const ContainerNodeSchema = z.object({
 
 export const DesignSchema = z.array(LayoutNodeSchema);
 
-export function validateDesignJSON(json: any): { success: boolean; error?: string; data?: any } {
+export function validateDesignJSON(json: unknown): { success: boolean; error?: string; data?: unknown } {
     const result = DesignSchema.safeParse(json);
     if (result.success) {
         return { success: true, data: result.data };

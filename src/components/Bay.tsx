@@ -15,18 +15,18 @@ import { PROFILES } from '@/config/profiles';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
 interface BayProps {
-    bay: LayoutBay;
+    node: LayoutBay;
     position: [number, number, number];
+    dims: [number, number, number];
     height: number;
     depth: number;
     profileType: ProfileType;
     isShiftDown?: boolean;
-    computedWidth?: number;
 }
 
-
-
-export function Bay({ bay, position, height, depth, profileType, isShiftDown, computedWidth }: BayProps) {
+export function Bay({ node, position, dims, height, depth, profileType, isShiftDown }: BayProps) {
+    const bay = node;
+    const computedWidth = dims[0];
     // Actions
     const updateShelf = useDesignStore((state: DesignState) => state.updateShelf);
     const addShelf = useDesignStore((state: DesignState) => state.addShelf);

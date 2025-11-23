@@ -46,12 +46,16 @@ export function Connector({ size, position = [0, 0, 0], rotation = [0, 0, 0] }: 
     const geometry = useMemo(() => getConnectorGeometry(size), [size]);
     const connectorMaterial = useMemo(() => {
         const mat = new THREE.MeshStandardMaterial({ color: '#b0b0b0', roughness: 0.6, metalness: 0.6, wireframe: showWireframe });
-        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') console.debug('Connector: creating connectorMaterial', { id: (mat as any).id, showWireframe });
+        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+            console.debug('Connector: creating connectorMaterial', { uuid: mat.uuid, showWireframe });
+        }
         return mat;
     }, [showWireframe]);
     const boltMaterial = useMemo(() => {
         const mat = new THREE.MeshStandardMaterial({ color: '#333', wireframe: showWireframe });
-        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') console.debug('Connector: creating boltMaterial', { id: (mat as any).id, showWireframe });
+        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+            console.debug('Connector: creating boltMaterial', { uuid: mat.uuid, showWireframe });
+        }
         return mat;
     }, [showWireframe]);
 
@@ -60,7 +64,10 @@ export function Connector({ size, position = [0, 0, 0], rotation = [0, 0, 0] }: 
         return () => {
             try {
                 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-                    console.debug('Connector: disposing materials', { connectorMaterialId: (connectorMaterial as any).id, boltMaterialId: (boltMaterial as any).id });
+                    console.debug('Connector: disposing materials', {
+                        connectorMaterialId: connectorMaterial.uuid,
+                        boltMaterialId: boltMaterial.uuid
+                    });
                 }
                 connectorMaterial.dispose();
                 boltMaterial.dispose();

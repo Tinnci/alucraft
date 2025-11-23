@@ -8,7 +8,14 @@ export function useLayoutPositions(
   dims: [number, number, number],
   orientation: 'horizontal' | 'vertical' = 'horizontal'
 ) {
-  return useMemo(() => computeLayoutPositions(layout, origin, dims, orientation), [layout, origin[0], origin[1], origin[2], dims[0], dims[1], dims[2], orientation]);
+  // 解构用于比较数值变化
+  const [ox, oy, oz] = origin;
+  const [dx, dy, dz] = dims;
+
+  return useMemo(() => {
+    // 在回调内部重新组装数组，确保传递给函数的是最新值
+    return computeLayoutPositions(layout, [ox, oy, oz], [dx, dy, dz], orientation);
+  }, [layout, ox, oy, oz, dx, dy, dz, orientation]);
 }
 
 export default useLayoutPositions;

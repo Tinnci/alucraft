@@ -108,13 +108,14 @@ export function ProfileInstances({ type, material = 'silver', children }: Profil
                 const wood = textures.wood as THREE.Texture | undefined;
                 const dark = textures.dark_metal as THREE.Texture | undefined;
                 const getImgInfo = (t?: THREE.Texture) => {
-                    const img = (t as any)?.image;
+                    const img = t?.image as HTMLImageElement | undefined;
                     if (!img) return undefined;
                     return { width: img.width ?? img.naturalWidth, height: img.height ?? img.naturalHeight };
                 };
-                // eslint-disable-next-line no-console
                 console.debug('AluProfile: textures', { wood: getImgInfo(wood), dark: getImgInfo(dark) });
-            } catch (err) { /* ignore */ }
+            } catch {
+                // ignore
+            }
         }
     }, [textures]);
 

@@ -11,6 +11,7 @@ import { ProfileType, ContainerNode } from '@/core/types';
 import { PROFILES } from '@/config/profiles';
 import { validateLayout } from '@/core/layout-utils';
 import { Html } from '@react-three/drei';
+import { generateCabinetFrame } from '@/core/frame-strategies';
 
 interface CabinetFrameProps {
     width: number;
@@ -88,10 +89,6 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
     const profile = PROFILES[profileType];
     const s = profile.size;
     const slotDepth = profile.slotDepth || 6;
-
-    const hLength = height;
-    const wLength = width - (s * 2);
-    const dLength = depth - (s * 2);
     const offset = s / 2;
 
     // Store access
@@ -114,16 +111,13 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
             side: THREE.DoubleSide,
             wireframe: showWireframe
         });
-        // Debug
-        try { if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') console.debug('CabinetFrame: panelMaterial created', { id: (m as any).id }); } catch { }
         return m;
     }, [showWireframe]);
 
-    // Dispose the material on unmount to avoid leaking GPU resources
+    // Dispose the material on unmount
     React.useEffect(() => {
         return () => {
             try {
-                if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') console.debug('CabinetFrame: disposing panelMaterial', { id: (panelMaterial as any).id });
                 panelMaterial.dispose();
             } catch {
                 // ignore
@@ -131,7 +125,7 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         };
     }, [panelMaterial]);
 
-    // Global keyboard tracking for Shift key to disable snapping during TransformControls drag
+    // Global keyboard tracking for Shift key
     const [isShiftDown, setIsShiftDown] = useState(false);
     useEffect(() => {
         const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftDown(true); };
@@ -140,6 +134,12 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         window.addEventListener('keyup', up);
         return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
     }, []);
+
+    // Call hooks unconditionally before any early returns
+    const positions = useLayoutPositions(layout, [0, 0, 0], [width, height, depth]);
+    const frameParts = React.useMemo(() =>
+        generateCabinetFrame(width, height, depth, profileType),
+        [width, height, depth, profileType]);
 
     const validation = validateLayout(layout);
     if (!validation.valid) {
@@ -155,33 +155,21 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         );
     }
 
-    const positions = useLayoutPositions(layout, [0, 0, 0], [width, height, depth]);
-
     return (
         <group>
-            {/* Pre-calc positions for all internal layout nodes to avoid repeated computations
-                and to support flat rendering or registry-based rendering strategies. */}
             <ProfileInstances type={profileType} material={material}>
                 {/* --- Outer Frame --- */}
-                {/* Verticals (4 Pillars) */}
-                <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} partId="frame-pillar" />
-                <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, depth / 2 - offset]} rotation={[-Math.PI / 2, 0, 0]} partId="frame-pillar" />
-                <ProfileInstance length={hLength} position={[-width / 2 + offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} partId="frame-pillar" />
-                <ProfileInstance length={hLength} position={[width / 2 - offset, -height / 2, -depth / 2 + offset]} rotation={[-Math.PI / 2, 0, 0]} partId="frame-pillar" />
+                {frameParts.map(part => (
+                    <ProfileInstance
+                        key={part.id}
+                        length={part.length}
+                        position={part.position}
+                        rotation={part.rotation}
+                        partId={`frame-${part.type}`}
+                    />
+                ))}
 
-                {/* Width Beams (Top/Bottom, Front/Back) */}
-                <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} partId="frame-width-beam" />
-                <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, depth / 2 - offset]} rotation={[0, Math.PI / 2, 0]} partId="frame-width-beam" />
-                <ProfileInstance length={wLength} position={[-wLength / 2, height / 2 - offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} partId="frame-width-beam" />
-                <ProfileInstance length={wLength} position={[-wLength / 2, -height / 2 + offset, -depth / 2 + offset]} rotation={[0, Math.PI / 2, 0]} partId="frame-width-beam" />
-
-                {/* Depth Beams (Left/Right, Top/Bottom) */}
-                <ProfileInstance length={dLength} position={[-width / 2 + offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
-                <ProfileInstance length={dLength} position={[-width / 2 + offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
-                <ProfileInstance length={dLength} position={[width / 2 - offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
-                <ProfileInstance length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
                 {/* --- Layout Nodes (Bays & Dividers) --- */}
-                {/* use RecursiveRender to draw the layout tree */}
                 <RecursiveRender
                     node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
                     origin={[0, 0, 0]}
@@ -196,27 +184,20 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
             </ProfileInstances>
 
             {/* --- Connectors (Outer Frame) --- */}
-            {/* 仅在使用 angle_bracket 时渲染外部连接件 */}
             {connectorType === 'angle_bracket' && (
                 <group>
-                    {/* Simplified: Just corners for now. Internal bay connectors handled by Bay? */}
-                    {/* Width Beam Connectors (8) */}
                     <Connector size={s} position={[-width / 2 + s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, 0]} />
                     <Connector size={s} position={[width / 2 - s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI / 2]} />
                     <Connector size={s} position={[-width / 2 + s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, -Math.PI / 2]} />
                     <Connector size={s} position={[width / 2 - s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
-
                     <Connector size={s} position={[-width / 2 + s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, 0]} />
                     <Connector size={s} position={[width / 2 - s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI / 2]} />
                     <Connector size={s} position={[-width / 2 + s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, -Math.PI / 2]} />
                     <Connector size={s} position={[width / 2 - s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
-
-                    {/* Depth Beam Connectors (8) */}
                     <Connector size={s} position={[-width / 2 + s / 2, -height / 2 + s, depth / 2 - s]} rotation={[0, Math.PI / 2, 0]} />
                     <Connector size={s} position={[-width / 2 + s / 2, -height / 2 + s, -depth / 2 + s]} rotation={[0, -Math.PI / 2, 0]} />
                     <Connector size={s} position={[-width / 2 + s / 2, height / 2 - s, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
                     <Connector size={s} position={[-width / 2 + s / 2, height / 2 - s, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
-
                     <Connector size={s} position={[width / 2 - s / 2, -height / 2 + s, depth / 2 - s]} rotation={[0, Math.PI / 2, 0]} />
                     <Connector size={s} position={[width / 2 - s / 2, -height / 2 + s, -depth / 2 + s]} rotation={[0, -Math.PI / 2, 0]} />
                     <Connector size={s} position={[width / 2 - s / 2, height / 2 - s, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
@@ -227,23 +208,18 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
             {/* internal_lock: 渲染打孔点而不是物理角码 */}
             {connectorType === 'internal_lock' && (
                 <group>
-                    {/* Width Beams (X-axis) - 8个角的横梁孔 */}
                     <InternalLock axis="x" size={s} position={[-width / 2 + s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, 0]} />
                     <InternalLock axis="x" size={s} position={[width / 2 - s, -height / 2 + s, depth / 2 - s / 2]} rotation={[0, 0, 0]} />
                     <InternalLock axis="x" size={s} position={[-width / 2 + s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
                     <InternalLock axis="x" size={s} position={[width / 2 - s, height / 2 - s, depth / 2 - s / 2]} rotation={[0, 0, Math.PI]} />
-
                     <InternalLock axis="x" size={s} position={[-width / 2 + s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, 0]} />
                     <InternalLock axis="x" size={s} position={[width / 2 - s, -height / 2 + s, -depth / 2 + s / 2]} rotation={[0, 0, 0]} />
                     <InternalLock axis="x" size={s} position={[-width / 2 + s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
                     <InternalLock axis="x" size={s} position={[width / 2 - s, height / 2 - s, -depth / 2 + s / 2]} rotation={[0, 0, Math.PI]} />
-
-                    {/* Depth Beams (Z-axis) - 深梁的孔 */}
                     <InternalLock axis="z" size={s} position={[-width / 2 + s / 2, -height / 2 + s, depth / 2 - s]} rotation={[0, Math.PI / 2, 0]} />
                     <InternalLock axis="z" size={s} position={[-width / 2 + s / 2, -height / 2 + s, -depth / 2 + s]} rotation={[0, -Math.PI / 2, 0]} />
                     <InternalLock axis="z" size={s} position={[-width / 2 + s / 2, height / 2 - s, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
                     <InternalLock axis="z" size={s} position={[-width / 2 + s / 2, height / 2 - s, -depth / 2 + s]} rotation={[Math.PI, -Math.PI / 2, 0]} />
-
                     <InternalLock axis="z" size={s} position={[width / 2 - s / 2, -height / 2 + s, depth / 2 - s]} rotation={[0, Math.PI / 2, 0]} />
                     <InternalLock axis="z" size={s} position={[width / 2 - s / 2, -height / 2 + s, -depth / 2 + s]} rotation={[0, -Math.PI / 2, 0]} />
                     <InternalLock axis="z" size={s} position={[width / 2 - s / 2, height / 2 - s, depth / 2 - s]} rotation={[Math.PI, Math.PI / 2, 0]} />
@@ -254,13 +230,10 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
             {/* 3way_corner: 渲染8个角位置的黑色立方体 */}
             {connectorType === '3way_corner' && (
                 <group>
-                    {/* Top 4 Corners (上方4个角) */}
                     <ThreeWayCorner size={s} position={[-width / 2 + s / 2, height / 2 - s / 2, depth / 2 - s / 2]} />
                     <ThreeWayCorner size={s} position={[width / 2 - s / 2, height / 2 - s / 2, depth / 2 - s / 2]} />
                     <ThreeWayCorner size={s} position={[-width / 2 + s / 2, height / 2 - s / 2, -depth / 2 + s / 2]} />
                     <ThreeWayCorner size={s} position={[width / 2 - s / 2, height / 2 - s / 2, -depth / 2 + s / 2]} />
-
-                    {/* Bottom 4 Corners (下方4个角) */}
                     <ThreeWayCorner size={s} position={[-width / 2 + s / 2, -height / 2 + s / 2, depth / 2 - s / 2]} />
                     <ThreeWayCorner size={s} position={[width / 2 - s / 2, -height / 2 + s / 2, depth / 2 - s / 2]} />
                     <ThreeWayCorner size={s} position={[-width / 2 + s / 2, -height / 2 + s / 2, -depth / 2 + s / 2]} />

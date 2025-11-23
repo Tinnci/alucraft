@@ -25,7 +25,8 @@ export function computeLayoutSizes(
   for (const n of nodes) {
     if (n.type === 'divider') continue;
     if (n.type === 'item') {
-      const wconf = (n as ItemNode).config?.width;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const wconf = (n as ItemNode).config ? ((n as ItemNode).config as any).width : undefined;
       if (typeof wconf === 'number') fixedSum += wconf;
       else autoCount += 1;
     } else if (n.type === 'container') {
@@ -48,7 +49,8 @@ export function computeLayoutSizes(
 
     let computed = 0;
     if (n.type === 'item') {
-      const wconf = (n as ItemNode).config?.width;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const wconf = (n as ItemNode).config ? ((n as ItemNode).config as any).width : undefined;
       computed = (typeof wconf === 'number') ? wconf as number : perAuto;
       results.set(n.id, computed);
     } else if (n.type === 'container') {
@@ -116,11 +118,13 @@ export function moveDividerInLayout(
         const newChildren = cn.children.map((c: LayoutNode) => {
           if (c.id === prev.id) {
             // get current numeric prev width
-            const prevWidthRaw = sizes.get(prev.id) ?? (prev.type === 'item' ? ((prev as ItemNode).config?.width ?? 0) : ((prev as ContainerNode).size ?? 0));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const prevWidthRaw = sizes.get(prev.id) ?? (prev.type === 'item' ? (((prev as ItemNode).config as any)?.width ?? 0) : ((prev as ContainerNode).size ?? 0));
             const prevWidth = typeof prevWidthRaw === 'number' ? prevWidthRaw : Number(prevWidthRaw);
             const newPrevWidth = Math.max(minWidth, prevWidth + delta);
             if (c.type === 'item') {
-              return { ...(c as ItemNode), config: { ...(c as ItemNode).config, width: newPrevWidth } } as LayoutNode;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              return { ...(c as ItemNode), config: { ...(c as ItemNode).config, width: newPrevWidth } as any } as LayoutNode;
             }
             if (c.type === 'container') {
               return { ...(c as ContainerNode), size: newPrevWidth } as LayoutNode;
@@ -130,10 +134,12 @@ export function moveDividerInLayout(
             // if next is fixed OR auto, shrink by delta to keep container size consistent
             // We convert auto to fixed here because dragging implies a specific size
             if (c.type === 'item') {
-              const nextWidthRaw = sizes.get(next.id) ?? ((c as ItemNode).config?.width ?? 0);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const nextWidthRaw = sizes.get(next.id) ?? (((c as ItemNode).config as any)?.width ?? 0);
               const nextWidth = typeof nextWidthRaw === 'number' ? nextWidthRaw : Number(nextWidthRaw);
               const newNextWidth = Math.max(minWidth, nextWidth - delta);
-              return { ...(c as ItemNode), config: { ...(c as ItemNode).config, width: newNextWidth } } as LayoutNode;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              return { ...(c as ItemNode), config: { ...(c as ItemNode).config, width: newNextWidth } as any } as LayoutNode;
             }
             if (c.type === 'container') {
               const nextWRaw = sizes.get(next.id) ?? (c as ContainerNode).size ?? 0;

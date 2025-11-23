@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useStore } from 'zustand';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
-import { MaterialType, findBays } from '@/core/types';
+import { MaterialType, findBays, LayoutNode } from '@/core/types';
 import useUIStore from '@/store/useUIStore';
 import { DxfGenerator } from '@/core/exporters/dxf-generator';
 import { ProfileType } from '@/core/types';
@@ -119,7 +119,7 @@ export function TopBar() {
         if (parsed.hasRightWall !== undefined) state.setHasRightWall(parsed.hasRightWall);
         if (parsed.connectorType !== undefined) state.setConnectorType(parsed.connectorType);
         if (parsed.result) state.setResult(parsed.result);
-        if (parsed.layout) state.setLayout(parsed.layout as any);
+        if (parsed.layout) state.setLayout(parsed.layout as LayoutNode[]);
       } catch {
         alert('Invalid design file');
       }

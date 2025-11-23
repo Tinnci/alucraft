@@ -4,9 +4,9 @@ import { LayoutNode } from './types';
 describe('computeLayoutPositions', () => {
   test('computes basic horizontal positions', () => {
     const layout: LayoutNode[] = [
-      { id: 'a', type: 'item', contentType: 'generic_bay', config: { width: 100 } } as any,
-      { id: 'd1', type: 'divider', thickness: 20 } as any,
-      { id: 'b', type: 'item', contentType: 'generic_bay', config: { width: 80 } } as any,
+      { id: 'a', type: 'item', contentType: 'generic_bay', config: { width: 100 } } as unknown as LayoutNode,
+      { id: 'd1', type: 'divider', thickness: 20 } as unknown as LayoutNode,
+      { id: 'b', type: 'item', contentType: 'generic_bay', config: { width: 80 } } as unknown as LayoutNode,
     ];
 
     const positions = computeLayoutPositions(layout, [0, 0, 0], [200, 100, 100]);
