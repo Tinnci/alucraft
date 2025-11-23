@@ -12,11 +12,18 @@ import { ContextToolbar } from '@/components/ContextToolbar';
 import { BOMPanel } from '@/components/BOMPanel';
 import { Workspace } from '@/components/Scene/Workspace';
 import { useAppState } from '@/hooks/useAppState';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function Home() {
   // 挂载全局副作用（数据加载、保存、主题切换）
   useAppState();
+
+  const [isSceneReady, setIsSceneReady] = useState(false);
+  useEffect(() => {
+    // Delay Canvas mount until client-side to avoid R3F context errors during SSR
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsSceneReady(true);
+  }, []);
 
   // 获取用于渲染 Canvas 背景的状态
   const isDarkMode = useDesignStore((state: DesignState) => state.isDarkMode);
@@ -98,15 +105,21 @@ export default function Home() {
             </div>
           </div>
           <div className="flex-1 relative">
-            <Canvas
-              shadows
-              camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}
-              onPointerMissed={handlePointerMissed}
-            >
-              <color attach="background" args={[bgColor]} />
-              <fog attach="fog" args={[bgColor, 2000, 5000]} />
-              <Workspace />
-            </Canvas>
+            {isSceneReady ? (
+              <Canvas
+                shadows
+                camera={{ position: [1500, 1500, 1500], fov: 45, near: 10, far: 20000 }}
+                onPointerMissed={handlePointerMissed}
+              >
+                <color attach="background" args={[bgColor]} />
+                <fog attach="fog" args={[bgColor, 2000, 5000]} />
+                <Workspace />
+              </Canvas>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Initializing workspace...
+              </div>
+            )}
 
             {/* Toast Notification Removed */}
           </div>
