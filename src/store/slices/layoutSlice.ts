@@ -35,9 +35,7 @@ export interface LayoutSlice {
     duplicateDrawer: (bayId: string, id: string) => void;
 }
 
-export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> = (set, _get) => {
-    void _get; // `_get` is deliberately unused here but kept for signature compatibility
-    return ({
+export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> = (set) => ({
     layout: [
         // Initial State
         { type: 'item', contentType: 'generic_bay', id: 'bay-initial', config: { width: 560, shelves: [], drawers: [], door: createDefaultDoorConfig() } } as LayoutBay

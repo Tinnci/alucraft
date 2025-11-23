@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useDesignStore } from './useDesignStore';
-import { isBayNode, ItemNode, LayoutBay } from '@/core/types';
+import { ItemNode, LayoutBay } from '@/core/types';
 
 // Mock nanoid to have predictable IDs if needed, or just rely on structure
 // For integration tests, we care more about the state changes than specific IDs usually.
@@ -59,7 +59,6 @@ describe('useDesignStore Actions', () => {
     });
 
     it('resizeBay should update bay width and total width', () => {
-        const initialWidth = useDesignStore.getState().width;
         const bayId = 'bay-initial';
         const newBayWidth = 600;
 
