@@ -5,6 +5,8 @@ import { useThree } from '@react-three/fiber';
 import { TransformControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { LayoutNode, ContainerNode, DividerNode, ItemNode, PROFILES } from '@/core/types';
+import { NodePosition } from '@/core/layout-utils';
+import { getItemRenderer } from './itemRegistry';
 import computeLayoutSizes from '@/core/layout-utils';
 import { Bay } from './Bay';
 import useDesignStore from '@/store/useDesignStore';
@@ -23,9 +25,11 @@ interface RecursiveRenderProps {
   prevWidth?: number;
   nextWidth?: number;
   recursionDepth?: number;
+  // Optional precomputed positions map (nodeId -> center/dims)
+  positions?: Map<string, NodePosition>;
 }
 
-export function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, prevWidth = 0, nextWidth = 0, recursionDepth = 0, ...groupProps }: RecursiveRenderProps) {
+export function RecursiveRender({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, parentOrientation, prevWidth = 0, nextWidth = 0, recursionDepth = 0, positions, ...groupProps }: RecursiveRenderProps) {
   // Defensive check: Limit recursion depth to prevent stack overflow
   if (recursionDepth > 25) {
     console.warn(`Max recursion depth exceeded in RecursiveRender (depth: ${recursionDepth}). Stopping recursion.`);
@@ -45,10 +49,24 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
 
   // Render item node (bay)
   if (node.type === 'item') {
-    // The existing `Bay` component expects a `bay` with config width; we can just render it at computed center
+    // If an item renderer is registered for this contentType, use it; otherwise, fallback to Bay
+    const contentType = (node as ItemNode).contentType ?? 'generic_bay';
+    const ItemRenderer = getItemRenderer(contentType);
+    // If positions map is available, use it
+    const pos = positions as Map<string, NodePosition> | undefined;
+    const info = pos?.get(node.id);
+    const nodeCenter = info?.center ?? origin;
+    const nodeDims = info?.dims ?? dims;
+    const widthAxis = nodeDims[0];
+
+    if (ItemRenderer) {
+      return <ItemRenderer node={node as ItemNode} position={nodeCenter} dims={nodeDims} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} />;
+    }
+
+    // Fallback to Bay rendering
     return (
       <group position={[x, y, z]} {...groupProps}>
-        <Bay key={node.id} bay={node as ItemNode} position={[0, 0, 0]} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} computedWidth={w} />
+        <Bay key={node.id} bay={node as ItemNode} position={[0, 0, 0]} height={height} depth={cabDepth} profileType={profileType} isShiftDown={isShiftDown} computedWidth={widthAxis} />
       </group>
     );
   }
@@ -65,6 +83,7 @@ export function RecursiveRender({ node, origin, dims, profileType, height, depth
         depth={cabDepth}
         isShiftDown={isShiftDown}
         recursionDepth={recursionDepth}
+        positions={positions}
         {...groupProps}
       />
     );
@@ -82,9 +101,10 @@ interface ContainerVisualProps {
   depth: number;
   isShiftDown?: boolean;
   recursionDepth: number;
+  positions?: Map<string, NodePosition>;
 }
 
-function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, recursionDepth, ...groupProps }: ContainerVisualProps) {
+function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDepth, isShiftDown, recursionDepth, positions, ...groupProps }: ContainerVisualProps) {
   const [w, h, d] = dims;
   const [x, y, z] = origin;
   const container = node;
@@ -116,21 +136,35 @@ function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDe
     <group position={[x, y, z]} {...groupProps}>
       {children.map((child, idx) => {
         const info = childInfos[idx];
+        // Prefer supplied positions map (from props) over fallback
+        const posMap = positions as Map<string, NodePosition> | undefined;
+        const pref = posMap?.get(child.id);
+        const childOrigin = pref?.center ?? info.center;
+        const childDims = pref?.dims ?? info.dims;
+        // prev/next width computation using positions map (dimensions along main axis)
         let prevWidth = 0;
         let nextWidth = 0;
         if (child.type === 'divider') {
           const prevId = children[idx - 1]?.id;
           const nextId = children[idx + 1]?.id;
-          prevWidth = prevId ? (sizes.get(prevId) ?? 0) : 0;
-          nextWidth = nextId ? (sizes.get(nextId) ?? 0) : 0;
+            if (pref) {
+            // if posMap supplied, derive axis size from child dims using the current container orientation
+            const axisPrev = container.orientation === 'vertical' ? (posMap?.get(prevId as string)?.dims[1] ?? 0) : (posMap?.get(prevId as string)?.dims[0] ?? 0);
+            const axisNext = container.orientation === 'vertical' ? (posMap?.get(nextId as string)?.dims[1] ?? 0) : (posMap?.get(nextId as string)?.dims[0] ?? 0);
+            prevWidth = axisPrev;
+            nextWidth = axisNext;
+          } else {
+            prevWidth = prevId ? (sizes.get(prevId) ?? 0) : 0;
+            nextWidth = nextId ? (sizes.get(nextId) ?? 0) : 0;
+          }
         }
 
         return (
           <RecursiveRender
             key={child.id}
             node={child}
-            origin={info.center}
-            dims={info.dims}
+            origin={childOrigin}
+            dims={childDims}
             profileType={profileType}
             height={height}
             depth={cabDepth}
@@ -139,6 +173,7 @@ function ContainerVisual({ node, origin, dims, profileType, height, depth: cabDe
             prevWidth={prevWidth}
             nextWidth={nextWidth}
             recursionDepth={recursionDepth + 1}
+            positions={positions}
           />
         );
       })}

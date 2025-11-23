@@ -142,14 +142,53 @@ export interface ContainerNode extends LayoutNodeBase {
 export interface ItemNode extends LayoutNodeBase {
     type: 'item';
     // Keep a generic bay content type for now; this can be extended to other content types later
-    contentType: 'generic_bay' | 'wardrobe_section' | 'empty';
-    // Config contains the former bay fields
-    config: {
-        width?: number | 'auto'; // used for legacy reasons when migrating or rendering. 'auto' means flexible
+    contentType: 'generic_bay' | 'wardrobe_section' | 'empty' | 'bed_frame' | 'corner_cupboard';
+    // Config contains the former bay fields or content specific config if polymorphized
+    config: BayConfig | BedConfig | CupboardConfig | {
+        width?: number | 'auto';
         shelves?: Shelf[];
         drawers?: Drawer[];
         door?: BayDoorConfig;
     };
+}
+
+// -------------------------
+// Expanded ItemNode Variants
+// -------------------------
+export interface BayConfig {
+    width?: number | 'auto';
+    shelves?: Shelf[];
+    drawers?: Drawer[];
+    door?: BayDoorConfig;
+}
+
+export interface BedConfig {
+    mattressSize: 'single' | 'double' | 'queen' | 'king';
+    slatsEnabled?: boolean;
+    headboardHeight?: number;
+}
+
+export interface CupboardConfig {
+    cornerType?: 'L-shape' | 'blind' | 'corner';
+    lazySusan?: boolean;
+}
+
+export interface BayNode extends LayoutNodeBase {
+    type: 'item';
+    contentType: 'generic_bay';
+    config: BayConfig;
+}
+
+export interface BedNode extends LayoutNodeBase {
+    type: 'item';
+    contentType: 'bed_frame';
+    config: BedConfig;
+}
+
+export interface CupboardNode extends LayoutNodeBase {
+    type: 'item';
+    contentType: 'corner_cupboard';
+    config: CupboardConfig;
 }
 
 export interface DividerNode extends LayoutNodeBase {
@@ -160,7 +199,7 @@ export interface DividerNode extends LayoutNodeBase {
 export type LayoutNode = ContainerNode | ItemNode | DividerNode;
 
 // Backwards compatibility aliases (temporary) for existing code
-export type LayoutBay = ItemNode;
+export type LayoutBay = BayNode;
 export type LayoutDivider = DividerNode;
 
 export function isBayNode(node: LayoutNode | undefined): node is LayoutBay {

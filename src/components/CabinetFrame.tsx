@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
+import useLayoutPositions from '@/hooks/useLayoutPositions';
 import { RecursiveRender } from './RecursiveRender';
 import { Connector } from './Connector';
 import { PROFILES, ProfileType, ContainerNode } from '@/core/types';
@@ -153,8 +154,12 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         );
     }
 
+    const positions = useLayoutPositions(layout, [0, 0, 0], [width, height, depth]);
+
     return (
         <group>
+            {/* Pre-calc positions for all internal layout nodes to avoid repeated computations
+                and to support flat rendering or registry-based rendering strategies. */}
             <ProfileInstances type={profileType} material={material}>
                 {/* --- Outer Frame --- */}
                 {/* Verticals (4 Pillars) */}
@@ -174,11 +179,9 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                 <ProfileInstance length={dLength} position={[-width / 2 + offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
                 <ProfileInstance length={dLength} position={[width / 2 - offset, height / 2 - offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
                 <ProfileInstance length={dLength} position={[width / 2 - offset, -height / 2 + offset, -dLength / 2]} rotation={[0, 0, 0]} partId="frame-depth-beam" />
-            </ProfileInstances>
-
-            {/* --- Layout Nodes (Bays & Dividers) --- */}
-            {/* use RecursiveRender to draw the layout tree */}
-            <RecursiveRender
+                {/* --- Layout Nodes (Bays & Dividers) --- */}
+                {/* use RecursiveRender to draw the layout tree */}
+                <RecursiveRender
                 node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
                 origin={[0, 0, 0]}
                 dims={[width, height, depth]}
@@ -187,7 +190,9 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
                 depth={depth}
                 isShiftDown={isShiftDown}
                 parentOrientation={'horizontal'}
+                positions={positions}
             />
+            </ProfileInstances>
 
             {/* --- Connectors (Outer Frame) --- */}
             {/* 仅在使用 angle_bracket 时渲染外部连接件 */}

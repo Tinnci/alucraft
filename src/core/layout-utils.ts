@@ -161,6 +161,62 @@ export function moveDividerInLayout(
 
 export default computeLayoutSizes;
 
+export interface NodePosition {
+  center: [number, number, number];
+  dims: [number, number, number]; // [width, height, depth]
+}
+
+/**
+ * Compute absolute positions and dimensions for each node in a layout tree.
+ * Returns a Map of nodeId -> NodePosition where center and dims are in world units (mm)
+ */
+export function computeLayoutPositions(
+  nodes: LayoutNode[],
+  origin: [number, number, number],
+  dims: [number, number, number],
+  orientation: Orientation = 'horizontal'
+): Map<string, NodePosition> {
+  const posMap = new Map<string, NodePosition>();
+
+  function traverse(nlist: LayoutNode[], org: [number, number, number], d: [number, number, number], orient: Orientation) {
+    if (!nlist || nlist.length === 0) return;
+    // compute sizes along the main axis
+    const available = orient === 'horizontal' ? d[0] : d[1];
+    const sizes = computeLayoutSizes(nlist, available, orient, new Map<string, number>());
+
+    const start = orient === 'horizontal' ? (org[0] - d[0] / 2) : (org[1] - d[1] / 2);
+    let cur = start;
+
+    for (const n of nlist) {
+      const mainSize = sizes.get(n.id) ?? 0;
+      let center: [number, number, number];
+      let childDims: [number, number, number];
+
+      if (orient === 'horizontal') {
+        const cx = cur + mainSize / 2;
+        center = [cx, org[1], org[2]];
+        childDims = [mainSize, d[1], d[2]];
+      } else {
+        const cy = cur + mainSize / 2;
+        center = [org[0], cy, org[2]];
+        childDims = [d[0], mainSize, d[2]];
+      }
+
+      posMap.set(n.id, { center, dims: childDims });
+
+      if (n.type === 'container') {
+        const cn = n as ContainerNode;
+        traverse(cn.children, center, childDims, cn.orientation);
+      }
+
+      cur += mainSize;
+    }
+  }
+
+  traverse(nodes, origin, dims, orientation);
+  return posMap;
+}
+
 export interface ValidationResult {
   valid: boolean;
   error?: string;
