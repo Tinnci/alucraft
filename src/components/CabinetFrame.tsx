@@ -139,16 +139,24 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
     const computedPositions = useDesignStore((state: DesignState) => state.computedPositions);
     const setLayout = useDesignStore((state: DesignState) => state.setLayout);
 
-    // Initialize positions if they are missing (e.g. on first load)
+    // [Safe Render Guard] Ensure positions is always a Map before passing to children.
+    // If hydration failed or data is corrupted (plain object), fallback to empty Map to prevent render crash.
+    // The useEffect below will trigger a recalculation to fix the store.
+    const positions = (computedPositions instanceof Map) ? computedPositions : new Map();
+
+    // Initialize positions if they are missing or invalid (e.g. on first load or after hydration)
     useEffect(() => {
-        if (!computedPositions || computedPositions.size === 0) {
+        const isInvalid = !computedPositions ||
+            !(computedPositions instanceof Map) ||
+            computedPositions.size === 0;
+
+        if (isInvalid) {
             // Trigger a layout update to populate positions without changing structure
             // We can just call setLayout with the current layout, effectively a no-op that runs the calculation logic
             setLayout(layout);
         }
     }, [computedPositions, layout, setLayout]);
 
-    const positions = computedPositions;
     const frameParts = React.useMemo(() =>
         generateCabinetFrame(width, height, depth, profileType),
         [width, height, depth, profileType]);

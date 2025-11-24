@@ -164,4 +164,23 @@ describe('useDesignStore Actions', () => {
         // Each split should register a new door entry for the freshest bay
         expect(Object.keys(state.doorStates).length).toBe(2);
     });
+
+    it('should verify computedPositions are synced after addBay', () => {
+        const { addBay, layout } = useDesignStore.getState();
+
+        // Execute action
+        addBay();
+
+        const newState = useDesignStore.getState();
+        const newBayId = newState.layout[newState.layout.length - 1].id;
+
+        // Verify 1: Layout updated
+        expect(newState.layout.length).toBeGreaterThan(layout.length);
+
+        // Verify 2: Position data generated synchronously (Core value of new architecture)
+        const pos = newState.computedPositions.get(newBayId);
+        expect(pos).toBeDefined();
+        // Default new bay width is 400
+        expect(pos?.dims[0]).toBe(400);
+    });
 });
