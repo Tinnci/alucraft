@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Canvas, RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import useDesignStore from '@/store/useDesignStore';
@@ -122,7 +123,12 @@ function DesignCanvas({ bgColor, onPointerMissed }: DesignCanvasProps) {
       const onContextLost = (ev: Event) => {
         ev.preventDefault();
         const diag = collectDiagnostics('contextlost');
-        console.error('WebGL context lost on canvas; diagnostics:', diag);
+        const isConnected = state.gl.domElement.isConnected;
+        console.error('🚨 WebGL Context Lost!', {
+          inDOM: isConnected,
+          timestamp: new Date().toISOString(),
+          diagnostics: diag
+        });
       };
 
       const onContextRestored = () => {
@@ -143,6 +149,12 @@ function DesignCanvas({ bgColor, onPointerMissed }: DesignCanvasProps) {
       console.warn('Failed to attach WebGL context event listeners', err);
     }
   };
+
+  // Monitor lifecycle
+  React.useEffect(() => {
+    console.log('[DesignCanvas] Mount (Component Mounted)');
+    return () => console.log('[DesignCanvas] Unmount (Component Unmounted/Destroyed)');
+  }, []);
 
   return (
     <Canvas

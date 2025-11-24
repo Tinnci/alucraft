@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { ItemNode } from '@/core/types';
-import dynamic from 'next/dynamic';
 import { Html } from '@react-three/drei';
 
 export interface ItemRendererProps {
@@ -21,26 +20,10 @@ const ErrorRenderer: React.FC<ItemRendererProps> = ({ node }) => {
   );
 };
 
-// Loading Placeholder
-const LoadingPlaceholder = () => (
-  <Html center><div className="text-xs text-muted-foreground">Loading...</div></Html>
-);
-
-// Dynamic Imports
-const Bay = dynamic(() => import('./Bay').then((mod) => mod.Bay), {
-  loading: LoadingPlaceholder,
-  ssr: false,
-});
-
-const BedRenderer = dynamic(() => import('./BedRenderer').then(mod => mod.BedRenderer), {
-  loading: LoadingPlaceholder,
-  ssr: false
-});
-
-const DeskRenderer = dynamic(() => import('./DeskRenderer').then(mod => mod.DeskRenderer), {
-  loading: LoadingPlaceholder,
-  ssr: false
-});
+// Lazy Imports
+const Bay = lazy(() => import('./Bay').then((mod) => ({ default: mod.Bay })));
+const BedRenderer = lazy(() => import('./BedRenderer'));
+const DeskRenderer = lazy(() => import('./DeskRenderer'));
 
 const registry: Record<string, React.ComponentType<ItemRendererProps>> = {
   'generic_bay': Bay as unknown as React.ComponentType<ItemRendererProps>,

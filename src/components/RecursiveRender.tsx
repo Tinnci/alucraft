@@ -25,6 +25,10 @@ interface RecursiveRenderProps {
   positions?: Map<string, NodePosition>;
 }
 
+// Global counter for debugging infinite loops
+let renderCount = 0;
+let lastReset = Date.now();
+
 export const RecursiveRender = React.memo(function RecursiveRender({
   node,
   origin,
@@ -36,6 +40,17 @@ export const RecursiveRender = React.memo(function RecursiveRender({
   positions,
   ...groupProps
 }: RecursiveRenderProps) {
+  // Frequency detection
+  renderCount++;
+  const now = Date.now();
+  if (now - lastReset > 1000) {
+    if (renderCount > 1000) {
+      console.warn(`🔥 RecursiveRender Overload: ${renderCount} renders/sec! Potential infinite loop.`);
+    }
+    renderCount = 0;
+    lastReset = now;
+  }
+
   const { profileType, height } = useDesignContext();
   // Defensive check: Limit recursion depth to prevent stack overflow
   if (recursionDepth > 25) {
@@ -84,11 +99,13 @@ export const RecursiveRender = React.memo(function RecursiveRender({
     // Use React.createElement to avoid "creating components during render" error
     return (
       <SceneErrorBoundary nodeId={node.id}>
-        {React.createElement(ItemRenderer, {
-          node: node as ItemNode,
-          position: nodeCenter,
-          dims: nodeDims
-        })}
+        <React.Suspense fallback={null}>
+          {React.createElement(ItemRenderer, {
+            node: node as ItemNode,
+            position: nodeCenter,
+            dims: nodeDims
+          })}
+        </React.Suspense>
       </SceneErrorBoundary>
     );
   }
