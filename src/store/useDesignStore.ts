@@ -71,6 +71,16 @@ export const useDesignStore = create<DesignState>()(
       {
         name: 'alucraft-design',
         version: 1, // Bump version to purge old incompatible state (where computedPositions might be a plain object)
+        migrate: (persistedState, version) => {
+          if (version === 0) {
+            // Migration v0 -> v1: Purge potential corrupt computedPositions
+            const state = persistedState as any;
+            // Explicitly remove the field so it resets to initial state (which is safe)
+            delete state.computedPositions;
+            return state;
+          }
+          return persistedState as DesignState;
+        },
         partialize: (state) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { cameraResetTrigger, computedPositions, ...rest } = state;
