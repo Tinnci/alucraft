@@ -1,6 +1,6 @@
 import React from 'react';
 import { ItemNode } from '@/core/types';
-import { Bay } from './Bay';
+import dynamic from 'next/dynamic';
 import { Html } from '@react-three/drei';
 
 export interface ItemRendererProps {
@@ -21,43 +21,32 @@ const ErrorRenderer: React.FC<ItemRendererProps> = ({ node }) => {
   );
 };
 
-// Placeholder Bed Renderer
-const BedRenderer: React.FC<ItemRendererProps> = ({ dims, position }) => {
-  const [w, h, d] = dims;
-  return (
-    <group position={position}>
-      <mesh>
-        <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial color="orange" opacity={0.5} transparent />
-      </mesh>
-      <Html center>
-        <div className="bg-orange-500 text-white p-1 rounded text-xs">Bed Frame</div>
-      </Html>
-    </group>
-  );
-};
+// Loading Placeholder
+const LoadingPlaceholder = () => (
+  <Html center><div className="text-xs text-muted-foreground">Loading...</div></Html>
+);
 
-// Placeholder Desk Renderer
-const DeskRenderer: React.FC<ItemRendererProps> = ({ dims, position }) => {
-  const [w, h, d] = dims;
-  return (
-    <group position={position}>
-      <mesh>
-        <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial color="blue" opacity={0.5} transparent />
-      </mesh>
-      <Html center>
-        <div className="bg-blue-500 text-white p-1 rounded text-xs">Desk Unit</div>
-      </Html>
-    </group>
-  );
-};
+// Dynamic Imports
+const Bay = dynamic(() => import('./Bay').then((mod) => mod.Bay), {
+  loading: LoadingPlaceholder,
+  ssr: false,
+});
 
-const registry: Record<string, React.FC<ItemRendererProps>> = {
-  'generic_bay': Bay as unknown as React.FC<ItemRendererProps>,
+const BedRenderer = dynamic(() => import('./BedRenderer').then(mod => mod.BedRenderer), {
+  loading: LoadingPlaceholder,
+  ssr: false
+});
+
+const DeskRenderer = dynamic(() => import('./DeskRenderer').then(mod => mod.DeskRenderer), {
+  loading: LoadingPlaceholder,
+  ssr: false
+});
+
+const registry: Record<string, React.ComponentType<ItemRendererProps>> = {
+  'generic_bay': Bay as unknown as React.ComponentType<ItemRendererProps>,
   'bed_frame': BedRenderer,
   'desk_unit': DeskRenderer,
-  'wardrobe_section': Bay as unknown as React.FC<ItemRendererProps>,
+  'wardrobe_section': Bay as unknown as React.ComponentType<ItemRendererProps>,
   'empty': ({ dims, position }) => (
     <group position={position}>
       <mesh>
@@ -68,11 +57,11 @@ const registry: Record<string, React.FC<ItemRendererProps>> = {
   )
 };
 
-export function getItemRenderer(type: string): React.FC<ItemRendererProps> {
+export function getItemRenderer(type: string): React.ComponentType<ItemRendererProps> {
   return registry[type] || ErrorRenderer;
 }
 
-export function registerItemRenderer(type: string, renderer: React.FC<ItemRendererProps>) {
+export function registerItemRenderer(type: string, renderer: React.ComponentType<ItemRendererProps>) {
   registry[type] = renderer;
 }
 

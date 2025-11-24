@@ -23,6 +23,7 @@ import {
   EyeOff,
   Video,
   Magnet,
+  Bug,
 } from 'lucide-react';
 import { useStore } from 'zustand';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
@@ -65,6 +66,8 @@ export function TopBar() {
   const setBOMPanelOpen = useUIStore((state) => state.setBOMPanelOpen);
   const isPropertyPanelOpen = useUIStore((state) => state.isPropertyPanelOpen);
   const setPropertyPanelOpen = useUIStore((state) => state.setPropertyPanelOpen);
+  const isDebugMode = useUIStore((state) => state.isDebugMode);
+  const toggleDebugMode = useUIStore((state) => state.toggleDebugMode);
 
   // Export/Import handlers
   const downloadDesign = () => {
@@ -313,6 +316,19 @@ export function TopBar() {
                 title="Reset Camera"
               >
                 <Video size={14} />
+              </Button>
+
+              <div className="w-px h-4 bg-border mx-1 self-center" />
+
+              {/* Debug Mode Toggle */}
+              <Button
+                variant={isDebugMode ? "secondary" : "ghost"}
+                size="icon-sm"
+                onClick={() => toggleDebugMode()}
+                className={isDebugMode ? "text-orange-500 bg-orange-500/10" : "text-muted-foreground"}
+                title="Toggle Layout Debug Mode"
+              >
+                <Bug size={14} />
               </Button>
 
               {/* Theme Toggle */}

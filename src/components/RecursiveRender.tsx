@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { ContainerNode, ItemNode, LayoutNode } from '@/core/types';
+import { ContainerNode, ItemNode, LayoutNode, isBayNode } from '@/core/types';
 import { PROFILES } from '@/config/profiles';
 import { NodePosition } from '@/core/layout-utils';
 import { useDesignContext } from '@/context/DesignContext';
 import { getItemRenderer } from './itemRegistry';
 import { getItemComponentId } from '@/core/item-utils';
 import { DividerVisual } from './DividerVisual';
+import { Text } from '@react-three/drei';
+import useUIStore from '@/store/useUIStore';
+import { SceneErrorBoundary } from './SceneErrorBoundary';
 
 interface RecursiveRenderProps {
   node: LayoutNode;
@@ -72,12 +75,22 @@ export const RecursiveRender = React.memo(function RecursiveRender({
     const compId = getItemComponentId(node as ItemNode);
     const ItemRenderer = getItemRenderer(compId);
 
+    // Type Guard: Ensure Bay component receives BayNode
+    if (compId === 'generic_bay' && !isBayNode(node)) {
+      console.error(`Node ${node.id} is rendered as Bay but has wrong data type`);
+      return null;
+    }
+
     // Use React.createElement to avoid "creating components during render" error
-    return React.createElement(ItemRenderer, {
-      node: node as ItemNode,
-      position: nodeCenter,
-      dims: nodeDims
-    });
+    return (
+      <SceneErrorBoundary nodeId={node.id}>
+        {React.createElement(ItemRenderer, {
+          node: node as ItemNode,
+          position: nodeCenter,
+          dims: nodeDims
+        })}
+      </SceneErrorBoundary>
+    );
   }
 
   // Render container node: split children horizontally or vertically
@@ -138,6 +151,7 @@ interface ContainerVisualProps {
 function ContainerVisual({ node, origin, recursionDepth, positions, ...groupProps }: ContainerVisualProps) {
   const [x, y, z] = origin;
   const container = node;
+  const isDebugMode = useUIStore((s) => s.isDebugMode);
 
   // Defensive check: Ensure children is an array - memoize to avoid fluctuating references
   const children = useMemo(() => Array.isArray(container.children) ? container.children : [], [container.children]);
@@ -157,6 +171,23 @@ function ContainerVisual({ node, origin, recursionDepth, positions, ...groupProp
 
   return (
     <group position={[x, y, z]} {...groupProps}>
+      {isDebugMode && (
+        <group>
+          <mesh>
+            <boxGeometry args={groupProps.dims as [number, number, number]} />
+            <meshBasicMaterial color={recursionDepth % 2 === 0 ? "red" : "blue"} wireframe />
+          </mesh>
+          <Text
+            position={[0, (groupProps.dims?.[1] || 0) / 2 + 20, 0]}
+            fontSize={24}
+            color="black"
+            anchorY="bottom"
+          >
+            {node.id} ({node.orientation})
+          </Text>
+        </group>
+      )}
+
       {children.map((child, idx) => {
         const info = childInfos[idx];
         // Prefer supplied positions map (from props) over fallback

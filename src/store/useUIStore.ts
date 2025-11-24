@@ -45,8 +45,12 @@ export interface UIState {
 
   // [NEW] 拖拽 Setter
   setDraggedComponent: (type: DraggableComponentType) => void;
-
   setHighlightedPartId: (id: string | null) => void;
+
+  // [NEW] Debug Mode
+  isDebugMode: boolean;
+  setDebugMode: (enabled: boolean) => void;
+  toggleDebugMode: () => void;
 
   // 便利方法：清除所有选中状态
   clearSelection: () => void;
@@ -69,6 +73,7 @@ export const useUIStore = create<UIState>((set) => ({
   isFloatingControlsExpanded: true,
   draggedComponent: null,
   highlightedPartId: null,
+  isDebugMode: false,
 
   // ... Setters ...
   setSelectedBayId: (id) => set({ selectedBayId: id, selectedObjectType: id ? 'bay' : null }),
@@ -83,6 +88,8 @@ export const useUIStore = create<UIState>((set) => ({
 
   setDraggedComponent: (type) => set({ draggedComponent: type }),
   setHighlightedPartId: (id) => set({ highlightedPartId: id }),
+  setDebugMode: (enabled) => set({ isDebugMode: enabled }),
+  toggleDebugMode: () => set((state) => ({ isDebugMode: !state.isDebugMode })),
 
   // ... Helpers ...
   clearSelection: () => set({
