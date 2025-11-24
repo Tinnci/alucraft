@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import useDesignStore, { DesignState } from '@/store/useDesignStore';
 import { ProfileInstances, ProfileInstance } from './AluProfile';
-import useLayoutPositions from '@/hooks/useLayoutPositions';
 import { RecursiveRender } from './RecursiveRender';
 import DesignContext from '@/context/DesignContext';
 import { Connector } from './Connector';
@@ -136,8 +135,20 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
     }, []);
 
-    // Call hooks unconditionally before any early returns
-    const positions = useLayoutPositions(layout, [0, 0, 0], [width, height, depth]);
+    // Use computed positions from store instead of re-calculating on render
+    const computedPositions = useDesignStore((state: DesignState) => state.computedPositions);
+    const setLayout = useDesignStore((state: DesignState) => state.setLayout);
+
+    // Initialize positions if they are missing (e.g. on first load)
+    useEffect(() => {
+        if (!computedPositions || computedPositions.size === 0) {
+            // Trigger a layout update to populate positions without changing structure
+            // We can just call setLayout with the current layout, effectively a no-op that runs the calculation logic
+            setLayout(layout);
+        }
+    }, [computedPositions, layout, setLayout]);
+
+    const positions = computedPositions;
     const frameParts = React.useMemo(() =>
         generateCabinetFrame(width, height, depth, profileType),
         [width, height, depth, profileType]);
@@ -161,25 +172,25 @@ export function CabinetFrame({ width, height, depth, profileType }: CabinetFrame
         <group>
             <DesignContext.Provider value={ctxValue}>
                 <ProfileInstances type={profileType} material={material}>
-                {/* --- Outer Frame --- */}
-                {frameParts.map(part => (
-                    <ProfileInstance
-                        key={part.id}
-                        length={part.length}
-                        position={part.position}
-                        rotation={part.rotation}
-                        partId={`frame-${part.type}`}
-                    />
-                ))}
+                    {/* --- Outer Frame --- */}
+                    {frameParts.map(part => (
+                        <ProfileInstance
+                            key={part.id}
+                            length={part.length}
+                            position={part.position}
+                            rotation={part.rotation}
+                            partId={`frame-${part.type}`}
+                        />
+                    ))}
 
-                {/* --- Layout Nodes (Bays & Dividers) --- */}
-                <RecursiveRender
-                    node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
-                    origin={[0, 0, 0]}
-                    dims={[width, height, depth]}
-                    parentOrientation={'horizontal'}
-                    positions={positions}
-                />
+                    {/* --- Layout Nodes (Bays & Dividers) --- */}
+                    <RecursiveRender
+                        node={{ id: 'root', type: 'container', orientation: 'horizontal', children: layout } as ContainerNode}
+                        origin={[0, 0, 0]}
+                        dims={[width, height, depth]}
+                        parentOrientation={'horizontal'}
+                        positions={positions}
+                    />
                 </ProfileInstances>
             </DesignContext.Provider>
 

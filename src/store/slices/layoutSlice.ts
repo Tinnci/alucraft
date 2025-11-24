@@ -14,12 +14,13 @@ import {
 } from '@/core/types';
 import { PROFILES } from '@/config/profiles';
 import { uid, createDefaultDoorConfig, getDoorSides, getDoorStateKey } from '@/core/utils';
-import computeLayoutSizes, { moveDividerInLayout } from '@/core/layout-utils';
+import computeLayoutSizes, { moveDividerInLayout, NodePosition, computeLayoutPositions } from '@/core/layout-utils';
 import { getItemProps, getItemWidth } from '@/core/item-utils';
 import { validateDesignJSON } from '@/utils/validation';
 
 export interface LayoutSlice {
     layout: LayoutNode[];
+    computedPositions: Map<string, NodePosition>;
 
     addBay: () => void;
     removeBay: (id: string) => void;
@@ -40,11 +41,31 @@ export interface LayoutSlice {
     setLayout: (layout: LayoutNode[]) => void;
 }
 
-export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> = (set) => ({
+// Helper to update layout and recompute positions immediately
+const updateLayoutWithCalc = (state: DesignState, newLayout: LayoutNode[], newWidth?: number) => {
+    const width = newWidth ?? state.width;
+    const { height, depth } = state;
+
+    // Compute positions immediately
+    const positions = computeLayoutPositions(
+        newLayout,
+        [0, 0, 0],
+        [width, height, depth]
+    );
+
+    return {
+        layout: newLayout,
+        width: width,
+        computedPositions: positions
+    };
+};
+
+export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> = (set, get) => ({
     layout: [
         // Initial State
         { type: 'item', contentType: 'generic_bay', id: 'bay-initial', config: { width: 560, shelves: [], drawers: [], door: createDefaultDoorConfig() } } as LayoutBay
     ],
+    computedPositions: new Map(), // Initial empty map, will be populated on first render or action
 
     addBay: () => set((state) => {
         const profileSize = PROFILES[state.profileType].size;
@@ -71,9 +92,11 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
             });
         }
 
+        const newLayout = [...state.layout, newDivider, newBay];
+        const newWidth = state.width + dividerWidth + newBayWidth;
+
         return {
-            layout: [...state.layout, newDivider, newBay],
-            width: state.width + dividerWidth + newBayWidth,
+            ...updateLayoutWithCalc(state, newLayout, newWidth),
             doorStates: newDoorStates
         };
     }),
@@ -105,20 +128,20 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
 
         const doorPrefix = `${id}:`;
         const newDoorStatesEntries = Object.entries(state.doorStates).filter(([key]) => !key.startsWith(doorPrefix));
+        const newWidth = state.width - widthReduction;
 
         return {
-            layout: newLayout,
-            width: state.width - widthReduction,
+            ...updateLayoutWithCalc(state, newLayout, newWidth),
             doorStates: Object.fromEntries(newDoorStatesEntries)
         };
     }),
 
     resizeBay: (id: string, width: number | 'auto') => set((state) => {
         const newLayout = state.layout.map(node => {
-                if (node.id === id && isBayNode(node)) {
-                    const newConfig = { ...node.config, width };
-                    const newProps = { ...((node.props ?? node.config) as unknown as BayConfig), width } as BayConfig;
-                    return { ...node, config: newConfig, props: newProps } as LayoutBay;
+            if (node.id === id && isBayNode(node)) {
+                const newConfig = { ...node.config, width };
+                const newProps = { ...((node.props ?? node.config) as unknown as BayConfig), width } as BayConfig;
+                return { ...node, config: newConfig, props: newProps } as LayoutBay;
             }
             return node;
         });
@@ -130,7 +153,8 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
             if (node.type === 'divider') return acc + (node.thickness ?? 0);
             return acc;
         }, 0) + (PROFILES[state.profileType].size * 2);
-        return { layout: newLayout, width: newTotalWidth };
+
+        return updateLayoutWithCalc(state, newLayout, newTotalWidth);
     }),
 
     splitItem: (itemId: string, orientation: 'horizontal' | 'vertical') => set((state) => {
@@ -189,15 +213,18 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
                 return undefined;
             })(newLayout);
 
-                if (newBay && (getItemProps<BayConfig>(newBay).door)) {
-                    const nbProps = getItemProps<BayConfig>(newBay);
-                    getDoorSides(nbProps.door).forEach((side) => {
+            if (newBay && (getItemProps<BayConfig>(newBay).door)) {
+                const nbProps = getItemProps<BayConfig>(newBay);
+                getDoorSides(nbProps.door).forEach((side) => {
                     newDoorStates[getDoorStateKey(newBay.id, side)] = state.isDoorOpen;
                 });
             }
         }
 
-        return { layout: newLayout, doorStates: newDoorStates };
+        return {
+            ...updateLayoutWithCalc(state, newLayout),
+            doorStates: newDoorStates
+        };
     }),
 
     moveDivider: (dividerId: string, delta: number) => set((state) => {
@@ -214,13 +241,13 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
             return acc;
         }, 0) + (PROFILES[state.profileType].size * 2);
 
-        return { layout: updatedLayout, width: newTotalWidth };
+        return updateLayoutWithCalc(state, updatedLayout, newTotalWidth);
     }),
 
     setBayDoorConfig: (bayId, config) => set((state) => {
         let targetDoor: BayDoorConfig | undefined;
         const newLayout = state.layout.map((node) => {
-                if (isBayNode(node) && node.id === bayId) {
+            if (isBayNode(node) && node.id === bayId) {
                 const base = node.config?.door ?? createDefaultDoorConfig();
                 const newDoorConfig = { ...base, ...config };
                 targetDoor = newDoorConfig;
@@ -248,12 +275,17 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
             }
         });
 
-        return { layout: newLayout, doorStates: newDoorStates };
+        // Layout structure didn't change, but we should recompute positions just in case (though unlikely needed for door config)
+        // For consistency, we can update it.
+        return {
+            ...updateLayoutWithCalc(state, newLayout),
+            doorStates: newDoorStates
+        };
     }),
 
-    addShelf: (bayId: string, y: number) => set((state) => ({
-        layout: state.layout.map(node => {
-                if (node.id === bayId && isBayNode(node)) {
+    addShelf: (bayId: string, y: number) => set((state) => {
+        const newLayout = state.layout.map(node => {
+            if (node.id === bayId && isBayNode(node)) {
                 const p = getItemProps<BayConfig>(node);
                 const shelves = [...(p.shelves ?? [] as Shelf[]), { id: uid(), y }];
                 const newConfig = { ...node.config, shelves };
@@ -261,12 +293,13 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
                 return { ...node, config: newConfig, props: newProps } as LayoutBay;
             }
             return node;
-        })
-    })),
+        });
+        return updateLayoutWithCalc(state, newLayout);
+    }),
 
-    removeShelf: (bayId: string, id: string) => set((state) => ({
-        layout: state.layout.map(node => {
-                if (node.id === bayId && isBayNode(node)) {
+    removeShelf: (bayId: string, id: string) => set((state) => {
+        const newLayout = state.layout.map(node => {
+            if (node.id === bayId && isBayNode(node)) {
                 const p = getItemProps<BayConfig>(node);
                 const shelves = (p.shelves ?? []).filter((s: Shelf) => s.id !== id);
                 const newConfig = { ...node.config, shelves };
@@ -274,12 +307,13 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
                 return { ...node, config: newConfig, props: newProps } as LayoutBay;
             }
             return node;
-        })
-    })),
+        });
+        return updateLayoutWithCalc(state, newLayout);
+    }),
 
-    updateShelf: (bayId: string, id: string, y: number) => set((state) => ({
-        layout: state.layout.map(node => {
-                if (node.id === bayId && isBayNode(node)) {
+    updateShelf: (bayId: string, id: string, y: number) => set((state) => {
+        const newLayout = state.layout.map(node => {
+            if (node.id === bayId && isBayNode(node)) {
                 const p = getItemProps<BayConfig>(node);
                 const shelves = (p.shelves ?? []).map((s: Shelf) => s.id === id ? { ...s, y } : s);
                 const newConfig = { ...node.config, shelves };
@@ -287,8 +321,9 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
                 return { ...node, config: newConfig, props: newProps } as LayoutBay;
             }
             return node;
-        })
-    })),
+        });
+        return updateLayoutWithCalc(state, newLayout);
+    }),
 
     duplicateShelf: (bayId: string, id: string) => set((state) => {
         const bay = state.layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
@@ -296,22 +331,21 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
         const shelf = (getItemProps<BayConfig>(bay).shelves ?? []).find((s: Shelf) => s.id === id);
         if (!shelf) return {};
 
-        return {
-            layout: state.layout.map(node => {
-                if (node.id === bayId && isBayNode(node)) {
-                    const p = getItemProps<BayConfig>(node);
-                    const shelves = [...(p.shelves ?? [] as Shelf[]), { id: uid(), y: shelf.y + 50 }];
-                    const newConfig = { ...node.config, shelves };
-                    const newProps = { ...((node.props ?? node.config) as unknown as BayConfig), shelves } as BayConfig;
-                    return { ...node, config: newConfig, props: newProps } as LayoutBay;
-                }
-                return node;
-            })
-        };
+        const newLayout = state.layout.map(node => {
+            if (node.id === bayId && isBayNode(node)) {
+                const p = getItemProps<BayConfig>(node);
+                const shelves = [...(p.shelves ?? [] as Shelf[]), { id: uid(), y: shelf.y + 50 }];
+                const newConfig = { ...node.config, shelves };
+                const newProps = { ...((node.props ?? node.config) as unknown as BayConfig), shelves } as BayConfig;
+                return { ...node, config: newConfig, props: newProps } as LayoutBay;
+            }
+            return node;
+        });
+        return updateLayoutWithCalc(state, newLayout);
     }),
 
-    addDrawer: (bayId: string, y: number, height: number) => set((state) => ({
-        layout: state.layout.map(node => {
+    addDrawer: (bayId: string, y: number, height: number) => set((state) => {
+        const newLayout = state.layout.map(node => {
             if (node.id === bayId && isBayNode(node)) {
                 const pd = getItemProps<BayConfig>(node);
                 const drawers = [...(pd.drawers ?? []), { id: uid(), y, height }];
@@ -320,11 +354,12 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
                 return { ...node, config: newConfig, props: newProps } as LayoutBay;
             }
             return node;
-        })
-    })),
+        });
+        return updateLayoutWithCalc(state, newLayout);
+    }),
 
-    removeDrawer: (bayId: string, id: string) => set((state) => ({
-        layout: state.layout.map(node => {
+    removeDrawer: (bayId: string, id: string) => set((state) => {
+        const newLayout = state.layout.map(node => {
             if (node.id === bayId && isBayNode(node)) {
                 const pd = getItemProps<BayConfig>(node);
                 const drawers = (pd.drawers ?? []).filter((d: Drawer) => d.id !== id);
@@ -333,11 +368,12 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
                 return { ...node, config: newConfig, props: newProps } as LayoutBay;
             }
             return node;
-        })
-    })),
+        });
+        return updateLayoutWithCalc(state, newLayout);
+    }),
 
-    updateDrawer: (bayId: string, id: string, y: number, height: number) => set((state) => ({
-        layout: state.layout.map(node => {
+    updateDrawer: (bayId: string, id: string, y: number, height: number) => set((state) => {
+        const newLayout = state.layout.map(node => {
             if (node.id === bayId && isBayNode(node)) {
                 const pd = getItemProps<BayConfig>(node);
                 const drawers = (pd.drawers ?? []).map((d: Drawer) => d.id === id ? { ...d, y, height } : d);
@@ -346,8 +382,9 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
                 return { ...node, config: newConfig, props: newProps } as LayoutBay;
             }
             return node;
-        })
-    })),
+        });
+        return updateLayoutWithCalc(state, newLayout);
+    }),
 
     duplicateDrawer: (bayId: string, id: string) => set((state) => {
         const bay = state.layout.find(n => n.id === bayId && isBayNode(n)) as LayoutBay | undefined;
@@ -366,18 +403,17 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
             newDrawer.y = drawer.y - drawer.height - 10;
         }
 
-        return {
-            layout: state.layout.map(node => {
-                if (node.id === bayId && isBayNode(node)) {
-                    const pd = getItemProps<BayConfig>(node);
-                    const drawers = [...(pd.drawers ?? []), newDrawer];
-                    const newConfig = { ...node.config, drawers };
-                    const newProps = { ...((node.props ?? node.config) as unknown as BayConfig), drawers } as BayConfig;
-                    return { ...node, config: newConfig, props: newProps } as LayoutBay;
-                }
-                return node;
-            })
-        };
+        const newLayout = state.layout.map(node => {
+            if (node.id === bayId && isBayNode(node)) {
+                const pd = getItemProps<BayConfig>(node);
+                const drawers = [...(pd.drawers ?? []), newDrawer];
+                const newConfig = { ...node.config, drawers };
+                const newProps = { ...((node.props ?? node.config) as unknown as BayConfig), drawers } as BayConfig;
+                return { ...node, config: newConfig, props: newProps } as LayoutBay;
+            }
+            return node;
+        });
+        return updateLayoutWithCalc(state, newLayout);
     }),
     setLayout: (layout: LayoutNode[]) => set((state) => {
         // Validate incoming layout
@@ -392,10 +428,10 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
 
         // Compute total width from layout
         const newTotalWidth = layout.reduce((acc: number, node: LayoutNode) => {
-                    if (node.type === 'item') {
-                        const pWidth = getItemWidth(node as ItemNode);
-                        return acc + (typeof pWidth === 'number' ? pWidth : 0);
-                    }
+            if (node.type === 'item') {
+                const pWidth = getItemWidth(node as ItemNode);
+                return acc + (typeof pWidth === 'number' ? pWidth : 0);
+            }
             if (node.type === 'divider') return acc + ((node as LayoutDivider).thickness ?? 0);
             if (node.type === 'container') return acc + (typeof (node as ContainerNode).size === 'number' ? (node as ContainerNode).size as number : 0);
             return acc;
@@ -405,7 +441,7 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
         const newDoorStates: Record<string, boolean> = { ...state.doorStates };
         const setDoorStatesRec = (nodes: LayoutNode[]) => {
             for (const n of nodes) {
-                    if (n.type === 'item') {
+                if (n.type === 'item') {
                     const bay = n as LayoutBay;
                     if (bay.config?.door) {
                         const sides = getDoorSides(getItemProps<BayConfig>(bay).door);
@@ -422,8 +458,7 @@ export const createLayoutSlice: StateCreator<DesignState, [], [], LayoutSlice> =
         setDoorStatesRec(layout);
 
         return {
-            layout,
-            width: newTotalWidth,
+            ...updateLayoutWithCalc(state, layout, newTotalWidth),
             doorStates: newDoorStates,
         };
     }),
